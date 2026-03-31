@@ -1,9 +1,11 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'services/data_service.dart';
 import 'screens/home_screen.dart';
 import 'screens/invoice_list_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/login_screen.dart';
+import 'screens/create_invoice_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -60,15 +62,13 @@ class AppShellState extends State<AppShell> {
   ];
 
   final List<String> _titles = [
-    'AROBill Dashboard',
+    'Dashboard',
     'Documents',
     'Settings',
   ];
 
   void _onItemTapped(int index) {
-    setState(() {
-      _currentIndex = index;
-    });
+    setState(() => _currentIndex = index);
     Navigator.pop(context); // Close drawer
   }
 
@@ -76,68 +76,227 @@ class AppShellState extends State<AppShell> {
   Widget build(BuildContext context) {
     final profile = DataService().currentProfile;
     final businessName = profile?.name ?? 'My Business';
-    final email = profile?.email ?? '';
+    final businessCategory = profile?.category ?? '';
+    final email = profile?.email ?? profile?.phone ?? '';
+    final logoPath = profile?.logoPath;
 
     return Scaffold(
-      appBar: AppBar(title: Text(_titles[_currentIndex])),
-      drawer: Drawer(
-        child: ListView(
-          padding: EdgeInsets.zero,
+      appBar: AppBar(
+        title: Row(
           children: [
-            UserAccountsDrawerHeader(
+            // Small logo in AppBar
+            Container(
+              height: 32,
+              width: 32,
+              margin: const EdgeInsets.only(right: 8),
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primary,
+                color: Colors.white.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(8),
               ),
-              accountName: Text(
-                businessName,
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18,
+              child: Padding(
+                padding: const EdgeInsets.all(4),
+                child: Image.asset('assets/logo.png', fit: BoxFit.contain),
+              ),
+            ),
+            Text(_titles[_currentIndex]),
+          ],
+        ),
+      ),
+
+      drawer: Drawer(
+        width: 290,
+        child: Column(
+          children: [
+            // ── Branded Header ─────────────────────────────────────
+            Container(
+              width: double.infinity,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    Theme.of(context).colorScheme.primary,
+                    Theme.of(context).colorScheme.secondary,
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
               ),
-              accountEmail: Text(email),
-              currentAccountPicture: CircleAvatar(
-                backgroundColor: Colors.white,
-                child: Text(
-                  businessName.isNotEmpty ? businessName[0].toUpperCase() : 'B',
-                  style: TextStyle(
-                    fontSize: 24,
-                    color: Theme.of(context).colorScheme.primary,
+              child: SafeArea(
+                bottom: false,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Logo + App name row
+                      Row(
+                        children: [
+                          Container(
+                            height: 48,
+                            width: 48,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.all(6),
+                              child: Image.asset('assets/logo.png', fit: BoxFit.contain),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'ARO',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 2,
+                                  height: 1,
+                                ),
+                              ),
+                              const Text(
+                                'Bill',
+                                style: TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w400,
+                                  letterSpacing: 4,
+                                  height: 1,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+                      // Business avatar + info
+                      Row(
+                        children: [
+                          CircleAvatar(
+                            radius: 26,
+                            backgroundColor: Colors.white.withOpacity(0.2),
+                            backgroundImage: logoPath != null
+                                ? FileImage(File(logoPath)) as ImageProvider
+                                : null,
+                            child: logoPath == null
+                                ? Text(
+                                    businessName.isNotEmpty ? businessName[0].toUpperCase() : 'B',
+                                    style: const TextStyle(
+                                      fontSize: 22,
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  )
+                                : null,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  businessName,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 15,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                if (businessCategory.isNotEmpty)
+                                  Text(
+                                    businessCategory,
+                                    style: const TextStyle(color: Colors.white70, fontSize: 12),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                if (email.isNotEmpty)
+                                  Text(
+                                    email,
+                                    style: const TextStyle(color: Colors.white60, fontSize: 11),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
-                  textAlign: TextAlign.center,
                 ),
               ),
             ),
-            ListTile(
-              leading: const Icon(Icons.dashboard_rounded, size: 28),
-              title: const Text('Dashboard', style: TextStyle(fontSize: 16)),
-              selected: _currentIndex == 0,
-              onTap: () => _onItemTapped(0),
-            ),
-            ListTile(
-              leading: const Icon(Icons.receipt_long_rounded, size: 28),
-              title: const Text('Invoices', style: TextStyle(fontSize: 16)),
-              selected: _currentIndex == 1,
-              onTap: () => _onItemTapped(1),
-            ),
-            ListTile(
-              leading: const Icon(Icons.settings_rounded, size: 28),
-              title: const Text('Settings', style: TextStyle(fontSize: 16)),
-              selected: _currentIndex == 2,
-              onTap: () => _onItemTapped(2),
-            ),
-            const Divider(),
-            ListTile(
-              leading: const Icon(
-                Icons.logout_rounded,
-                color: Colors.redAccent,
-                size: 28,
+
+            // ── Navigation Items ───────────────────────────────────
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                children: [
+                  const SizedBox(height: 8),
+
+                  _NavItem(
+                    icon: Icons.dashboard_rounded,
+                    label: 'Dashboard',
+                    isSelected: _currentIndex == 0,
+                    onTap: () => _onItemTapped(0),
+                  ),
+                  _NavItem(
+                    icon: Icons.description_rounded,
+                    label: 'Documents',
+                    isSelected: _currentIndex == 1,
+                    onTap: () => _onItemTapped(1),
+                  ),
+                  _NavItem(
+                    icon: Icons.settings_rounded,
+                    label: 'Settings',
+                    isSelected: _currentIndex == 2,
+                    onTap: () => _onItemTapped(2),
+                  ),
+
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                    child: Divider(),
+                  ),
+
+                  // Quick create button
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const CreateInvoiceScreen()),
+                        ).then((_) => setState(() {}));
+                      },
+                      icon: const Icon(Icons.add_circle_outline),
+                      label: const Text('Create Document'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Theme.of(context).colorScheme.primary,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-              title: const Text(
-                'Logout',
-                style: TextStyle(color: Colors.redAccent, fontSize: 16),
-              ),
+            ),
+
+            // ── Footer with logout ─────────────────────────────────
+            const Divider(height: 1),
+            _NavItem(
+              icon: Icons.logout_rounded,
+              label: 'Logout',
+              isSelected: false,
+              iconColor: Colors.redAccent,
+              labelColor: Colors.redAccent,
               onTap: () async {
+                Navigator.pop(context);
                 await DataService().logout();
                 if (mounted) {
                   Navigator.of(context).pushAndRemoveUntil(
@@ -147,10 +306,77 @@ class AppShellState extends State<AppShell> {
                 }
               },
             ),
+            const Padding(
+              padding: EdgeInsets.only(bottom: 12, top: 4),
+              child: Text(
+                'AROBill v1.0 · AROSOFT Innovations Ltd',
+                style: TextStyle(color: Colors.grey, fontSize: 10),
+                textAlign: TextAlign.center,
+              ),
+            ),
           ],
         ),
       ),
+
       body: _screens[_currentIndex],
     );
   }
 }
+
+// ── Reusable Nav Item Widget ───────────────────────────────────────────────
+class _NavItem extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final bool isSelected;
+  final VoidCallback onTap;
+  final Color? iconColor;
+  final Color? labelColor;
+
+  const _NavItem({
+    required this.icon,
+    required this.label,
+    required this.isSelected,
+    required this.onTap,
+    this.iconColor,
+    this.labelColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final primary = Theme.of(context).colorScheme.primary;
+    final effectiveIcon = iconColor ?? (isSelected ? primary : Colors.grey.shade700);
+    final effectiveLabel = labelColor ?? (isSelected ? primary : Colors.grey.shade800);
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+      decoration: BoxDecoration(
+        color: isSelected ? primary.withOpacity(0.1) : Colors.transparent,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: ListTile(
+        leading: Icon(icon, color: effectiveIcon, size: 24),
+        title: Text(
+          label,
+          style: TextStyle(
+            color: effectiveLabel,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+            fontSize: 15,
+          ),
+        ),
+        trailing: isSelected
+            ? Container(
+                width: 4,
+                height: 24,
+                decoration: BoxDecoration(
+                  color: primary,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              )
+            : null,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        onTap: onTap,
+      ),
+    );
+  }
+}
+
