@@ -10,6 +10,19 @@ void main() {
     ]));
   });
 
+  test('currency is preserved when documents are saved and read', () {
+    final invoice = Invoice(
+      id: 'currency-test',
+      invoiceNumber: 'INV-2',
+      issueDate: DateTime(2026, 10, 10),
+      clientName: 'Global Customer',
+      clientPhone: '',
+      currency: 'EUR',
+      items: [InvoiceItem(description: 'Consulting', quantity: 1, unitPrice: 50)],
+    );
+    expect(Invoice.fromJson(invoice.toJson()).currency, 'EUR');
+  });
+
   test('document subtotal, discounts and tax are calculated', () {
     final invoice = Invoice(
       id: 'test-id',
