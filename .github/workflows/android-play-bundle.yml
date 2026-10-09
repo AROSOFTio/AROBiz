@@ -1,0 +1,47 @@
+name: Signed Android Play bundle (AAB)
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Require signing secrets
+        env:
+          STORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          STORE_PASS: ${{ secrets.ANDROID_STORE_PASSWORD }}
+          KEY_PASS: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+        run: |
+          test -n "$STORE_B64" && test -n "$STORE_PASS" && test -n "$KEY_PASS" && test -n "$KEY_ALIAS" || { echo "Android signing secrets missing"; exit 1; }
+          printf '%s' "$STORE_B64" | base64 --decode > android/app/arodesk-upload.jks
+          cat > android/key.properties <<EOF
+          storeFile=arodesk-upload.jks
+          storePassword=$STORE_PASS
+          keyPassword=$KEY_PASS
+          keyAlias=$KEY_ALIAS
+          EOF
+      - run: flutter pub get
+      - run: flutter analyze --no-fatal-infos
+      - run: flutter test
+      - name: Build signed bundle
+        run: flutter build appbundle --release
+      - name: Publish AAB to pre-release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp build/app/outputs/bundle/release/app-release.aab ARODesk-Android-Play-Review.aab
+          gh release create "arodesk-play-review-${{ github.run_number }}" ARODesk-Android-Play-Review.aab \
+            --target "${{ github.sha }}" \
+            --title "ARODesk Play Review Build #${{ github.run_number }}" \
+            --notes "Signed Android bundle for INTERNAL review only. Do not publish to production until SaaS auth, tenant isolation, offline sync and device QA are complete." \
+            --prerelease
+      - name: Remove credentials
+        if: always()
+        run: rm -f android/app/arodesk-upload.jks android/key.properties
