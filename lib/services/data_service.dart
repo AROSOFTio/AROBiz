@@ -4,42 +4,51 @@ import '../models/business_profile.dart';
 import '../models/invoice.dart';
 import 'database_helper.dart';
 
+/// Local, offline account storage. This is not a cloud SaaS session.
+/// Old unscoped data deliberately remains untouched pending owner-reviewed migration.
 class DataService {
   static final DataService _instance = DataService._internal();
   factory DataService() => _instance;
   DataService._internal();
 
   SharedPreferences? _prefs;
+  int? _userId;
   BusinessProfile? currentProfile;
   List<Invoice> invoices = [];
 
-  bool get isLoggedIn => _prefs?.getBool('is_logged_in') ?? false;
+  bool get isLoggedIn => _userId != null;
+  String _key(String item) {
+    if (_userId == null) throw StateError('Sign in before accessing business data');
+    return 'account:${_userId!}:$item';
+  }
 
   Future<void> init() async {
     _prefs = await SharedPreferences.getInstance();
-    await loadProfile();
-    await loadInvoices();
+    // Intentionally require fresh login after upgrade; do not reuse old boolean
+    // which had no verified user identity attached to it.
+    _userId = null;
+    currentProfile = null;
+    invoices = [];
+    await _prefs?.remove('is_logged_in');
   }
 
   Future<void> login(String identifier, String password) async {
     final user = await DatabaseHelper().loginUser(identifier, password);
-    if (user != null) {
-      await _prefs?.setBool('is_logged_in', true);
-      
-      // Merge or load their profile
-      BusinessProfile profile = BusinessProfile(
-        name: user['businessName'],
-        category: user['businessCategory'],
-        location: user['location'],
-        email: user['email'],
-        phone: user['phone'],
-        logoPath: currentProfile?.logoPath, // Retain logo if it was there
-        servicesOffered: currentProfile?.servicesOffered ?? [],
-        localPaymentDetails: currentProfile?.localPaymentDetails,
-      );
-      await saveProfile(profile);
-    } else {
-      throw Exception('Invalid credentials');
+    if (user == null) throw Exception('Invalid credentials');
+    // Always drop previous account's cached state before changing accounts.
+    _userId = user['id'] as int;
+    currentProfile = null;
+    invoices = [];
+    await loadProfile();
+    await loadInvoices();
+    if (currentProfile == null) {
+      await saveProfile(BusinessProfile(
+        name: user['businessName'] as String?,
+        category: user['businessCategory'] as String?,
+        location: user['location'] as String?,
+        email: user['email'] as String?,
+        phone: user['phone'] as String?,
+      ));
     }
   }
 
@@ -59,57 +68,57 @@ class DataService {
       category: category,
       location: location,
     );
-    // Auto login
     await login(identifier, password);
   }
 
   Future<void> logout() async {
-    await _prefs?.setBool('is_logged_in', false);
-    // Clear from memory, but you can choose to keep the profile string or delete it.
-    // For local-first, keeping the data string doesn't hurt, but for security:
+    _userId = null;
     currentProfile = null;
+    invoices = [];
+    await _prefs?.remove('is_logged_in');
   }
 
   Future<void> loadProfile() async {
-    final String? profileJson = _prefs?.getString('business_profile');
-    if (profileJson != null) {
-      currentProfile = BusinessProfile.fromJson(jsonDecode(profileJson));
-    }
+    final data = _prefs?.getString(_key('business_profile'));
+    currentProfile = data == null ? null : BusinessProfile.fromJson(jsonDecode(data));
   }
 
   Future<void> saveProfile(BusinessProfile profile) async {
+    await _prefs?.setString(_key('business_profile'), jsonEncode(profile.toJson()));
     currentProfile = profile;
-    await _prefs?.setString('business_profile', jsonEncode(profile.toJson()));
   }
 
   Future<void> loadInvoices() async {
-    final List<String>? invoicesJson = _prefs?.getStringList('invoices');
-    if (invoicesJson != null) {
-      invoices = invoicesJson
-          .map((jsonStr) => Invoice.fromJson(jsonDecode(jsonStr)))
-          .toList();
-    }
+    final values = _prefs?.getStringList(_key('invoices')) ?? [];
+    invoices = values.map((value) => Invoice.fromJson(jsonDecode(value))).toList();
   }
 
   Future<void> saveInvoice(Invoice invoice) async {
-    final int index = invoices.indexWhere((i) => i.id == invoice.id);
-    if (index >= 0) {
-      invoices[index] = invoice;
+    _key('invoices'); // Validate active account before any mutation.
+    final index = invoices.indexWhere((value) => value.id == invoice.id);
+    final updated = List<Invoice>.from(invoices);
+    if (index == -1) {
+      updated.add(invoice);
     } else {
-      invoices.add(invoice);
+      updated[index] = invoice;
     }
-    await _saveInvoicesToStorage();
+    await _persistInvoices(updated);
   }
 
   Future<void> deleteInvoice(String id) async {
-    invoices.removeWhere((i) => i.id == id);
-    await _saveInvoicesToStorage();
+    _key('invoices');
+    final updated = List<Invoice>.from(invoices)..removeWhere((value) => value.id == id);
+    await _persistInvoices(updated);
   }
 
-  Future<void> _saveInvoicesToStorage() async {
-    final List<String> invoicesJson = invoices
-        .map((i) => jsonEncode(i.toJson()))
-        .toList();
-    await _prefs?.setStringList('invoices', invoicesJson);
+  Future<void> _persistInvoices(List<Invoice> updated) async {
+    final prefs = _prefs;
+    if (prefs == null) throw StateError('Storage not initialized');
+    final ok = await prefs.setStringList(
+      _key('invoices'),
+      updated.map((value) => jsonEncode(value.toJson())).toList(),
+    );
+    if (!ok) throw StateError('Could not save document locally');
+    invoices = updated;
   }
 }
