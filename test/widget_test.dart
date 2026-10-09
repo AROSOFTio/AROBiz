@@ -1,30 +1,29 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-
-import 'package:arosoft/main.dart';
+import 'package:arosoft/models/invoice.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const InvoicingApp());
+  test('invoice, quotation and receipt document types are available', () {
+    expect(DocumentType.values, containsAll([
+      DocumentType.invoice,
+      DocumentType.quotation,
+      DocumentType.receipt,
+    ]));
+  });
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
-
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
-
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+  test('document subtotal, discounts and tax are calculated', () {
+    final invoice = Invoice(
+      id: 'test-id',
+      invoiceNumber: 'INV-TEST',
+      issueDate: DateTime(2026, 10, 10),
+      clientName: 'Example Client',
+      clientPhone: '',
+      items: [InvoiceItem(description: 'Service', quantity: 2, unitPrice: 100)],
+      discount: 20,
+      taxRate: 0.18,
+    );
+    expect(invoice.subtotal, 200);
+    expect(invoice.taxAmount, closeTo(32.4, 0.001));
+    expect(invoice.finalTotal, closeTo(212.4, 0.001));
+    expect(Invoice.fromJson(invoice.toJson()).finalTotal, closeTo(212.4, 0.001));
   });
 }
