@@ -23,21 +23,27 @@ jobs:
       - name: Test
         run: flutter test
       - name: Build APK for device testing
-        run: flutter build apk --debug
-      - name: Upload installable debug APK
+        run: |
+          keytool -genkeypair -v -keystore android/app/arodesk-test.jks -alias arodesk-test -keyalg RSA -keysize 2048 -validity 365 -storepass androidtest -keypass androidtest -dname "CN=ARODesk Test, OU=Development, O=AROSOFT, L=Kampala, C=UG"
+          printf 'storeFile=arodesk-test.jks\nstorePassword=androidtest\nkeyAlias=arodesk-test\nkeyPassword=androidtest\n' > android/key.properties
+          flutter build apk --release --split-per-abi --obfuscate --split-debug-info=build/symbols
+      - name: Upload optimized test APKs
         uses: actions/upload-artifact@v4
         with:
-          name: arodesk-android-debug-apk
-          path: build/app/outputs/flutter-apk/app-debug.apk
+          name: arodesk-android-optimized-apks
+          path: build/app/outputs/flutter-apk/app-*-release.apk
           if-no-files-found: error
 
-      - name: Publish direct APK download under Releases (pre-release)
+      - name: Publish smaller test APKs under Releases
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          cp build/app/outputs/flutter-apk/app-debug.apk ARODesk-Android-TEST.apk
-          gh release create "arodesk-test-${{ github.run_number }}" ARODesk-Android-TEST.apk \
+          cp build/app/outputs/flutter-apk/app-arm64-v8a-release.apk ARODesk-Android-arm64-TEST.apk
+          cp build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk ARODesk-Android-arm32-TEST.apk
+          cp build/app/outputs/flutter-apk/app-x86_64-release.apk ARODesk-Android-x86_64-TEST.apk
+          ls -lh ARODesk-Android-*-TEST.apk
+          gh release create "arodesk-optimized-test-${{ github.run_number }}" ARODesk-Android-*-TEST.apk \
             --target "${{ github.sha }}" \
             --title "ARODesk Android Test Build #${{ github.run_number }}" \
-            --notes "TEST ONLY. Offline local prototype. Cloud SaaS login, database migration, synchronization, release signing and production security verification are NOT complete. Do not distribute to customers or upload to Google Play." \
+            --notes "TEST ONLY. Optimized per-architecture APKs signed with disposable DEVELOPMENT keys. arm64 is appropriate for most modern Android phones. Not compatible as an update to APKs signed with previous keys; uninstall old test build before installation and export any data first. Cloud SaaS and production security remain incomplete. Not suitable for Play Console." \
             --prerelease
