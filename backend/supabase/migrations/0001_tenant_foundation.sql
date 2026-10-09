@@ -48,7 +48,8 @@ create table if not exists public.contacts (
   email text,
   phone text,
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  unique (business_id,id)
 );
 
 create table if not exists public.documents (
@@ -73,7 +74,6 @@ create table if not exists public.documents (
   unique (business_id,id),
   foreign key (business_id, contact_id) references public.contacts(business_id,id)
 );
-alter table public.contacts add constraint contacts_business_id_id_unique unique (business_id,id);
 
 create table if not exists public.payments (
   id uuid primary key,
