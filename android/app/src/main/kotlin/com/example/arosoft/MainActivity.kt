@@ -1,4 +1,4 @@
-package com.example.arosoft
+package com.arosoftio.arodesk
 
 import io.flutter.embedding.android.FlutterActivity
 
