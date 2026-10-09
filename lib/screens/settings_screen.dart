@@ -22,6 +22,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final TextEditingController _newServiceController = TextEditingController();
 
   String _selectedCategory = 'Other';
+  String _currency = 'USD';
+  static const _currencies = ['USD','EUR','GBP','UGX','KES','TZS','RWF','NGN','GHS','ZAR','INR','AED','SAR','CAD','AUD','JPY','CNY','CHF','SGD','BRL','MXN','NZD','EGP','ETB'];
   String? _logoPath;
   List<String> _services = [];
 
@@ -57,6 +59,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _emailController = TextEditingController(text: profile?.email ?? '');
     _paymentController = TextEditingController(text: profile?.localPaymentDetails ?? '');
     _logoPath = profile?.logoPath;
+    _currency = profile?.currency ?? 'USD';
     _services = List<String>.from(profile?.servicesOffered ?? []);
 
     if (profile?.category != null && _categories.contains(profile!.category)) {
@@ -107,6 +110,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (_formKey.currentState!.validate()) {
       final profile = BusinessProfile(
         name: _nameController.text,
+        currency: _currency,
         location: _locationController.text,
         phone: _phoneController.text,
         email: _emailController.text,
@@ -234,6 +238,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             const SizedBox(height: 24),
 
+            const Text('Business Currency', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            DropdownButtonFormField<String>(
+              value: _currencies.contains(_currency) ? _currency : null,
+              decoration: const InputDecoration(labelText: 'Default currency (ISO 4217)', border: OutlineInputBorder()),
+              items: _currencies.map((code) => DropdownMenuItem(value: code, child: Text(code))).toList(),
+              onChanged: (value) { if (value != null) setState(() => _currency = value); },
+            ),
+            const SizedBox(height: 12),
+            const Text('Choose the currency used by your business. Changing this does not convert amounts on existing documents.'),
+            const SizedBox(height: 24),
             // Services Section
             Row(
               children: [
