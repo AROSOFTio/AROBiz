@@ -1,3 +1,7 @@
+-- Worldwide default for new businesses and documents; never rewrite historical records.
+alter table public.businesses alter column currency set default 'USD';
+alter table public.documents alter column currency set default 'USD';
+
 -- Apply in Supabase SQL editor after 0001_tenant_foundation.sql.
 -- Allows a signed-in user to create only a business they own.
 create or replace function public.create_my_business(
