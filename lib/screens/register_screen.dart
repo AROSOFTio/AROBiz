@@ -76,7 +76,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Register on AROBill'),
+        title: const Text('Register on ARODesk'),
         backgroundColor: Colors.transparent,
         elevation: 0,
         foregroundColor: Theme.of(context).colorScheme.primary,
@@ -96,7 +96,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
               ),
               const SizedBox(height: 8),
-              const Text('Set up your business on AROBill.'),
+              const Text('Set up your business on ARODesk.'),
               const SizedBox(height: 24),
               Row(
                 children: [
@@ -137,7 +137,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   border: OutlineInputBorder(),
                   prefixIcon: Icon(Icons.lock_outline),
                 ),
-                validator: (val) => val == null || val.length < 4 ? 'Password must be at least 4 characters' : null,
+                validator: (val) => val == null || val.length < 8 ? 'Password must be at least 8 characters' : null,
               ),
               const SizedBox(height: 24),
               const Divider(),
