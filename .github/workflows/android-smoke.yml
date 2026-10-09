@@ -7,7 +7,7 @@ jobs:
   android:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
     steps:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
@@ -30,3 +30,14 @@ jobs:
           name: arodesk-android-debug-apk
           path: build/app/outputs/flutter-apk/app-debug.apk
           if-no-files-found: error
+
+      - name: Publish direct APK download under Releases (pre-release)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp build/app/outputs/flutter-apk/app-debug.apk ARODesk-Android-TEST.apk
+          gh release create "arodesk-test-${{ github.run_number }}" ARODesk-Android-TEST.apk \
+            --target "${{ github.sha }}" \
+            --title "ARODesk Android Test Build #${{ github.run_number }}" \
+            --notes "TEST ONLY. Offline local prototype. Cloud SaaS login, database migration, synchronization, release signing and production security verification are NOT complete. Do not distribute to customers or upload to Google Play." \
+            --prerelease
