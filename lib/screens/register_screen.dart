@@ -166,37 +166,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   prefixIcon: Icon(Icons.location_on_outlined),
                 ),
               ),
+              const SizedBox(height: 16),
               TextFormField(
                 controller: _currencyController,
                 textCapitalization: TextCapitalization.characters,
                 maxLength: 3,
                 decoration: const InputDecoration(
-                  labelText: 'Business currency (ISO code)', hintText: 'USD / EUR / UGX',
-                  prefixIcon: Icon(Icons.currency_exchange), border: OutlineInputBorder(),
+                  labelText: 'Business currency (ISO 4217)',
+                  hintText: 'USD, EUR, UGX',
+                  prefixIcon: Icon(Icons.currency_exchange),
+                  border: OutlineInputBorder(),
                 ),
-                validator: (value) => RegExp(r'^[A-Za-z]{3}
-                height: 50,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Theme.of(context).colorScheme.primary,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                  onPressed: _isLoading ? null : _register,
-                  child: _isLoading
-                      ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text('Create Account', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-).hasMatch(value?.trim() ?? '')
-                    ? null : 'Enter a 3-letter currency code',
+                validator: (value) => RegExp(r'^[A-Za-z][A-Za-z][A-Za-z]$')
+                    .hasMatch(value?.trim() ?? '')
+                    ? null : 'Enter a three-letter currency code',
               ),
               const SizedBox(height: 32),
               SizedBox(
