@@ -45,6 +45,7 @@ class InvoiceItem {
 
 class Invoice {
   final String id;
+  final String currency;
   final String invoiceNumber;
   final DateTime issueDate;
   final String clientName;
@@ -58,6 +59,7 @@ class Invoice {
 
   Invoice({
     required this.id,
+    this.currency = 'USD',
     required this.invoiceNumber,
     required this.issueDate,
     required this.clientName,
@@ -77,6 +79,7 @@ class Invoice {
   factory Invoice.fromJson(Map<String, dynamic> json) {
     return Invoice(
       id: json['id'],
+      currency: (json['currency'] as String?) ?? 'USD',
       invoiceNumber: json['invoiceNumber'],
       issueDate: DateTime.parse(json['issueDate']),
       clientName: json['clientName'],
@@ -98,6 +101,7 @@ class Invoice {
   Map<String, dynamic> toJson() {
     return {
       'id': id,
+      'currency': currency,
       'invoiceNumber': invoiceNumber,
       'issueDate': issueDate.toIso8601String(),
       'clientName': clientName,
