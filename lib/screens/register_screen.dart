@@ -20,6 +20,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   String? _selectedCategory;
   bool _isLoading = false;
   bool _isEmail = true;
+  final _currencyController = TextEditingController(text: 'USD');
 
   final List<String> _businessCategories = [
     'Retail Shop',
@@ -55,6 +56,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         businessName: _businessNameCtrl.text.trim(),
         category: _selectedCategory ?? 'General Merchandise',
         location: _locationCtrl.text.trim(),
+        currency: _currencyController.text.trim().toUpperCase(),
       );
       if (mounted) {
         // Go straight to AppShell and clear history
@@ -182,6 +184,38 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   border: OutlineInputBorder(),
                   prefixIcon: Icon(Icons.location_on_outlined),
                 ),
+              ),
+              TextFormField(
+                controller: _currencyController,
+                textCapitalization: TextCapitalization.characters,
+                maxLength: 3,
+                decoration: const InputDecoration(
+                  labelText: 'Business currency (ISO code)', hintText: 'USD / EUR / UGX',
+                  prefixIcon: Icon(Icons.currency_exchange), border: OutlineInputBorder(),
+                ),
+                validator: (value) => RegExp(r'^[A-Za-z]{3}
+                height: 50,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Theme.of(context).colorScheme.primary,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  onPressed: _isLoading ? null : _register,
+                  child: _isLoading
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : const Text('Create Account', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+).hasMatch(value?.trim() ?? '')
+                    ? null : 'Enter a 3-letter currency code',
               ),
               const SizedBox(height: 32),
               SizedBox(
