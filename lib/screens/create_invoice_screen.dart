@@ -124,6 +124,7 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
       final discount = double.tryParse(_discountController.text) ?? 0.0;
 
       final invoice = Invoice(
+        currency: DataService().currentProfile?.currency ?? 'USD',
         id: const Uuid().v4(),
         invoiceNumber: _documentNumber,
         issueDate: DateTime.now(),
