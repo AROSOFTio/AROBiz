@@ -84,7 +84,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                     ),
                     const SizedBox(height: 8),
-                    const Text('Login to continue to AROBill'),
+                    const Text('Login to continue to ARODesk'),
                     const SizedBox(height: 32),
                     TextField(
                       controller: _identifierCtrl,
