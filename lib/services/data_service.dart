@@ -203,12 +203,44 @@ class DataService {
           'document_number': inv.invoiceNumber, 'currency': inv.currency,
           'issue_date': inv.issueDate.toIso8601String().substring(0, 10),
           'lines': inv.items.map((e) => e.toJson()).toList(),
+          'client_name': inv.clientName, 'client_phone': inv.clientPhone,
+          'notes': inv.notes, 'payment_option': inv.paymentOption,
           'subtotal': inv.subtotal, 'discount_total': inv.discount,
           'tax_total': inv.taxAmount, 'total': inv.finalTotal,
         }, onConflict: 'business_id,id');
         dirty.remove(id);
         await _prefs?.setStringList(_key('pending_docs'), dirty);
       }
+      final remote = await _cloud.from('documents').select()
+          .eq('business_id', business).order('updated_at', ascending: false);
+      final pending = _prefs?.getStringList(_key('pending_docs')) ?? [];
+      final merged = <String, Invoice>{for (final doc in invoices) doc.id: doc};
+      for (final record in remote) {
+        final id = record['id'] as String;
+        if (pending.contains(id)) continue;
+        if (record['type'] != 'invoice' && record['type'] != 'quotation' && record['type'] != 'receipt') continue;
+        final lines = (record['lines'] as List<dynamic>? ?? []);
+        final type = DocumentType.values.firstWhere(
+          (value) => value.name == record['type'], orElse: () => DocumentType.invoice);
+        merged[id] = Invoice(
+          id: id,
+          invoiceNumber: (record['document_number'] as String?) ?? id,
+          issueDate: DateTime.parse(record['issue_date'] as String),
+          clientName: (record['client_name'] as String?) ?? '',
+          clientPhone: (record['client_phone'] as String?) ?? '',
+          currency: (record['currency'] as String?) ?? 'USD',
+          items: lines.map((item) => InvoiceItem.fromJson(Map<String,dynamic>.from(item as Map))).toList(),
+          discount: (record['discount_total'] as num?)?.toDouble() ?? 0,
+          taxRate: ((record['subtotal'] as num? ?? 0) - (record['discount_total'] as num? ?? 0)) > 0
+              ? ((record['tax_total'] as num? ?? 0) /
+                  ((record['subtotal'] as num? ?? 0) - (record['discount_total'] as num? ?? 0))).toDouble()
+              : 0,
+          notes: record['notes'] as String?,
+          paymentOption: record['payment_option'] as String?,
+          type: type,
+        );
+      }
+      await _persistInvoices(merged.values.toList());
       syncError = null;
     } catch (e) {
       syncError = e.toString();
