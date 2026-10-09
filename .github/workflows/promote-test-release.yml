@@ -15,9 +15,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release edit arodesk-test-8 \
+          gh release edit arodesk-optimized-test-29 \
             --repo ${{ github.repository }} \
-            --title "ARODesk Android APK - TEST BUILD #8 (not for Play Store)" \
-            --notes "Android test APK for device evaluation ONLY. This is not a completed SaaS release, not a signed Play Console AAB, and cloud authentication and offline sync are unfinished. Install APK only for internal evaluation." \
+            --title "ARODesk Optimized Android APK - TEST BUILD #29 (20–24 MB)" \
+            --notes "Optimized Android APKs for device evaluation ONLY. ARM64 is for most modern Android phones. This is not a completed SaaS release, not a signed Play Console AAB, and cloud authentication and offline sync are unfinished. Install APK only for internal evaluation." \
             --prerelease=false \
             --latest
