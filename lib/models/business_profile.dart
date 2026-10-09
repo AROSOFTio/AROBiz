@@ -1,6 +1,7 @@
 
 class BusinessProfile {
   final String? name;
+  final String currency;
   final String? logoPath;
   final String? location;
   final String? phone;
@@ -11,6 +12,7 @@ class BusinessProfile {
 
   BusinessProfile({
     this.name,
+    this.currency = 'USD',
     this.logoPath,
     this.location,
     this.phone,
@@ -33,6 +35,7 @@ class BusinessProfile {
 
     return BusinessProfile(
       name: json['name'],
+      currency: (json['currency'] as String?) ?? 'USD',
       logoPath: json['logoPath'],
       location: json['location'],
       phone: json['phone'],
@@ -46,6 +49,7 @@ class BusinessProfile {
   Map<String, dynamic> toJson() {
     return {
       'name': name,
+      'currency': currency,
       'logoPath': logoPath,
       'location': location,
       'phone': phone,
@@ -58,6 +62,7 @@ class BusinessProfile {
 
   BusinessProfile copyWith({
     String? name,
+    String? currency,
     String? logoPath,
     String? location,
     String? phone,
@@ -68,6 +73,7 @@ class BusinessProfile {
   }) {
     return BusinessProfile(
       name: name ?? this.name,
+      currency: currency ?? this.currency,
       logoPath: logoPath ?? this.logoPath,
       location: location ?? this.location,
       phone: phone ?? this.phone,
