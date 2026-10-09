@@ -1,0 +1,23 @@
+name: Show ARODesk APK on repository Releases
+on:
+  push:
+    branches: [saas-offline-foundation]
+    paths:
+      - .github/workflows/promote-test-release.yml
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Make existing test APK a visible published Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release edit arodesk-test-8 \
+            --repo ${{ github.repository }} \
+            --title "ARODesk Android APK - TEST BUILD #8 (not for Play Store)" \
+            --notes "Android test APK for device evaluation ONLY. This is not a completed SaaS release, not a signed Play Console AAB, and cloud authentication and offline sync are unfinished. Install APK only for internal evaluation." \
+            --prerelease=false \
+            --latest
