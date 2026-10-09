@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/material.dart';
 import 'services/data_service.dart';
 import 'screens/home_screen.dart';
@@ -9,6 +10,10 @@ import 'screens/create_invoice_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await Supabase.initialize(
+    url: const String.fromEnvironment('SUPABASE_URL', defaultValue: 'https://bqoutfgqfaangnnclgle.supabase.co'),
+    anonKey: const String.fromEnvironment('SUPABASE_PUBLISHABLE_KEY', defaultValue: 'sb_publishable_b6xAOLbiPzkyXoyWPKjqVg_PazoFret'),
+  );
   await DataService().init();
   runApp(const InvoicingApp());
 }
