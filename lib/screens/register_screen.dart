@@ -19,7 +19,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   String? _selectedCategory;
   bool _isLoading = false;
-  bool _isEmail = true;
+  bool _isEmail = true; // Cloud signup currently uses verified email only.
   final _currencyController = TextEditingController(text: 'USD');
 
   final List<String> _businessCategories = [
@@ -100,33 +100,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
               const SizedBox(height: 8),
               const Text('Set up your business on ARODesk.'),
               const SizedBox(height: 24),
-              Row(
-                children: [
-                  Expanded(
-                    child: RadioListTile<bool>(
-                      title: const Text('Email'),
-                      value: true,
-                      groupValue: _isEmail,
-                      onChanged: (val) => setState(() => _isEmail = val!),
-                    ),
-                  ),
-                  Expanded(
-                    child: RadioListTile<bool>(
-                      title: const Text('Phone'),
-                      value: false,
-                      groupValue: _isEmail,
-                      onChanged: (val) => setState(() => _isEmail = val!),
-                    ),
-                  ),
-                ],
-              ),
+              const Text('Sign up with your email address. Add a business phone number later in Settings.'),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _emailPhoneCtrl,
                 decoration: InputDecoration(
-                  labelText: _isEmail ? 'Email Address' : 'Phone Number',
+                  labelText: 'Email Address',
                   border: const OutlineInputBorder(),
-                  prefixIcon: Icon(_isEmail ? Icons.email_outlined : Icons.phone_outlined),
+                  prefixIcon: const Icon(Icons.email_outlined),
                 ),
                 validator: (val) => val == null || val.isEmpty ? 'Required field' : null,
               ),
