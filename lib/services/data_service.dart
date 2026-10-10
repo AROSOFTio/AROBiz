@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/business_profile.dart';
 import '../models/invoice.dart';
@@ -13,7 +14,8 @@ class DataService {
   BusinessProfile? currentProfile;
   List<Invoice> invoices = [];
 
-  bool get isLoggedIn => _prefs?.getBool('is_logged_in') ?? false;
+  bool get _onlineAuth => const String.fromEnvironment('SUPABASE_URL').isNotEmpty && const String.fromEnvironment('SUPABASE_PUBLISHABLE_KEY').isNotEmpty;
+  bool get isLoggedIn => _onlineAuth ? Supabase.instance.client.auth.currentSession != null : (_prefs?.getBool('is_logged_in') ?? false);
 
   Future<void> init() async {
     _prefs = await SharedPreferences.getInstance();
@@ -22,6 +24,24 @@ class DataService {
   }
 
   Future<void> login(String identifier, String password) async {
+    if (_onlineAuth) {
+      final auth = Supabase.instance.client.auth;
+      final result = await auth.signInWithPassword(
+        email: identifier.contains('@') ? identifier.trim().toLowerCase() : null,
+        phone: identifier.contains('@') ? null : identifier.trim(),
+        password: password,
+      );
+      if (result.session == null) throw Exception('Please confirm your email or phone before logging in.');
+      final metadata = result.user?.userMetadata ?? {};
+      await saveProfile(BusinessProfile(
+        name: (metadata['businessName'] ?? 'My Business').toString(),
+        category: (metadata['businessCategory'] ?? '').toString(),
+        location: (metadata['location'] ?? '').toString(),
+        email: result.user?.email,
+        phone: result.user?.phone,
+      ));
+      return;
+    }
     final user = await DatabaseHelper().loginUser(identifier, password);
     if (user != null) {
       await _prefs?.setBool('is_logged_in', true);
@@ -51,6 +71,18 @@ class DataService {
     required String category,
     required String location,
   }) async {
+    if (_onlineAuth) {
+      final result = await Supabase.instance.client.auth.signUp(
+        email: isEmail ? identifier.trim().toLowerCase() : null,
+        phone: isEmail ? null : identifier.trim(),
+        password: password,
+        data: {'businessName': businessName, 'businessCategory': category, 'location': location},
+      );
+      if (result.user == null) throw Exception('Registration failed. Please try again.');
+      if (result.session == null) throw Exception('Account created. Please verify your email or phone, then log in.');
+      await saveProfile(BusinessProfile(name: businessName, category: category, location: location, email: isEmail ? identifier.trim().toLowerCase() : null, phone: isEmail ? null : identifier.trim()));
+      return;
+    }
     await DatabaseHelper().registerUser(
       identifier: identifier,
       isEmail: isEmail,
@@ -64,6 +96,7 @@ class DataService {
   }
 
   Future<void> logout() async {
+    if (_onlineAuth) await Supabase.instance.client.auth.signOut();
     await _prefs?.setBool('is_logged_in', false);
     // Clear from memory, but you can choose to keep the profile string or delete it.
     // For local-first, keeping the data string doesn't hurt, but for security:
