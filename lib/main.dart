@@ -13,7 +13,7 @@ void main() async {
   const url = String.fromEnvironment('SUPABASE_URL');
   const key = String.fromEnvironment('SUPABASE_PUBLISHABLE_KEY');
   if (url.isNotEmpty && key.isNotEmpty) {
-    await Supabase.initialize(url: url, publishableKey: key);
+    await Supabase.initialize(url: url, anonKey: key);
   }
   await DataService().init();
   runApp(const InvoicingApp());
