@@ -84,18 +84,18 @@ class DatabaseHelper {
     };
 
     if (isEmail) {
-      data['email'] = identifier;
+      data['email'] = identifier.trim().toLowerCase();
       data['phone'] = null;
     } else {
-      data['phone'] = identifier;
+      data['phone'] = identifier.trim();
       data['email'] = null;
     }
 
     // Check if user exists
     final exists = await db.query(
       'users',
-      where: 'email = ? OR phone = ?',
-      whereArgs: [data['email'] ?? '', data['phone'] ?? ''],
+      where: isEmail ? 'LOWER(TRIM(email)) = ?' : 'TRIM(phone) = ?',
+      whereArgs: [isEmail ? identifier.trim().toLowerCase() : identifier.trim()],
     );
     
     if (exists.isNotEmpty) {
@@ -108,10 +108,11 @@ class DatabaseHelper {
   Future<Map<String, dynamic>?> loginUser(String identifier, String password) async {
     final db = await database;
     String pHash = _hashPassword(password);
+    final normalized = identifier.trim().toLowerCase();
     final List<Map<String, dynamic>> result = await db.query(
       'users',
-      where: '(email = ? OR phone = ?) AND passwordHash = ?',
-      whereArgs: [identifier, identifier, pHash],
+      where: '(LOWER(TRIM(email)) = ? OR TRIM(phone) = ?) AND passwordHash = ?',
+      whereArgs: [normalized, identifier.trim(), pHash],
     );
     if (result.isNotEmpty) {
       return result.first;
