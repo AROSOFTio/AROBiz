@@ -65,7 +65,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+        final message = e.toString().replaceFirst('Exception: ', '');
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+        if (message.startsWith('Account created.')) {
+          Navigator.of(context).pop();
+        }
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
