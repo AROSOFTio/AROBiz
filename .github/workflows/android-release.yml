@@ -2,8 +2,8 @@ name: Android release
 on:
   workflow_dispatch:
   push:
-    paths:
-      - '.github/workflows/android-release.yml'
+    branches:
+      - main
 permissions:
   contents: write
 jobs:
