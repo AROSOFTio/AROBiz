@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/business_profile.dart';
 import '../models/invoice.dart';
 import 'database_helper.dart';
+import 'country_currency.dart';
 
 class DataService {
   static final DataService _instance = DataService._internal();
@@ -39,6 +40,11 @@ class DataService {
         location: (metadata['location'] ?? '').toString(),
         email: result.user?.email,
         phone: result.user?.phone,
+        countryCode: (metadata['countryCode'] ?? currentProfile?.countryCode)?.toString(),
+        currencyCode: (metadata['currencyCode'] ?? currentProfile?.currencyCode ?? 'USD').toString(),
+        logoPath: currentProfile?.logoPath,
+        servicesOffered: currentProfile?.servicesOffered ?? [],
+        localPaymentDetails: currentProfile?.localPaymentDetails,
       ));
       return;
     }
@@ -56,6 +62,8 @@ class DataService {
         logoPath: currentProfile?.logoPath, // Retain logo if it was there
         servicesOffered: currentProfile?.servicesOffered ?? [],
         localPaymentDetails: currentProfile?.localPaymentDetails,
+        countryCode: currentProfile?.countryCode,
+        currencyCode: currentProfile?.currencyCode,
       );
       await saveProfile(profile);
     } else {
@@ -70,6 +78,7 @@ class DataService {
     required String businessName,
     required String category,
     required String location,
+    String? countryCode,
   }) async {
     if (_onlineAuth) {
       final result = await Supabase.instance.client.auth.signUp(
@@ -77,7 +86,7 @@ class DataService {
         phone: isEmail ? null : identifier.trim(),
         password: password,
         emailRedirectTo: 'https://arosoftlabs.com/',
-        data: {'businessName': businessName, 'businessCategory': category, 'location': location},
+        data: {'businessName': businessName, 'businessCategory': category, 'location': location, 'countryCode': countryCode, 'currencyCode': CountryCurrency.currency(countryCode)},
       );
       if (result.user == null) throw Exception('Registration failed. Please try again.');
       // Supabase can return an obfuscated user for an already registered email.
@@ -86,7 +95,7 @@ class DataService {
         throw Exception('This email may already have an account. Please sign in or recover your password.');
       }
       if (result.session == null) throw Exception('Account created. Please verify your email or phone, then log in.');
-      await saveProfile(BusinessProfile(name: businessName, category: category, location: location, email: isEmail ? identifier.trim().toLowerCase() : null, phone: isEmail ? null : identifier.trim()));
+      await saveProfile(BusinessProfile(name: businessName, category: category, location: location, countryCode: countryCode, currencyCode: CountryCurrency.currency(countryCode), email: isEmail ? identifier.trim().toLowerCase() : null, phone: isEmail ? null : identifier.trim()));
       return;
     }
     await DatabaseHelper().registerUser(
