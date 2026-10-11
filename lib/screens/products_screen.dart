@@ -71,7 +71,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
               update(()=>busy=true);
               try{
                 await InventoryService.instance.postStock(_businessId!,product['id'].toString(),
-                  delta:incoming?n:-n,kind:incoming?'receive':'sale',note:note.text.trim());
+                  delta:incoming?n:-n,kind:incoming?'receive':'adjustment',note:note.text.trim());
                 if(ctx.mounted)Navigator.pop(ctx,true);
               }catch(e){
                 if(ctx.mounted){update(()=>busy=false);
