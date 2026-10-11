@@ -54,16 +54,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
         message.contains('failed to fetch') || message.contains('connection')) {
       return 'ARODesk could not connect to the server. Please check Wi-Fi or mobile data, then try again.';
     }
-    if (message.contains('already registered') || message.contains('already exists')) {
+    if (message.contains('already registered') || message.contains('already exists') ||
+        message.contains('already have an account') || message.contains('user already registered') ||
+        message.contains('email already in use') || message.contains('duplicate')) {
       return 'This email is already registered. Please log in instead.';
     }
     if (message.contains('rate limit') || message.contains('too many')) {
       return 'Too many attempts. Please wait and try again.';
     }
-    if (message.contains('password')) {
-      return 'Please use a stronger password with at least 8 characters.';
+    if (message.contains('weak_password') || message.contains('password should') ||
+        message.contains('password must') || message.contains('password is too short')) {
+      return 'Choose a stronger password with at least 8 characters.';
     }
-    return 'Could not complete registration. Please try again.';
+    return 'Registration was not completed. If you previously registered this email, sign in instead; otherwise try again.';
   }
 
   Future<void> _notice(String title, String message, bool success) async {
