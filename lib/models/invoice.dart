@@ -55,6 +55,7 @@ class Invoice {
   final String? notes;
   final String? paymentOption;
   final DocumentType type;
+  final String? currencyCode;
 
   Invoice({
     required this.id,
@@ -68,6 +69,7 @@ class Invoice {
     this.notes,
     this.paymentOption,
     this.type = DocumentType.invoice,
+    this.currencyCode,
   });
 
   double get subtotal => items.fold(0, (sum, item) => sum + item.total);
@@ -88,6 +90,7 @@ class Invoice {
       taxRate: (json['taxRate'] ?? 0).toDouble(),
       notes: json['notes'],
       paymentOption: json['paymentOption'],
+      currencyCode: json['currencyCode'],
       type: DocumentType.values.firstWhere(
         (e) => e.toString() == 'DocumentType.${json['type']}',
         orElse: () => DocumentType.invoice, // Default for older invoices
@@ -107,6 +110,7 @@ class Invoice {
       'taxRate': taxRate,
       'notes': notes,
       'paymentOption': paymentOption,
+      'currencyCode': currencyCode,
       'type': type.name.toLowerCase(),
     };
   }
