@@ -90,20 +90,16 @@ class AppShellState extends State<AppShell> {
       appBar: AppBar(
         title: Row(
           children: [
-            // Small logo in AppBar
-            Container(
-              height: 32,
-              width: 32,
-              margin: const EdgeInsets.only(right: 8),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.15),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(4),
-                child: Image.asset('assets/logo.png', fit: BoxFit.contain),
-              ),
+            CircleAvatar(
+              radius: 17,
+              backgroundColor: Colors.white24,
+              backgroundImage: logoPath != null ? FileImage(File(logoPath)) : null,
+              child: logoPath == null
+                  ? Text(businessName.isNotEmpty ? businessName[0].toUpperCase() : 'A',
+                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold))
+                  : null,
             ),
+            const SizedBox(width: 10),
             Text(_titles[_currentIndex]),
           ],
         ),
