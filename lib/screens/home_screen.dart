@@ -32,8 +32,10 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   double _calculateTotalRevenue() {
+    final code=DataService().currentProfile?.currencyCode ?? 'USD';
     return DataService().invoices
-        .where((inv) => inv.type != DocumentType.quotation)
+        .where((inv) => inv.type != DocumentType.quotation &&
+          (inv.currencyCode == null || inv.currencyCode == code))
         .fold(0, (sum, inv) => sum + inv.finalTotal);
   }
 
@@ -109,7 +111,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         const Text(
-                          'Total Revenue',
+                          'Standalone Document Value',
                           style: TextStyle(color: Colors.white70, fontSize: 16, fontWeight: FontWeight.w500),
                         ),
                         Container(
@@ -129,7 +131,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      '${DataService().invoices.length} Documents Generated',
+                      '${DataService().invoices.length} Standalone Documents',
                       style: const TextStyle(color: Colors.white70, fontSize: 14),
                     ),
                   ],
