@@ -12,7 +12,7 @@ class InvoiceListScreen extends StatefulWidget {
 }
 
 class _InvoiceListScreenState extends State<InvoiceListScreen> {
-  final NumberFormat _currencyFormat = NumberFormat.simpleCurrency(name: 'UGX');
+  NumberFormat _currencyFormat(String? currency) => NumberFormat.currency(name: currency ?? DataService().currentProfile?.currencyCode ?? 'USD', symbol: (currency ?? DataService().currentProfile?.currencyCode ?? 'USD') + ' ');
 
   @override
   Widget build(BuildContext context) {
@@ -46,7 +46,7 @@ class _InvoiceListScreenState extends State<InvoiceListScreen> {
                       DateFormat.yMMMd().format(invoice.issueDate),
                     ),
                     trailing: Text(
-                      _currencyFormat.format(invoice.finalTotal),
+                      _currencyFormat(invoice.currencyCode).format(invoice.finalTotal),
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
