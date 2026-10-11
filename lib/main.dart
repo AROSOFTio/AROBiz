@@ -25,7 +25,7 @@ class InvoicingApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'AROBill',
+      title: 'ARODesk',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
@@ -315,7 +315,7 @@ class AppShellState extends State<AppShell> {
             const Padding(
               padding: EdgeInsets.only(bottom: 12, top: 4),
               child: Text(
-                'AROBill v1.0 · AROSOFT Innovations Ltd',
+                'ARODesk v1.0 · AROSOFT Innovations Ltd',
                 style: TextStyle(color: Colors.grey, fontSize: 10),
                 textAlign: TextAlign.center,
               ),
