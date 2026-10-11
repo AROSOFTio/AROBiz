@@ -13,11 +13,21 @@ class SalesService {
     required String customer,
     required String phone,
     required String paymentMethod,
+    List<Map<String, dynamic>>? payments,
+    String? dueDate,
   }) async {
     if (quantities.isEmpty) throw ArgumentError('Add at least one item.');
     final lines = quantities.entries.map((entry) =>
       {'product_id': entry.key, 'quantity': entry.value}).toList();
-    final result = await _client.rpc('arodesk_record_sale', params: {
+    final useCheckout = kind == 'sale';
+    final result = await _client.rpc(useCheckout ? 'arodesk_checkout' : 'arodesk_record_sale', params: useCheckout ? { 
+      'p_business': businessId,
+      'p_lines': lines,
+      'p_customer': customer,
+      'p_phone': phone,
+      'p_payments': payments ?? [],
+      'p_due_date': dueDate,
+    } : {
       'p_business': businessId,
       'p_kind': kind,
       'p_lines': lines,
@@ -28,16 +38,35 @@ class SalesService {
     return result.toString();
   }
 
+  Future<double> addPayment({
+    required String businessId, required String saleId,
+    required double amount, required String method, String reference = '',
+  }) async {
+    final remaining = await _client.rpc('arodesk_add_sale_payment', params: {
+      'p_business': businessId, 'p_sale': saleId,
+      'p_amount': amount, 'p_method': method, 'p_reference': reference,
+    });
+    return (remaining as num).toDouble();
+  }
+
+  Future<List<Map<String, dynamic>>> payments(String businessId, String saleId) async {
+    final rows = await _client.from('arodesk_sale_payments')
+      .select('amount,method,reference,paid_at')
+      .eq('business_id', businessId).eq('sale_id', saleId)
+      .order('paid_at', ascending: false);
+    return List<Map<String, dynamic>>.from(rows);
+  }
+
   Future<Map<String, dynamic>> byId(String businessId, String id) async {
     final row = await _client.from('arodesk_sales')
-      .select('id,business_id,document_number,kind,customer_name,customer_phone,payment_method,currency,subtotal,total,lines,created_at')
+      .select('id,business_id,document_number,kind,customer_name,customer_phone,payment_method,currency,subtotal,total,paid_total,payment_status,due_date,lines,created_at')
       .eq('business_id', businessId).eq('id', id).single();
     return Map<String, dynamic>.from(row);
   }
 
   Future<List<Map<String, dynamic>>> list(String businessId) async {
     final rows = await _client.from('arodesk_sales')
-      .select('id,document_number,kind,customer_name,currency,total,created_at')
+      .select('id,document_number,kind,customer_name,currency,total,paid_total,payment_status,due_date,created_at')
       .eq('business_id',businessId).order('created_at',ascending:false).limit(100);
     return List<Map<String,dynamic>>.from(rows);
   }
