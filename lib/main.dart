@@ -61,10 +61,12 @@ class AppShell extends StatefulWidget {
 class AppShellState extends State<AppShell> {
   int _currentIndex = 0;
 
-  final List<Widget> _screens = [
+  List<Widget> get _screens => [
     const HomeScreen(),
     const InvoiceListScreen(),
-    const SettingsScreen(),
+    SettingsScreen(onSaved: () {
+      if (mounted) setState(() => _currentIndex = 0);
+    }),
   ];
 
   final List<String> _titles = [
@@ -277,7 +279,7 @@ class AppShellState extends State<AppShell> {
             const Padding(
               padding: EdgeInsets.only(bottom: 12, top: 4),
               child: Text(
-                'ARODesk v1.0 · AROSOFT Innovations Ltd',
+                'Powered by ARODesk  •  AROSOFT Innovations',
                 style: TextStyle(color: Colors.grey, fontSize: 10),
                 textAlign: TextAlign.center,
               ),
@@ -287,6 +289,21 @@ class AppShellState extends State<AppShell> {
       ),
 
       body: _screens[_currentIndex],
+      bottomNavigationBar: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 12),
+          child: Text(
+            'Powered by ARODesk  •  AROSOFT Innovations',
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
