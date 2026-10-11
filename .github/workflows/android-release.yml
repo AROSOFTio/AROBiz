@@ -16,16 +16,19 @@ jobs:
           channel: stable
       - name: Check release configuration
         env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_URL: https://bqoutfgqfaangnnclgle.supabase.co
           SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
           ANDROID_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
         run: |
-          for var in SUPABASE_URL SUPABASE_PUBLISHABLE_KEY ANDROID_KEYSTORE_BASE64 ANDROID_KEY_ALIAS ANDROID_KEY_PASSWORD ANDROID_STORE_PASSWORD; do
+          for var in SUPABASE_PUBLISHABLE_KEY ANDROID_KEYSTORE_BASE64 ANDROID_KEY_ALIAS ANDROID_KEY_PASSWORD ANDROID_STORE_PASSWORD; do
             if [ -z "${!var}" ]; then echo "::error::Missing required secret $var"; exit 1; fi
           done
+          # Supabase URL is public, not a secret. Keep it fixed to the verified ARODesk project.
+          test "$SUPABASE_URL" = "https://bqoutfgqfaangnnclgle.supabase.co" || { echo "::error::Unexpected Supabase URL"; exit 1; }
+          curl --fail --silent --show-error --retry 3 --max-time 15 "$SUPABASE_URL/auth/v1/health" > /dev/null
           printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 -d > android/app/release.jks
           printf 'storeFile=release.jks\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n' "$ANDROID_STORE_PASSWORD" "$ANDROID_KEY_ALIAS" "$ANDROID_KEY_PASSWORD" > android/key.properties
       - name: Fetch dependencies and analyze
@@ -34,7 +37,7 @@ jobs:
           flutter analyze --no-fatal-infos --no-fatal-warnings
       - name: Build signed APK and AAB with Supabase
         env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_URL: https://bqoutfgqfaangnnclgle.supabase.co
           SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
         run: |
           flutter build apk --release --build-number=${{ github.run_number }} --dart-define=SUPABASE_URL="$SUPABASE_URL" --dart-define=SUPABASE_PUBLISHABLE_KEY="$SUPABASE_PUBLISHABLE_KEY"
