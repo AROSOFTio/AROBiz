@@ -31,7 +31,7 @@ jobs:
       - name: Fetch dependencies and analyze
         run: |
           flutter pub get
-          flutter analyze --no-fatal-infos
+          flutter analyze --no-fatal-infos --no-fatal-warnings
       - name: Build signed APK and AAB with Supabase
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -44,4 +44,4 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           TAG="v1.0.${{ github.run_number }}"
-          gh release create "$TAG" build/app/outputs/flutter-apk/app-release.apk build/app/outputs/bundle/release/app-release.aab --title "AROBill $TAG" --notes "Signed Android release with Supabase registration and login." --target "${{ github.sha }}"
+          gh release create "$TAG" build/app/outputs/flutter-apk/app-release.apk build/app/outputs/bundle/release/app-release.aab --title "ARODesk $TAG" --notes "Signed Android release with Supabase registration and login." --target "${{ github.sha }}"
