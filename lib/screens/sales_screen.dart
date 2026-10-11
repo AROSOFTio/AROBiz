@@ -23,7 +23,7 @@ class _SalesScreenState extends State<SalesScreen> {
     final t=error.toString().toLowerCase();
     if(t.contains('insufficient stock'))return 'Insufficient stock for one or more items. Check inventory and retry.';
     if(t.contains('network')||t.contains('connection')||t.contains('socket'))return 'Check your internet connection and try again.';
-    if(t.contains('not authorized')||t.contains('permission'))return 'Your account cannot record sales for this business.';
+    if(t.contains('not authorized')||t.contains('permission')||t.contains('only business owners'))return 'Your account cannot record sales for this business.';
     return 'Transaction could not be completed. Please try again.';
   }
   Future<void> _refresh()async{
@@ -175,6 +175,16 @@ class _SalesScreenState extends State<SalesScreen> {
               Text('Return / refund',style:Theme.of(ctx).textTheme.titleLarge),
               const SizedBox(height:8),
               Text('Maximum refundable: '+(full['currency']??_baseCurrency).toString()+' '+availableRefund.toStringAsFixed(2)),
+              if(returns.isNotEmpty) ExpansionTile(
+                title:Text('Previous returns ('+returns.length.toString()+')'),
+                children:returns.map((item)=>ListTile(
+                  title:Text('Qty: '+item['quantity'].toString()+
+                    ' · Refund: '+(full['currency']??_baseCurrency).toString()+
+                    ' '+item['refund_amount'].toString()),
+                  subtitle:Text((item['reason']??'').toString()+
+                    (item['restock']==true?' · Restocked':' · Not restocked')),
+                )).toList(),
+              ),
               const SizedBox(height:12),
               DropdownButtonFormField<String>(
                 value:productId,isExpanded:true,
