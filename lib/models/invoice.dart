@@ -15,7 +15,7 @@ extension DocumentTypeExtension on DocumentType {
 
 class InvoiceItem {
   final String description;
-  final int quantity;
+  final num quantity;
   final double unitPrice;
 
   InvoiceItem({
@@ -24,12 +24,12 @@ class InvoiceItem {
     required this.unitPrice,
   });
 
-  double get total => quantity * unitPrice;
+  double get total => quantity.toDouble() * unitPrice;
 
   factory InvoiceItem.fromJson(Map<String, dynamic> json) {
     return InvoiceItem(
       description: json['description'],
-      quantity: json['quantity'] ?? 1,
+      quantity: (json['quantity'] as num?) ?? 1,
       unitPrice: (json['unitPrice'] ?? 0).toDouble(),
     );
   }
