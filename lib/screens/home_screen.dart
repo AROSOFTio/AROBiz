@@ -13,7 +13,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   late List<Invoice> recentInvoices;
-  final NumberFormat _currencyFormat = NumberFormat.simpleCurrency(name: 'UGX');
+  NumberFormat get _currencyFormat => NumberFormat.currency(name: DataService().currentProfile?.currencyCode ?? 'USD', symbol: (DataService().currentProfile?.currencyCode ?? 'USD') + ' ');
 
   @override
   void initState() {
@@ -118,7 +118,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             color: Colors.white.withOpacity(0.2),
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          child: const Text('UGX', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                          child: Text(DataService().currentProfile?.currencyCode ?? 'USD', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                         )
                       ],
                     ),
