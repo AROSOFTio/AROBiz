@@ -76,6 +76,7 @@ class DataService {
         email: isEmail ? identifier.trim().toLowerCase() : null,
         phone: isEmail ? null : identifier.trim(),
         password: password,
+        emailRedirectTo: 'https://arosoftlabs.com/',
         data: {'businessName': businessName, 'businessCategory': category, 'location': location},
       );
       if (result.user == null) throw Exception('Registration failed. Please try again.');
