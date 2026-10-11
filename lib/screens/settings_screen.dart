@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../models/business_profile.dart';
+import 'workspace_screen.dart';
 import '../services/data_service.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -171,6 +172,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
             const SizedBox(height: 8),
             const Center(child: Text('Tap to update Business Logo', style: TextStyle(color: Colors.grey))),
             const SizedBox(height: 24),
+
+            if (const bool.fromEnvironment('ENABLE_WORKSPACE_FOUNDATION')) ...[
+              Card(
+                child: ListTile(
+                  leading: const Icon(Icons.business_center_outlined),
+                  title: const Text('Business workspaces'),
+                  subtitle: const Text('Manage your registered companies'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const WorkspaceScreen()),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
 
             // Business Details
             const Text('Business Details', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),

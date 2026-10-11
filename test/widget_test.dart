@@ -1,30 +1,38 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-
-import 'package:arosoft/main.dart';
+import 'package:arosoft/models/business_profile.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const InvoicingApp());
+  group('ARODesk business profile model', () {
+    test('stores business identity and services without losing fields', () {
+      final profile = BusinessProfile(
+        name: 'Example Manufacturing',
+        category: 'Manufacturing',
+        location: 'Kampala',
+        email: 'owner@example.com',
+        servicesOffered: const ['Production', 'Packaging'],
+      );
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+      final restored = BusinessProfile.fromJson(profile.toJson());
+      expect(restored.name, 'Example Manufacturing');
+      expect(restored.category, 'Manufacturing');
+      expect(restored.location, 'Kampala');
+      expect(restored.email, 'owner@example.com');
+      expect(restored.servicesOffered, ['Production', 'Packaging']);
+    });
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
+    test('maintains compatibility with legacy comma-separated services', () {
+      final restored = BusinessProfile.fromJson({
+        'name': 'Example Services',
+        'servicesOffered': 'Consulting, Repairs, ',
+      });
+      expect(restored.servicesOffered, ['Consulting', 'Repairs']);
+    });
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    test('copies business profile while retaining existing values', () {
+      final profile = BusinessProfile(name: 'Original', category: 'Retail Shop');
+      final edited = profile.copyWith(name: 'Updated');
+      expect(edited.name, 'Updated');
+      expect(edited.category, 'Retail Shop');
+    });
   });
 }
