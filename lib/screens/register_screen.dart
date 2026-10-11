@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import '../main.dart';
 import '../services/data_service.dart';
+import '../services/country_currency.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -26,6 +27,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     'Real Estate', 'Consultancy & Professional Services', 'General Merchandise', 'Other',
   ];
   String? _category;
+  String? _country;
   int _step = 0;
   bool _busy = false;
   bool _showPassword = false;
@@ -90,6 +92,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         businessName: _business.text.trim(),
         category: _category ?? 'Other',
         location: _location.text.trim(),
+        countryCode: _country,
       ).timeout(const Duration(seconds: 35));
       if (!mounted) return;
       Navigator.of(context).pushAndRemoveUntil(
@@ -165,6 +168,23 @@ class _RegisterScreenState extends State<RegisterScreen> {
         validator: (v) => v == null ? 'Choose a category' : null,
       ),
       const SizedBox(height: 18),
+      DropdownButtonFormField<String>(
+        value: _country, isExpanded: true,
+        decoration: _decoration('Country of residence *', Icons.public),
+        hint: const Text('Select country'),
+        items: (CountryCurrency.countries.entries.toList()
+          ..sort((a,b)=>a.value.compareTo(b.value)))
+          .map((e)=>DropdownMenuItem<String>(
+            value:e.key,child:Text(e.value,overflow:TextOverflow.ellipsis))).toList(),
+        onChanged:(v)=>setState(()=>_country=v),
+        validator:(v)=>v==null?'Choose your country':null,
+      ),
+      const SizedBox(height:18),
+      if (_country != null) Align(
+        alignment:Alignment.centerLeft,
+        child:Text('Default currency: '+CountryCurrency.currency(_country)),
+      ),
+      const SizedBox(height:18),
       TextFormField(
         controller: _location,
         decoration: _decoration('Location (optional)', Icons.location_on_outlined),
@@ -176,6 +196,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _item('Email', _email.text.trim()),
     _item('Business', _business.text.trim()),
     _item('Industry', _category ?? 'Other'),
+    _item('Country', CountryCurrency.countries[_country]??'Not selected'),
+    _item('Currency', CountryCurrency.currency(_country)),
     _item('Location', _location.text.trim().isEmpty ? 'Not provided' : _location.text.trim()),
     const SizedBox(height: 16),
     const Text('After creating your account, check your email and confirm your address.'),
