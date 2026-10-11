@@ -13,6 +13,7 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   final _formKey = GlobalKey<FormState>();
+  int _step = 0;
 
   late TextEditingController _nameController;
   late TextEditingController _locationController;
@@ -104,7 +105,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _saveProfile() async {
-    if (_formKey.currentState!.validate()) {
+    if (_nameController.text.trim().isNotEmpty) {
       final profile = BusinessProfile(
         name: _nameController.text,
         location: _locationController.text,
@@ -133,11 +134,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.background,
-      body: Form(
+      body: SafeArea(child: Center(child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 620),
+        child: Form(
         key: _formKey,
-        child: ListView(
+        child: Column(children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              Text('Step ${_step + 1} of 3', style: Theme.of(context).textTheme.labelLarge),
+              const SizedBox(height: 8),
+              LinearProgressIndicator(value: (_step + 1) / 3),
+              const SizedBox(height: 12),
+              Text(['Business details', 'Services & items', 'Payment details'][_step],
+                   style: Theme.of(context).textTheme.titleLarge),
+            ]),
+          ),
+          Expanded(child: ListView(
           padding: const EdgeInsets.all(16.0),
           children: [
+            if (_step == 0) ...[
             // Logo
             Center(
               child: GestureDetector(
@@ -234,6 +250,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             const SizedBox(height: 24),
 
+            ],
+            if (_step == 1) ...[
             // Services Section
             Row(
               children: [
@@ -296,6 +314,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             const SizedBox(height: 24),
 
+            ],
+            if (_step == 2) ...[
             // Payment Details
             const Text('Payment Details', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
             const SizedBox(height: 16),
@@ -310,7 +330,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
               maxLines: 3,
             ),
             const SizedBox(height: 32),
-            ElevatedButton(
+            ],
+            if (_step == 2) ElevatedButton(
               onPressed: _saveProfile,
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 16),
@@ -321,8 +342,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
               child: const Text('Save Profile', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             ),
           ],
-        ),
+          )),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+            child: Row(children: [
+              if (_step > 0) ...[
+                OutlinedButton(
+                  onPressed: () => setState(() => _step--),
+                  child: const Text('Back'),
+                ),
+                const SizedBox(width: 12),
+              ],
+              if (_step < 2) Expanded(child: FilledButton(
+                onPressed: () {
+                  if (_step == 0 && !_formKey.currentState!.validate()) return;
+                  FocusScope.of(context).unfocus();
+                  setState(() => _step++);
+                },
+                child: const Text('Next'),
+              )),
+            ]),
+          ),
+        ]),
       ),
+      ))),
     );
   }
 }
