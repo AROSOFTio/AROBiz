@@ -353,6 +353,7 @@ class PdfInvoiceApi {
           pw.SizedBox(height: 12),
         ],
         pw.SizedBox(height: 8),
+        pw.Center(child: pw.Text('Powered by ARODesk', style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey600))),
         pw.Center(
           child: pw.Text(
             _footerMessage(invoice.type),
@@ -405,11 +406,11 @@ class PdfInvoiceApi {
         pw.Text('Date: ${DateFormat('dd/MM/yyyy HH:mm').format(invoice.issueDate)}', style: const pw.TextStyle(fontSize: 9)),
       ]),
       pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [
-        pw.Text('${_docRefLabel(invoice.type)} ${invoice.invoiceNumber}', style: const pw.TextStyle(fontSize: 9)),
+        pw.Expanded(child: pw.Text('${_docRefLabel(invoice.type)} ${invoice.invoiceNumber}', softWrap: true, style: const pw.TextStyle(fontSize: 9))),
       ]),
       if (invoice.clientName.isNotEmpty)
         pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [
-          pw.Text('${_billedToLabel(invoice.type)} ${invoice.clientName}', style: const pw.TextStyle(fontSize: 9)),
+          pw.Expanded(child: pw.Text('${_billedToLabel(invoice.type)} ${invoice.clientName}', softWrap: true, style: const pw.TextStyle(fontSize: 9))),
         ]),
       pw.Divider(borderStyle: pw.BorderStyle.dashed, color: accent),
       // Items header
@@ -434,26 +435,28 @@ class PdfInvoiceApi {
       if (invoice.discount > 0) ...[
         pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [
           pw.Text('Subtotal', style: const pw.TextStyle(fontSize: 9)),
-          pw.Text(format.format(invoice.subtotal), style: const pw.TextStyle(fontSize: 9)),
+          pw.Expanded(child: pw.Text(format.format(invoice.subtotal), textAlign: pw.TextAlign.right, style: const pw.TextStyle(fontSize: 9))),
         ]),
         pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [
           pw.Text('Discount', style: const pw.TextStyle(fontSize: 9)),
-          pw.Text('-${format.format(invoice.discount)}', style: const pw.TextStyle(fontSize: 9, color: PdfColors.red)),
+          pw.Expanded(child: pw.Text('-${format.format(invoice.discount)}', textAlign: pw.TextAlign.right, style: const pw.TextStyle(fontSize: 9, color: PdfColors.red))),
         ]),
       ],
       pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [
         pw.Text(_amountLabel(invoice.type), style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold, color: accent)),
-        pw.Text(format.format(invoice.finalTotal), style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold, color: accent)),
+        pw.Expanded(child: pw.Text(format.format(invoice.finalTotal), textAlign: pw.TextAlign.right, softWrap: true, style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold, color: accent))),
       ]),
       if (invoice.paymentOption != null) ...[
         pw.SizedBox(height: 3),
         pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [
           pw.Text('Payment:', style: const pw.TextStyle(fontSize: 9)),
-          pw.Text(invoice.paymentOption!, style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
+          pw.Expanded(child: pw.Text(invoice.paymentOption!, textAlign: pw.TextAlign.right, style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold))),
         ]),
       ],
       pw.Divider(borderStyle: pw.BorderStyle.dashed, color: accent),
       pw.Center(child: pw.Text(_thermalFooter(invoice.type), textAlign: pw.TextAlign.center, style: pw.TextStyle(fontSize: 9, fontStyle: pw.FontStyle.italic, color: accent))),
+      pw.SizedBox(height: 8),
+      pw.Center(child: pw.Text('Powered by ARODesk', style: const pw.TextStyle(fontSize: 7, color: PdfColors.grey600))),
       pw.SizedBox(height: 12),
       pw.Center(
         child: pw.BarcodeWidget(
