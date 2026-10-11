@@ -57,6 +57,7 @@ class _SalesScreenState extends State<SalesScreen> {
         unitPrice:(r['unit_price'] as num).toDouble(),
       )).toList(),
       discount:((sale['returned_total']??0) as num).toDouble(),
+      returnAdjustment:((sale['returned_total']??0) as num).toDouble()>0,
       type:sale['kind']=='quotation'?DocumentType.quotation:
         (sale['payment_status']=='paid'?DocumentType.receipt:DocumentType.invoice),
       paymentOption:sale['payment_method']?.toString(),
