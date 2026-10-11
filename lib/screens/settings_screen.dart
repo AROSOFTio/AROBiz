@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../models/business_profile.dart';
 import '../services/data_service.dart';
+import '../services/country_currency.dart';
+import '../services/inventory_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key, this.onSaved});
@@ -24,6 +26,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final TextEditingController _newServiceController = TextEditingController();
 
   String _selectedCategory = 'Other';
+  String? _countryCode;
+  String _currencyCode = 'USD';
   String? _logoPath;
   List<String> _services = [];
 
@@ -59,6 +63,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _emailController = TextEditingController(text: profile?.email ?? '');
     _paymentController = TextEditingController(text: profile?.localPaymentDetails ?? '');
     _logoPath = profile?.logoPath;
+    _countryCode = profile?.countryCode;
+    _currencyCode = profile?.currencyCode ?? CountryCurrency.currency(_countryCode);
     _services = List<String>.from(profile?.servicesOffered ?? []);
 
     if (profile?.category != null && _categories.contains(profile!.category)) {
@@ -116,9 +122,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
         category: _selectedCategory,
         localPaymentDetails: _paymentController.text,
         logoPath: _logoPath,
+        countryCode: _countryCode,
+        currencyCode: _currencyCode,
       );
 
-      await DataService().saveProfile(profile);
+      try {
+        await InventoryService.instance.updateBusinessSettings(
+          countryCode:_countryCode,currencyCode:_currencyCode);
+        await DataService().saveProfile(profile);
+      } catch (error) {
+        if(mounted) ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content:Text('Could not save settings. Check your connection and try again.')));
+        return;
+      }
 
       if (mounted) {
         widget.onSaved?.call();
@@ -323,6 +339,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
             ],
             if (_step == 2) ...[
+            DropdownButtonFormField<String>(
+              value:_countryCode,
+              isExpanded:true,
+              decoration:const InputDecoration(labelText:'Country of residence',border:OutlineInputBorder()),
+              items:(CountryCurrency.countries.entries.toList()..sort((a,b)=>a.value.compareTo(b.value)))
+                .map((e)=>DropdownMenuItem<String>(value:e.key,
+                  child:Text(e.value,overflow:TextOverflow.ellipsis))).toList(),
+              onChanged:(v)=>setState(() {
+                _countryCode=v;
+                _currencyCode=CountryCurrency.currency(v);
+              }),
+            ),
+            const SizedBox(height:14),
+            DropdownButtonFormField<String>(
+              value:CountryCurrency.currencies.contains(_currencyCode)?_currencyCode:'USD',
+              isExpanded:true,
+              decoration:const InputDecoration(labelText:'Display currency',border:OutlineInputBorder()),
+              items:CountryCurrency.currencies.map((v)=>DropdownMenuItem<String>(
+                value:v,child:Text(v))).toList(),
+              onChanged:(v)=>setState(()=>_currencyCode=v??'USD'),
+            ),
+            const SizedBox(height:8),
+            const Text('Changing display currency does not convert existing amounts or alter historical sales.'),
+            const SizedBox(height:18),
             // Payment Details
             const Text('Payment Details', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
             const SizedBox(height: 16),
