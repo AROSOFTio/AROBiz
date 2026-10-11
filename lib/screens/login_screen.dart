@@ -16,6 +16,27 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isLoading = false;
   bool _obscurePassword = true;
 
+  String _friendlyAuthError(Object error) {
+    final message = error.toString().toLowerCase();
+    if (message.contains('invalid login credentials') ||
+        message.contains('invalid_credentials') ||
+        message.contains('invalid credentials')) {
+      return 'Incorrect email or password. Please check your details and try again.';
+    }
+    if (message.contains('email not confirmed') || message.contains('email_not_confirmed')) {
+      return 'Please confirm your email address first. Tap Resend confirmation email below.';
+    }
+    if (message.contains('too many') || message.contains('rate limit')) {
+      return 'Too many attempts. Please wait a few minutes and try again.';
+    }
+    if (message.contains('socketexception') || message.contains('host lookup') ||
+        message.contains('clientexception') || message.contains('network') ||
+        message.contains('connection') || message.contains('timed out')) {
+      return 'Cannot connect to ARODesk. Check your internet and try again.';
+    }
+    return 'Unable to sign in right now. Please try again.';
+  }
+
   Future<void> _login() async {
     if (_identifierCtrl.text.isEmpty || _passwordCtrl.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -35,7 +56,7 @@ class _LoginScreenState extends State<LoginScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+          SnackBar(content: Text(_friendlyAuthError(e))),
         );
       }
     } finally {
@@ -74,7 +95,7 @@ class _LoginScreenState extends State<LoginScreen> {
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(error.toString().replaceFirst('Exception: ', ''))),
+          SnackBar(content: Text(_friendlyAuthError(error))),
         );
       }
     } finally {
