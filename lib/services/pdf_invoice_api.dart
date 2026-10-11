@@ -306,7 +306,7 @@ class PdfInvoiceApi {
             children: [
               pw.Text('Subtotal:', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
               if (invoice.discount > 0)
-                pw.Text('Discount:', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+                pw.Text(invoice.returnAdjustment ? 'Returned items:' : 'Discount:', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
               pw.SizedBox(height: 8),
               pw.Text(_amountLabel(invoice.type),
                   style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 14, color: accent)),
@@ -438,7 +438,7 @@ class PdfInvoiceApi {
           pw.Expanded(child: pw.Text(format.format(invoice.subtotal), textAlign: pw.TextAlign.right, style: const pw.TextStyle(fontSize: 9))),
         ]),
         pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [
-          pw.Text('Discount', style: const pw.TextStyle(fontSize: 9)),
+          pw.Text(invoice.returnAdjustment ? 'Returns' : 'Discount', style: const pw.TextStyle(fontSize: 9)),
           pw.Expanded(child: pw.Text('-${format.format(invoice.discount)}', textAlign: pw.TextAlign.right, style: const pw.TextStyle(fontSize: 9, color: PdfColors.red))),
         ]),
       ],
