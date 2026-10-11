@@ -9,6 +9,8 @@ import 'screens/login_screen.dart';
 import 'screens/create_invoice_screen.dart';
 import 'screens/products_screen.dart';
 import 'screens/sales_screen.dart';
+import 'screens/saas_admin_screen.dart';
+import 'services/saas_admin_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -243,6 +245,23 @@ class AppShellState extends State<AppShell> {
                     label: 'Settings',
                     isSelected: _currentIndex == 4,
                     onTap: () => _onItemTapped(4),
+                  ),
+
+                  FutureBuilder<bool>(
+                    future: SaaSAdminService.instance.isAdmin(),
+                    builder: (context, snapshot) {
+                      if(snapshot.data != true) return const SizedBox.shrink();
+                      return _NavItem(
+                        icon: Icons.admin_panel_settings_outlined,
+                        label: 'SaaS Admin',
+                        isSelected: false,
+                        onTap: () {
+                          Navigator.pop(context);
+                          Navigator.of(context).push(MaterialPageRoute(
+                            builder: (_) => const SaaSAdminScreen()));
+                        },
+                      );
+                    },
                   ),
 
                   const Padding(
