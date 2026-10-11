@@ -28,7 +28,7 @@ jobs:
           done
           # Supabase URL is public, not a secret. Keep it fixed to the verified ARODesk project.
           test "$SUPABASE_URL" = "https://bqoutfgqfaangnnclgle.supabase.co" || { echo "::error::Unexpected Supabase URL"; exit 1; }
-          curl --fail --silent --show-error --retry 3 --max-time 15 "$SUPABASE_URL/auth/v1/health" > /dev/null
+          curl --fail --silent --show-error --retry 3 --max-time 15 -H "apikey: $SUPABASE_PUBLISHABLE_KEY" "$SUPABASE_URL/auth/v1/health" > /dev/null
           printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 -d > android/app/release.jks
           printf 'storeFile=release.jks\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n' "$ANDROID_STORE_PASSWORD" "$ANDROID_KEY_ALIAS" "$ANDROID_KEY_PASSWORD" > android/key.properties
       - name: Fetch dependencies and analyze
