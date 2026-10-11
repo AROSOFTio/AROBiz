@@ -1,4 +1,6 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'data_service.dart';
+import 'country_currency.dart';
 
 /// Products, services, raw materials and finished goods share one business catalog.
 class InventoryService {
@@ -10,7 +12,7 @@ class InventoryService {
   Future<String> ensureBusiness({
     required String name,
     required String category,
-    String currency = 'USD',
+    String? currency,
   }) async {
     final user = _client.auth.currentUser;
     if (user == null) throw StateError('Please sign in to use inventory.');
@@ -24,9 +26,22 @@ class InventoryService {
     final result = await _client.rpc('arodesk_create_business', params: {
       'p_name': name.trim().isEmpty ? 'My Business' : name.trim(),
       'p_category': category.trim().isEmpty ? 'Other' : category.trim(),
-      'p_currency': currency,
+      'p_currency': currency ?? DataService().currentProfile?.currencyCode ?? CountryCurrency.currency(DataService().currentProfile?.countryCode),
     });
     return result.toString();
+  }
+
+  Future<void> updateBusinessSettings({
+    String? countryCode, required String currencyCode,
+  }) async {
+    final p=DataService().currentProfile;
+    final business=await ensureBusiness(name:p?.name??'My Business',
+      category:p?.category??'Other',
+      currency:p?.currencyCode??CountryCurrency.currency(countryCode));
+    await _client.rpc('arodesk_update_business_preferences',params:{
+      'p_business':business,'p_country':countryCode,
+      'p_display_currency':currencyCode,
+    });
   }
 
   Future<List<Map<String, dynamic>>> products(String businessId) async {
