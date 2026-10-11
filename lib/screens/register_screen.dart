@@ -29,6 +29,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
   int _step = 0;
   bool _busy = false;
   bool _showPassword = false;
+  String? _noticeText;
+  bool _registrationComplete = false;
 
   @override
   void dispose() {
@@ -71,29 +73,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   Future<void> _notice(String title, String message, bool success) async {
     if (!mounted) return;
-    await showDialog<void>(
-      context: context, barrierDismissible: !success,
-      builder: (dialogContext) => AlertDialog(
-        title: Row(children: [
-          Icon(success ? Icons.check_circle_outline : Icons.info_outline,
-            color: success ? Colors.green : Theme.of(dialogContext).colorScheme.primary),
-          const SizedBox(width: 12),
-          Expanded(child: Text(title)),
-        ]),
-        content: Text(message),
-        actions: [
-          FilledButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: Text(success ? 'Go to Login' : 'OK'),
-          ),
-        ],
-      ),
-    );
+    setState(() {
+      _noticeText = message;
+      _registrationComplete = success;
+    });
   }
 
   Future<void> _register() async {
     if (_busy) return;
-    setState(() => _busy = true);
+    setState(() { _busy = true; _noticeText = null; });
     try {
       await DataService().register(
         identifier: _email.text.trim(),
@@ -115,7 +103,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
           'Your account has been created. Check ' + _email.text.trim() +
           ' for the confirmation link (including Spam or Junk). Confirm the email before logging in.',
           true);
-        if (mounted) Navigator.of(context).pop();
       } else {
         await _notice('Registration unsuccessful', _errorMessage(error), false);
       }
@@ -229,13 +216,45 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   _step == 1 ? 'Tell us about your business.' : 'Confirm before registering.'),
               ]),
             ),
+            if (_noticeText != null)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                child: Card(
+                  color: _registrationComplete
+                      ? Colors.green.shade50
+                      : Theme.of(context).colorScheme.errorContainer,
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                      Row(children: [
+                        Icon(_registrationComplete ? Icons.check_circle_outline : Icons.info_outline),
+                        const SizedBox(width: 8),
+                        Expanded(child: Text(_registrationComplete
+                            ? 'Registration successful' : 'Registration notice',
+                          style: const TextStyle(fontWeight: FontWeight.bold))),
+                      ]),
+                      const SizedBox(height: 8),
+                      Text(_noticeText!),
+                      if (_registrationComplete) ...[
+                        const SizedBox(height: 12),
+                        FilledButton(
+                          onPressed: () => Navigator.of(context).pop(),
+                          child: const Text('Go to Login'),
+                        ),
+                      ],
+                    ]),
+                  ),
+                ),
+              ),
             Expanded(child: SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-              child: _step == 0 ? _account() : _step == 1 ? _businessDetails() : _review(),
+              child: _registrationComplete
+                  ? const Center(child: Icon(Icons.mark_email_read_outlined, size: 72, color: Colors.green))
+                  : (_step == 0 ? _account() : _step == 1 ? _businessDetails() : _review()),
             )),
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-              child: Row(children: [
+              child: _registrationComplete ? const SizedBox.shrink() : Row(children: [
                 if (_step > 0) ...[
                   OutlinedButton(
                     onPressed: _busy ? null : () => setState(() => _step--),
