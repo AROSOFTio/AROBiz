@@ -12,6 +12,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
   List<Map<String,dynamic>> _products=[];
   Map<String,double> _balances={};
   bool _loading=true;
+  String _baseCurrency='USD';
   String _query='';
   @override
   void initState(){super.initState();_load();}
@@ -29,14 +30,15 @@ class _ProductsScreenState extends State<ProductsScreen> {
       final id=await InventoryService.instance.ensureBusiness(name:p?.name??'My Business',category:p?.category??'Other');
       final products=await InventoryService.instance.products(id);
       final balances=await InventoryService.instance.balances(id);
-      if(mounted)setState((){_businessId=id;_products=products;_balances=balances;});
+      final currency=await InventoryService.instance.businessCurrency(id);
+      if(mounted)setState((){_businessId=id;_products=products;_balances=balances;_baseCurrency=currency;});
     }catch(e){if(mounted)setState(()=>_error=_message(e));}
     finally{if(mounted)setState(()=>_loading=false);}
   }
   Future<void> _edit([Map<String,dynamic>? product])async{
     if(_businessId==null)return;
     final ok=await Navigator.push<bool>(context,MaterialPageRoute(
-      builder:(_)=>_ProductWizard(businessId:_businessId!,original:product)));
+      builder:(_)=>_ProductWizard(businessId:_businessId!,original:product,currency:_baseCurrency)));
     if(ok==true)await _load();
   }
   Future<void> _move(Map<String,dynamic> product)async{
@@ -143,7 +145,8 @@ class _ProductsScreenState extends State<ProductsScreen> {
               return Card(child:Padding(padding:const EdgeInsets.all(8),child:Column(children:[
                 ListTile(
                   title:Text(p['name'].toString(),maxLines:2),
-                  subtitle:Text(p['item_type'].toString()+' · '+(p['sku']??'No SKU').toString()),
+                  subtitle:Text(p['item_type'].toString()+' · '+(p['sku']??'No SKU').toString()+
+                  ' · '+_baseCurrency+' '+p['sale_price'].toString()),
                   trailing:Text(track?quantity.toString()+' '+p['unit'].toString():'Service',
                     style:const TextStyle(fontWeight:FontWeight.bold)),
                 ),
@@ -169,8 +172,9 @@ class _ProductsScreenState extends State<ProductsScreen> {
 }
 class _ProductWizard extends StatefulWidget{
   final String businessId;
+  final String currency;
   final Map<String,dynamic>? original;
-  const _ProductWizard({required this.businessId,this.original});
+  const _ProductWizard({required this.businessId,required this.currency,this.original});
   @override
   State<_ProductWizard> createState()=>_ProductWizardState();
 }
@@ -254,8 +258,8 @@ class _ProductWizardState extends State<_ProductWizard>{
             const SizedBox(height:14),_field(_sku,'SKU (optional)'),
             _field(_category,'Category'),_field(_unit,'Unit e.g. pcs, kg, litre, hour'),
           ]):_step==1?Column(children:[
-            _field(_sale,'Selling price',number:true),
-            _field(_cost,'Cost price',number:true),
+            _field(_sale,'Selling price ('+widget.currency+')',number:true),
+            _field(_cost,'Cost price ('+widget.currency+')',number:true),
             if(_type!='service')...[
               _field(_reorder,'Low-stock alert level',number:true),
               SwitchListTile(title:const Text('Track quantity'),value:_track,
