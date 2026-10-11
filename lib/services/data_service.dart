@@ -96,6 +96,21 @@ class DataService {
     await login(identifier, password);
   }
 
+  Future<void> resendEmailConfirmation(String email) async {
+    if (!_onlineAuth) {
+      throw StateError('Email confirmation is unavailable in local-only mode.');
+    }
+    final address = email.trim().toLowerCase();
+    if (!address.contains('@')) {
+      throw ArgumentError('Enter your email address first.');
+    }
+    await Supabase.instance.client.auth.resend(
+      type: OtpType.signup,
+      email: address,
+      emailRedirectTo: 'https://arosoftlabs.com/',
+    );
+  }
+
   Future<void> logout() async {
     if (_onlineAuth) await Supabase.instance.client.auth.signOut();
     await _prefs?.setBool('is_logged_in', false);
