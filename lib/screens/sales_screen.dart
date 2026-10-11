@@ -54,9 +54,15 @@ class _SalesScreenState extends State<SalesScreen> {
         quantity:(r['quantity'] as num).toInt(),
         unitPrice:(r['unit_price'] as num).toDouble(),
       )).toList(),
-      type:sale['kind']=='quotation'?DocumentType.quotation:DocumentType.receipt,
+      type:sale['kind']=='quotation'?DocumentType.quotation:
+        (sale['payment_status']=='paid'?DocumentType.receipt:DocumentType.invoice),
       paymentOption:sale['payment_method']?.toString(),
-      notes:sale['kind']=='sale'?'Generated from ARODesk Sales': 'Catalog quotation · Stock not deducted',
+      notes:sale['kind']=='sale'?
+        'Sales total: '+sale['total'].toString()+
+        ' | Paid: '+(sale['paid_total']??sale['total']).toString()+
+        ' | Balance: '+((sale['total'] as num).toDouble()-((sale['paid_total']??sale['total']) as num).toDouble()).toStringAsFixed(2)+
+        (sale['due_date']==null?'':' | Due: '+sale['due_date'].toString())
+        : 'Catalog quotation · Stock not deducted',
     );
   }
   Future<void> _preview(String id)async{
@@ -68,6 +74,68 @@ class _SalesScreenState extends State<SalesScreen> {
     }catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content:Text(_message(e))));}
   }
+  Future<void> _collect(Map<String,dynamic> sale)async{
+    final amount=TextEditingController(),reference=TextEditingController();
+    String method='Cash';
+    bool processing=false;
+    final remaining=(sale['total'] as num).toDouble()-
+      ((sale['paid_total']??0) as num).toDouble();
+    final result=await showModalBottomSheet<bool>(
+      context:context,isScrollControlled:true,
+      builder:(sheetContext)=>StatefulBuilder(builder:(sheetContext,update)=>
+        Padding(
+          padding:EdgeInsets.fromLTRB(20,20,20,MediaQuery.viewInsetsOf(sheetContext).bottom+20),
+          child:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,children:[
+            Text('Receive payment',style:Theme.of(sheetContext).textTheme.titleLarge),
+            const SizedBox(height:8),
+            Text('Outstanding: '+remaining.toStringAsFixed(2)),
+            const SizedBox(height:14),
+            TextField(controller:amount,keyboardType:const TextInputType.numberWithOptions(decimal:true),
+              decoration:const InputDecoration(labelText:'Amount received',border:OutlineInputBorder())),
+            const SizedBox(height:12),
+            DropdownButtonFormField<String>(
+              value:method,
+              decoration:const InputDecoration(labelText:'Payment method',border:OutlineInputBorder()),
+              items:['Cash','Mobile Money','Bank Transfer','Card']
+                .map((v)=>DropdownMenuItem(value:v,child:Text(v))).toList(),
+              onChanged:(v)=>update(()=>method=v??'Cash'),
+            ),
+            const SizedBox(height:12),
+            TextField(controller:reference,decoration:const InputDecoration(
+              labelText:'Payment reference (optional)',border:OutlineInputBorder())),
+            const SizedBox(height:16),
+            SizedBox(width:double.infinity,child:FilledButton(
+              onPressed:processing?null:()async{
+                final value=double.tryParse(amount.text.trim());
+                if(value==null||!value.isFinite||value<=0||value>remaining||
+                   (value*100).roundToDouble()!=value*100){
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                    content:Text('Enter a valid amount not exceeding the balance (2 decimals).')));
+                  return;
+                }
+                update(()=>processing=true);
+                try{
+                  await SalesService.instance.addPayment(
+                    businessId:_businessId!,saleId:sale['id'].toString(),
+                    amount:value,method:method,reference:reference.text.trim());
+                  if(sheetContext.mounted)Navigator.pop(sheetContext,true);
+                }catch(e){
+                  if(sheetContext.mounted){
+                    update(()=>processing=false);
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(_message(e))));
+                  }
+                }
+              },
+              child:Text(processing?'Saving...':'Record payment'),
+            )),
+          ])),
+        ),
+      ),
+    );
+    amount.dispose();reference.dispose();
+    if(result==true)await _refresh();
+  }
+
   Future<void> _new(String kind)async{
     if(_businessId==null)return;
     final id=await Navigator.of(context).push<String>(MaterialPageRoute(
@@ -107,8 +175,19 @@ class _SalesScreenState extends State<SalesScreen> {
             ..._transactions.map((item)=>Card(child:ListTile(
               leading:Icon(item['kind']=='sale'?Icons.receipt_long:Icons.request_quote),
               title:Text(item['document_number'].toString()),
-              subtitle:Text(item['customer_name'].toString()+' · '+item['kind'].toString()),
-              trailing:const Icon(Icons.chevron_right),
+              subtitle:Text(item['customer_name'].toString()+' · '+
+                (item['kind']=='sale'
+                  ? 'Paid: '+(item['paid_total']??0).toString()+
+                    ' / '+item['total'].toString()+
+                    ' · '+item['payment_status'].toString()
+                  : 'Quotation · '+item['total'].toString())),
+              trailing:item['kind']=='sale' &&
+                (item['payment_status']=='partial'||item['payment_status']=='unpaid')
+                ?IconButton(
+                    tooltip:'Receive payment',icon:const Icon(Icons.add_card),
+                    onPressed:()=>_collect(item),
+                  )
+                :const Icon(Icons.chevron_right),
               onTap:()=>_preview(item['id'].toString()),
             ))),
           ],
@@ -133,10 +212,15 @@ class _SalesWizardState extends State<_SalesWizard> {
   final Map<String,double> _cart={};
   int _step=0;
   String _method='Cash';
+  String _secondMethod='Mobile Money';
+  String _paymentMode='full';
+  final _amountOne=TextEditingController();
+  final _amountTwo=TextEditingController();
+  DateTime? _dueDate;
   String? _error;
   bool _saving=false;
   @override
-  void dispose(){_customer.dispose();_phone.dispose();super.dispose();}
+  void dispose(){_customer.dispose();_phone.dispose();_amountOne.dispose();_amountTwo.dispose();super.dispose();}
   Map<String,dynamic>? _product(String id){
     for(final p in widget.products){if(p['id'].toString()==id)return p;}
     return null;
@@ -171,12 +255,40 @@ class _SalesWizardState extends State<_SalesWizard> {
     if(_step==1&&_customer.text.trim().isEmpty){
       setState(()=>_error='Enter the customer name.');return;
     }
+    if(_step==1&&widget.kind=='sale'){
+      if(_paymentMode=='split'||_paymentMode=='credit'){
+        final a=double.tryParse(_amountOne.text.trim());
+        if(a==null||!a.isFinite||a<0||a>_total){setState(()=>_error='Enter a valid first payment amount.');return;}
+        if(_paymentMode=='split'){
+          final b=double.tryParse(_amountTwo.text.trim());
+          if(b==null||!b.isFinite||b<=0||(a+b-_total).abs()>0.001){
+            setState(()=>_error='Split payments must equal the sale total.');return;
+          }
+        }
+        if(_paymentMode=='credit'&&a<_total&&_dueDate==null){
+          setState(()=>_error='Choose a credit due date.');return;
+        }
+      }
+    }
     setState((){_step++;_error=null;});
   }
   Future<void> _save()async{
     if(_saving)return;
     setState((){_saving=true;_error=null;});
     try{
+      final paymentList=<Map<String,dynamic>>[];
+      if(widget.kind=='sale'){
+        if(_paymentMode=='full'){
+          paymentList.add({'method':_method,'amount':double.parse(_total.toStringAsFixed(2))});
+        }else{
+          final a=double.tryParse(_amountOne.text.trim())??0;
+          if(a>0)paymentList.add({'method':_method,'amount':a});
+          if(_paymentMode=='split'){
+            final b=double.tryParse(_amountTwo.text.trim())??0;
+            if(b>0)paymentList.add({'method':_secondMethod,'amount':b});
+          }
+        }
+      }
       final id=await SalesService.instance.record(
         businessId:widget.businessId,
         kind:widget.kind,
@@ -184,6 +296,9 @@ class _SalesWizardState extends State<_SalesWizard> {
         customer:_customer.text.trim(),
         phone:_phone.text.trim(),
         paymentMethod:_method,
+        payments:paymentList,
+        dueDate:_paymentMode=='credit'&&_dueDate!=null
+          ?_dueDate!.toIso8601String().substring(0,10):null,
       );
       if(mounted)Navigator.pop(context,id);
     }catch(e){
@@ -257,8 +372,52 @@ class _SalesWizardState extends State<_SalesWizard> {
                     DropdownMenuItem(value:'Card',child:Text('Card')),
                   ],onChanged:(v)=>setState(()=>_method=v??'Cash'),
                 ),
+                const SizedBox(height:14),
+                DropdownButtonFormField<String>(
+                  value:_paymentMode,
+                  decoration:const InputDecoration(labelText:'Payment arrangement',border:OutlineInputBorder()),
+                  items:const [
+                    DropdownMenuItem(value:'full',child:Text('Paid in full')),
+                    DropdownMenuItem(value:'split',child:Text('Split payments')),
+                    DropdownMenuItem(value:'credit',child:Text('Partial / credit sale')),
+                  ],onChanged:(v)=>setState(()=>_paymentMode=v??'full'),
+                ),
+                if(_paymentMode!='full')...[
+                  const SizedBox(height:14),
+                  TextField(controller:_amountOne,keyboardType:const TextInputType.numberWithOptions(decimal:true),
+                    decoration:InputDecoration(labelText:_paymentMode=='credit'?'Amount paid now (0 if unpaid)':'First payment amount',
+                      border:const OutlineInputBorder())),
+                ],
+                if(_paymentMode=='split')...[
+                  const SizedBox(height:14),
+                  DropdownButtonFormField<String>(
+                    value:_secondMethod,
+                    decoration:const InputDecoration(labelText:'Second payment method',border:OutlineInputBorder()),
+                    items:['Cash','Mobile Money','Bank Transfer','Card']
+                      .map((v)=>DropdownMenuItem(value:v,child:Text(v))).toList(),
+                    onChanged:(v)=>setState(()=>_secondMethod=v??'Mobile Money'),
+                  ),
+                  const SizedBox(height:14),
+                  TextField(controller:_amountTwo,keyboardType:const TextInputType.numberWithOptions(decimal:true),
+                    decoration:const InputDecoration(labelText:'Second payment amount',border:OutlineInputBorder())),
+                ],
+                if(_paymentMode=='credit')...[
+                  const SizedBox(height:14),
+                  OutlinedButton.icon(
+                    onPressed:()async{
+                      final picked=await showDatePicker(
+                        context:context,firstDate:DateTime.now(),
+                        lastDate:DateTime.now().add(const Duration(days:3650)),
+                        initialDate:_dueDate??DateTime.now().add(const Duration(days:30)));
+                      if(picked!=null)setState(()=>_dueDate=picked);
+                    },
+                    icon:const Icon(Icons.event),
+                    label:Text(_dueDate==null?'Choose due date':
+                      'Due: '+_dueDate!.toIso8601String().substring(0,10)),
+                  ),
+                ],
                 const Padding(padding:EdgeInsets.all(12),
-                  child:Text('Complete a sale only after payment is received.')),
+                  child:Text('Record only payments actually received. Outstanding amounts remain on credit.')),
               ],
             ]):Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[
               Text('Customer: '+_customer.text.trim()),
@@ -273,7 +432,7 @@ class _SalesWizardState extends State<_SalesWizard> {
               Text('Total: '+_total.toStringAsFixed(2),
                 style:Theme.of(context).textTheme.titleLarge),
               const SizedBox(height:10),
-              Text(isSale?'Stock is deducted after checkout. A sales receipt will be generated.':
+              Text(isSale?'Stock is deducted on checkout. A receipt is issued only when fully paid; otherwise an invoice shows the balance.':
                 'Quotation only. Stock remains unchanged.'),
             ]),
           )),
