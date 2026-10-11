@@ -8,6 +8,8 @@ class BusinessProfile {
   final List<String> servicesOffered;
   final String? category;
   final String? localPaymentDetails;
+  final String? countryCode;
+  final String? currencyCode;
 
   BusinessProfile({
     this.name,
@@ -18,6 +20,8 @@ class BusinessProfile {
     this.servicesOffered = const [],
     this.category,
     this.localPaymentDetails,
+    this.countryCode,
+    this.currencyCode,
   });
 
   factory BusinessProfile.fromJson(Map<String, dynamic> json) {
@@ -40,6 +44,8 @@ class BusinessProfile {
       servicesOffered: services,
       category: json['category'],
       localPaymentDetails: json['localPaymentDetails'],
+      countryCode: json['countryCode'],
+      currencyCode: json['currencyCode'],
     );
   }
 
@@ -53,6 +59,8 @@ class BusinessProfile {
       'servicesOffered': servicesOffered,
       'category': category,
       'localPaymentDetails': localPaymentDetails,
+      'countryCode': countryCode,
+      'currencyCode': currencyCode,
     };
   }
 
@@ -65,6 +73,8 @@ class BusinessProfile {
     List<String>? servicesOffered,
     String? category,
     String? localPaymentDetails,
+    String? countryCode,
+    String? currencyCode,
   }) {
     return BusinessProfile(
       name: name ?? this.name,
@@ -75,6 +85,8 @@ class BusinessProfile {
       servicesOffered: servicesOffered ?? this.servicesOffered,
       category: category ?? this.category,
       localPaymentDetails: localPaymentDetails ?? this.localPaymentDetails,
+      countryCode: countryCode ?? this.countryCode,
+      currencyCode: currencyCode ?? this.currencyCode,
     );
   }
 }
