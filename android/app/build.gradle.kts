@@ -13,7 +13,7 @@ val keystoreFile = rootProject.file("key.properties")
 if (keystoreFile.exists()) keystoreProperties.load(FileInputStream(keystoreFile))
 
 android {
-    namespace = "com.arosoft.arodesk"
+    namespace = "com.example.arosoft"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
