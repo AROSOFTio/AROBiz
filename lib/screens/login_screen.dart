@@ -45,6 +45,43 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  Future<void> _resendConfirmation() async {
+    if (_identifierCtrl.text.trim().isEmpty ||
+        !_identifierCtrl.text.contains('@')) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Enter your email address above first.')),
+      );
+      return;
+    }
+    setState(() => _isLoading = true);
+    try {
+      await DataService().resendEmailConfirmation(_identifierCtrl.text);
+      if (!mounted) return;
+      await showDialog<void>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Check your email'),
+          content: const Text(
+            'If this account is awaiting confirmation, a new ARODesk verification email has been requested. Check Inbox and Spam, then try logging in.'),
+          actions: [
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(error.toString().replaceFirst('Exception: ', ''))),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -133,6 +170,11 @@ class _LoginScreenState extends State<LoginScreen> {
                             ? const CircularProgressIndicator(color: Colors.white)
                             : const Text('Login', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                       ),
+                    ),
+                    TextButton.icon(
+                      onPressed: _isLoading ? null : _resendConfirmation,
+                      icon: const Icon(Icons.mark_email_unread_outlined),
+                      label: const Text('Resend confirmation email'),
                     ),
                     const SizedBox(height: 16),
                     TextButton(
