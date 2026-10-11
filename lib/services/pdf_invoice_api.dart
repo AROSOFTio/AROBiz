@@ -100,7 +100,7 @@ class PdfInvoiceApi {
   static Future<Uint8List> generate(Invoice invoice, InvoiceSize size) async {
     final pdf = pw.Document();
     final profile = DataService().currentProfile;
-    final currencyFormat = NumberFormat.simpleCurrency(name: 'UGX ');
+    final currencyFormat = NumberFormat.currency(name: invoice.currencyCode ?? profile?.currencyCode ?? 'USD', symbol: (invoice.currencyCode ?? profile?.currencyCode ?? 'USD') + ' ');
     final logoImage = await _loadLogo(profile);
 
     PdfPageFormat pageFormat;
