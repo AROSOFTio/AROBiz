@@ -57,6 +57,7 @@ class _SalesScreenState extends State<SalesScreen> {
       type:sale['kind']=='quotation'?DocumentType.quotation:
         (sale['payment_status']=='paid'?DocumentType.receipt:DocumentType.invoice),
       paymentOption:sale['payment_method']?.toString(),
+      currencyCode:sale['currency']?.toString(),
       notes:sale['kind']=='sale'?
         'Sales total: '+sale['total'].toString()+
         ' | Paid: '+(sale['paid_total']??sale['total']).toString()+
