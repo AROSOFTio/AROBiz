@@ -24,41 +24,36 @@ class _InvoicePreviewScreenState extends State<InvoicePreviewScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text('${widget.invoice.type.name} Preview'),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            child: DropdownButton<InvoiceSize>(
-              value: _selectedSize,
-              dropdownColor: Theme.of(context).colorScheme.primary,
-              icon: const Icon(Icons.arrow_drop_down, color: Colors.white),
-              underline: const SizedBox(),
-              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-              onChanged: (InvoiceSize? newValue) {
-                if (newValue != null) {
-                  setState(() {
-                    _selectedSize = newValue;
-                  });
-                }
-              },
-              items: const [
-                DropdownMenuItem(
-                  value: InvoiceSize.a4,
-                  child: Text('A4 Size'),
+      ),
+      body: Column(
+        children: [
+          SafeArea(
+            bottom: false,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              child: Row(children: [
+                const Icon(Icons.print_outlined, size: 19),
+                const SizedBox(width: 8),
+                Expanded(child: Text('Paper size',
+                    style: Theme.of(context).textTheme.labelLarge)),
+                DropdownButton<InvoiceSize>(
+                  value: _selectedSize,
+                  isDense: true,
+                  items: const [
+                    DropdownMenuItem(value: InvoiceSize.a4, child: Text('A4')),
+                    DropdownMenuItem(value: InvoiceSize.a5, child: Text('A5')),
+                    DropdownMenuItem(value: InvoiceSize.thermal, child: Text('80 mm receipt')),
+                  ],
+                  onChanged: (value) {
+                    if (value != null) setState(() => _selectedSize = value);
+                  },
                 ),
-                DropdownMenuItem(
-                  value: InvoiceSize.a5,
-                  child: Text('A5 Size'),
-                ),
-                DropdownMenuItem(
-                  value: InvoiceSize.thermal,
-                  child: Text('Thermal (80mm)'),
-                ),
-              ],
+              ]),
             ),
           ),
-        ],
-      ),
-      body: PdfPreview(
+          Expanded(child: PdfPreview(
+
+        key: ValueKey(_selectedSize),
         build: (format) => PdfInvoiceApi.generate(widget.invoice, _selectedSize),
         canDebug: false,
         allowPrinting: true,
@@ -68,7 +63,8 @@ class _InvoicePreviewScreenState extends State<InvoicePreviewScreen> {
             : _selectedSize == InvoiceSize.a5
                 ? PdfPageFormat.a5
                 : PdfPageFormat.roll80,
-      ),
+      )),
+      ]),
     );
   }
 }
