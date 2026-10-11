@@ -81,14 +81,14 @@ class SalesService {
 
   Future<Map<String, dynamic>> byId(String businessId, String id) async {
     final row = await _client.from('arodesk_sales')
-      .select('id,business_id,document_number,kind,customer_name,customer_phone,payment_method,currency,subtotal,total,paid_total,payment_status,due_date,lines,created_at')
+      .select('id,business_id,document_number,kind,customer_name,customer_phone,payment_method,currency,subtotal,total,paid_total,returned_total,refunded_total,payment_status,due_date,lines,created_at')
       .eq('business_id', businessId).eq('id', id).single();
     return Map<String, dynamic>.from(row);
   }
 
   Future<List<Map<String, dynamic>>> list(String businessId) async {
     final rows = await _client.from('arodesk_sales')
-      .select('id,document_number,kind,customer_name,currency,total,paid_total,payment_status,due_date,created_at')
+      .select('id,document_number,kind,customer_name,currency,total,paid_total,returned_total,refunded_total,payment_status,due_date,created_at')
       .eq('business_id',businessId).order('created_at',ascending:false).limit(100);
     return List<Map<String,dynamic>>.from(rows);
   }
