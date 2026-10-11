@@ -38,6 +38,28 @@ class SalesService {
     return result.toString();
   }
 
+  Future<String> returnItem({
+    required String businessId, required String saleId,
+    required String productId, required double quantity, required double refundAmount,
+    String? refundMethod, required bool restock, String reason = '',
+  }) async {
+    final id=await _client.rpc('arodesk_return_sale_item',params:{
+      'p_business':businessId,'p_sale':saleId,'p_product':productId,
+      'p_quantity':quantity,'p_refund':refundAmount,
+      'p_method':refundAmount>0?refundMethod:null,
+      'p_restock':restock,'p_reason':reason,
+    });
+    return id.toString();
+  }
+
+  Future<List<Map<String,dynamic>>> returns(String businessId,String saleId) async {
+    final rows=await _client.from('arodesk_sale_returns')
+      .select('id,product_id,quantity,refund_amount,refund_method,reason,restock,created_at')
+      .eq('business_id',businessId).eq('sale_id',saleId)
+      .order('created_at',ascending:false);
+    return List<Map<String,dynamic>>.from(rows);
+  }
+
   Future<double> addPayment({
     required String businessId, required String saleId,
     required double amount, required String method, String reference = '',
