@@ -39,9 +39,29 @@ jobs:
         run: |
           flutter build apk --release --dart-define=SUPABASE_URL="$SUPABASE_URL" --dart-define=SUPABASE_PUBLISHABLE_KEY="$SUPABASE_PUBLISHABLE_KEY"
           flutter build appbundle --release --dart-define=SUPABASE_URL="$SUPABASE_URL" --dart-define=SUPABASE_PUBLISHABLE_KEY="$SUPABASE_PUBLISHABLE_KEY"
+      - name: Validate APK package, integrity and signing before publishing
+        run: |
+          set -euo pipefail
+          APK="build/app/outputs/flutter-apk/app-release.apk"
+          AAB="build/app/outputs/bundle/release/app-release.aab"
+          test -s "$APK"
+          test -s "$AAB"
+          unzip -tq "$APK"
+          unzip -tq "$AAB"
+          BUILD_TOOLS="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1)"
+          test -x "$BUILD_TOOLS/apksigner"
+          test -x "$BUILD_TOOLS/aapt"
+          "$BUILD_TOOLS/apksigner" verify --verbose --print-certs "$APK"
+          "$BUILD_TOOLS/aapt" dump badging "$APK" | tee /tmp/arodesk-badging.txt
+          grep -q "package: name='com.arosoft.arodesk'" /tmp/arodesk-badging.txt
+          grep -q "application-label:'ARODesk'" /tmp/arodesk-badging.txt
+          echo "APK signature, ZIP integrity, application ID and label verified."
+      - name: Generate SHA-256 checksums
+        run: |
+          sha256sum build/app/outputs/flutter-apk/app-release.apk build/app/outputs/bundle/release/app-release.aab > SHA256SUMS.txt
       - name: Publish release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           TAG="v1.0.${{ github.run_number }}"
-          gh release create "$TAG" build/app/outputs/flutter-apk/app-release.apk build/app/outputs/bundle/release/app-release.aab --title "ARODesk $TAG" --notes "Signed Android release with Supabase registration and login." --target "${{ github.sha }}"
+          gh release create "$TAG" build/app/outputs/flutter-apk/app-release.apk build/app/outputs/bundle/release/app-release.aab SHA256SUMS.txt --title "ARODesk $TAG" --notes "Signed Android release with Supabase registration and login." --target "${{ github.sha }}"
