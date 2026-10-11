@@ -13,6 +13,7 @@ class CreateInvoiceScreen extends StatefulWidget {
 
 class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
   final _formKey = GlobalKey<FormState>();
+  int _step = 0;
 
   final _clientNameController = TextEditingController();
   final _clientPhoneController = TextEditingController();
@@ -120,7 +121,7 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
   }
 
   void _generateInvoice() {
-    if (_formKey.currentState!.validate() && _items.isNotEmpty) {
+    if (_clientNameController.text.trim().isNotEmpty && _items.isNotEmpty) {
       final discount = double.tryParse(_discountController.text) ?? 0.0;
 
       final invoice = Invoice(
@@ -147,9 +148,9 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
         context,
         MaterialPageRoute(builder: (context) => InvoicePreviewScreen(invoice: invoice)),
       );
-    } else if (_items.isEmpty) {
+    } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please add at least one item.')),
+        SnackBar(content: Text(_items.isEmpty ? 'Add at least one item.' : 'Enter a client name.')),
       );
     }
   }
@@ -160,11 +161,26 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
     return Scaffold(
       backgroundColor: theme.colorScheme.background,
       appBar: AppBar(title: Text('Create New ${_selectedType.name}')),
-      body: Form(
+      body: SafeArea(child: Center(child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 620),
+        child: Form(
         key: _formKey,
-        child: ListView(
+        child: Column(children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              Text('Step ${_step + 1} of 3', style: theme.textTheme.labelLarge),
+              const SizedBox(height: 8),
+              LinearProgressIndicator(value: (_step + 1) / 3),
+              const SizedBox(height: 12),
+              Text(['Client & document', 'Items & services', 'Payment & review'][_step],
+                  style: theme.textTheme.titleLarge),
+            ]),
+          ),
+          Expanded(child: ListView(
           padding: const EdgeInsets.all(16.0),
           children: [
+            if (_step == 0) ...[
             // Document Type Selector
             Center(
               child: SegmentedButton<DocumentType>(
@@ -203,6 +219,8 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
             ),
             const SizedBox(height: 24),
 
+            ],
+            if (_step == 1) ...[
             // Items
             const Text('2. Services & Items', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
@@ -333,6 +351,8 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
             ),
             const SizedBox(height: 24),
 
+            ],
+            if (_step == 2) ...[
             // Additional Details
             const Text('3. Additional Details', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 12),
@@ -371,7 +391,8 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
             ),
             const SizedBox(height: 32),
 
-            ElevatedButton(
+            ],
+            if (_step == 2) ElevatedButton(
               onPressed: _generateInvoice,
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 16),
@@ -385,8 +406,36 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
               ),
             ),
           ],
-        ),
+          )),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+            child: Row(children: [
+              if (_step > 0) ...[
+                OutlinedButton(
+                  onPressed: () => setState(() => _step--),
+                  child: const Text('Back'),
+                ),
+                const SizedBox(width: 12),
+              ],
+              if (_step < 2) Expanded(child: FilledButton(
+                onPressed: () {
+                  if (_step == 0 && !_formKey.currentState!.validate()) return;
+                  if (_step == 1 && _items.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Please add at least one item.')),
+                    );
+                    return;
+                  }
+                  FocusScope.of(context).unfocus();
+                  setState(() => _step++);
+                },
+                child: const Text('Next'),
+              )),
+            ]),
+          ),
+        ]),
       ),
+      ))),
     );
   }
 }
