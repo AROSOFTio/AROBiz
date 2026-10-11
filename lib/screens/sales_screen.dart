@@ -16,6 +16,7 @@ class _SalesScreenState extends State<SalesScreen> {
   List<Map<String,dynamic>> _products=[], _transactions=[];
   Map<String,double> _balances={};
   bool _loading=true;
+  String _baseCurrency='USD';
   @override
   void initState(){super.initState();_refresh();}
   String _message(Object error){
@@ -33,9 +34,10 @@ class _SalesScreenState extends State<SalesScreen> {
         name:profile?.name??'My Business',category:profile?.category??'Other');
       final products=await InventoryService.instance.products(business);
       final balances=await InventoryService.instance.balances(business);
+      final currency=await InventoryService.instance.businessCurrency(business);
       final transactions=await SalesService.instance.list(business);
       if(mounted)setState((){
-        _businessId=business;_products=products;_balances=balances;_transactions=transactions;
+        _businessId=business;_products=products;_balances=balances;_transactions=transactions;_baseCurrency=currency;
       });
     }catch(e){if(mounted)setState(()=>_error=_message(e));}
     finally{if(mounted)setState(()=>_loading=false);}
@@ -51,7 +53,7 @@ class _SalesScreenState extends State<SalesScreen> {
       clientPhone:(sale['customer_phone']??'').toString(),
       items:rows.map((r)=>InvoiceItem(
         description:r['description'].toString(),
-        quantity:(r['quantity'] as num).toInt(),
+        quantity:(r['quantity'] as num),
         unitPrice:(r['unit_price'] as num).toDouble(),
       )).toList(),
       discount:((sale['returned_total']??0) as num).toDouble(),
@@ -94,7 +96,7 @@ class _SalesScreenState extends State<SalesScreen> {
           child:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,children:[
             Text('Receive payment',style:Theme.of(sheetContext).textTheme.titleLarge),
             const SizedBox(height:8),
-            Text('Outstanding: '+remaining.toStringAsFixed(2)),
+            Text('Outstanding: '+_baseCurrency+' '+remaining.toStringAsFixed(2)),
             const SizedBox(height:14),
             TextField(controller:amount,keyboardType:const TextInputType.numberWithOptions(decimal:true),
               decoration:const InputDecoration(labelText:'Amount received',border:OutlineInputBorder())),
@@ -171,7 +173,7 @@ class _SalesScreenState extends State<SalesScreen> {
             child:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,children:[
               Text('Return / refund',style:Theme.of(ctx).textTheme.titleLarge),
               const SizedBox(height:8),
-              Text('Maximum refundable: '+availableRefund.toStringAsFixed(2)),
+              Text('Maximum refundable: '+(full['currency']??_baseCurrency).toString()+' '+availableRefund.toStringAsFixed(2)),
               const SizedBox(height:12),
               DropdownButtonFormField<String>(
                 value:productId,isExpanded:true,
@@ -250,7 +252,7 @@ class _SalesScreenState extends State<SalesScreen> {
     if(_businessId==null)return;
     final id=await Navigator.of(context).push<String>(MaterialPageRoute(
       builder:(_)=>_SalesWizard(
-        businessId:_businessId!,kind:kind,products:_products,balances:_balances)));
+        businessId:_businessId!,kind:kind,products:_products,balances:_balances,currency:_baseCurrency)));
     if(id!=null&&mounted){
       await _refresh();
       if(mounted)await _preview(id);
@@ -288,7 +290,7 @@ class _SalesScreenState extends State<SalesScreen> {
               title:Text(item['document_number'].toString()),
               subtitle:Text(item['customer_name'].toString()+' · '+
                 (item['kind']=='sale'
-                  ? 'Net paid: '+(((item['paid_total']??0) as num).toDouble()-((item['refunded_total']??0) as num).toDouble()).toStringAsFixed(2)+
+                  ? (item['currency']??_baseCurrency).toString()+' · Net paid: '+(((item['paid_total']??0) as num).toDouble()-((item['refunded_total']??0) as num).toDouble()).toStringAsFixed(2)+
                     ' / '+((item['total'] as num).toDouble()-((item['returned_total']??0) as num).toDouble()).toStringAsFixed(2)+
                     ' · '+item['payment_status'].toString()
                   : 'Quotation · '+item['total'].toString())),
@@ -316,10 +318,10 @@ class _SalesScreenState extends State<SalesScreen> {
 }
 
 class _SalesWizard extends StatefulWidget {
-  final String businessId,kind;
+  final String businessId,kind,currency;
   final List<Map<String,dynamic>> products;
   final Map<String,double> balances;
-  const _SalesWizard({required this.businessId,required this.kind,
+  const _SalesWizard({required this.businessId,required this.kind,required this.currency,
     required this.products,required this.balances});
   @override
   State<_SalesWizard> createState()=>_SalesWizardState();
@@ -461,7 +463,7 @@ class _SalesWizardState extends State<_SalesWizard> {
                   child:Column(children:[
                     ListTile(
                       title:Text(p['name'].toString(),maxLines:2),
-                      subtitle:Text('Price: '+p['sale_price'].toString()+
+                      subtitle:Text('Price: '+widget.currency+' '+p['sale_price'].toString()+
                         (track?' · In stock: '+balance.toString():' · Service')),
                     ),
                     Row(mainAxisAlignment:MainAxisAlignment.end,children:[
@@ -547,7 +549,7 @@ class _SalesWizardState extends State<_SalesWizard> {
                   trailing:Text(((p?['sale_price'] as num? ?? 0).toDouble()*e.value).toStringAsFixed(2)));
               }),
               const Divider(),
-              Text('Total: '+_total.toStringAsFixed(2),
+              Text('Total: '+widget.currency+' '+_total.toStringAsFixed(2),
                 style:Theme.of(context).textTheme.titleLarge),
               const SizedBox(height:10),
               Text(isSale?'Stock is deducted on checkout. A receipt is issued only when fully paid; otherwise an invoice shows the balance.':
