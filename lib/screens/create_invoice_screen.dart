@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 import '../models/invoice.dart';
 import '../services/data_service.dart';
+import '../services/country_currency.dart';
 import 'invoice_preview_screen.dart';
 
 class CreateInvoiceScreen extends StatefulWidget {
@@ -13,6 +14,7 @@ class CreateInvoiceScreen extends StatefulWidget {
 
 class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
   final _formKey = GlobalKey<FormState>();
+  String get _currency => DataService().currentProfile?.currencyCode ?? 'USD';
   int _step = 0;
 
   final _clientNameController = TextEditingController();
@@ -136,6 +138,7 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
         notes: _notesController.text,
         paymentOption: _selectedPaymentOption,
         type: _selectedType,
+        currencyCode: _currency,
       );
 
       DataService().saveInvoice(invoice);
@@ -236,12 +239,12 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
                   return Card(
                     child: ListTile(
                       title: Text(item.description),
-                      subtitle: Text('${item.quantity} x UGX ${item.unitPrice.toStringAsFixed(0)}'),
+                      subtitle: Text('${item.quantity} x ${CountryCurrency.money(item.unitPrice, _currency)}'),
                       trailing: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(
-                            'UGX ${item.total.toStringAsFixed(0)}',
+                            CountryCurrency.money(item.total, _currency),
                             style: const TextStyle(fontWeight: FontWeight.bold),
                           ),
                           IconButton(
@@ -330,9 +333,9 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
                           flex: 2,
                           child: TextFormField(
                             controller: _itemPriceController,
-                            decoration: const InputDecoration(
+                            decoration: InputDecoration(
                               labelText: 'Unit Price',
-                              prefixText: 'UGX ',
+                              prefixText: _currency + ' ',
                             ),
                             keyboardType: const TextInputType.numberWithOptions(decimal: true),
                           ),
@@ -373,7 +376,7 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
             const SizedBox(height: 12),
             TextFormField(
               controller: _discountController,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Discount Amount',
                 border: OutlineInputBorder(),
                 prefixText: 'UGX ',
