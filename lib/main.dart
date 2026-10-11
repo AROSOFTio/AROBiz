@@ -8,6 +8,7 @@ import 'screens/settings_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/create_invoice_screen.dart';
 import 'screens/products_screen.dart';
+import 'screens/sales_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -66,6 +67,7 @@ class AppShellState extends State<AppShell> {
     const HomeScreen(),
     const InvoiceListScreen(),
     const ProductsScreen(),
+    const SalesScreen(),
     SettingsScreen(onSaved: () {
       if (mounted) setState(() => _currentIndex = 0);
     }),
@@ -75,6 +77,7 @@ class AppShellState extends State<AppShell> {
     'Dashboard',
     'Documents',
     'Products',
+    'Sales',
     'Settings',
   ];
 
@@ -219,7 +222,7 @@ class AppShellState extends State<AppShell> {
                   ),
                   _NavItem(
                     icon: Icons.description_rounded,
-                    label: 'Documents',
+                    label: 'Documents (standalone)',
                     isSelected: _currentIndex == 1,
                     onTap: () => _onItemTapped(1),
                   ),
@@ -230,10 +233,16 @@ class AppShellState extends State<AppShell> {
                     onTap: () => _onItemTapped(2),
                   ),
                   _NavItem(
-                    icon: Icons.settings_rounded,
-                    label: 'Settings',
+                    icon: Icons.point_of_sale_outlined,
+                    label: 'Sales & POS',
                     isSelected: _currentIndex == 3,
                     onTap: () => _onItemTapped(3),
+                  ),
+                  _NavItem(
+                    icon: Icons.settings_rounded,
+                    label: 'Settings',
+                    isSelected: _currentIndex == 4,
+                    onTap: () => _onItemTapped(4),
                   ),
 
                   const Padding(
