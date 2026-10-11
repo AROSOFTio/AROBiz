@@ -136,6 +136,110 @@ class _SalesScreenState extends State<SalesScreen> {
     if(result==true)await _refresh();
   }
 
+  Future<void> _returnSale(Map<String,dynamic> sale) async {
+    if(_businessId==null)return;
+    try{
+      final full=await SalesService.instance.byId(_businessId!,sale['id'].toString());
+      final returns=await SalesService.instance.returns(_businessId!,sale['id'].toString());
+      if(!mounted)return;
+      final lines=List<Map<String,dynamic>>.from(
+        (full['lines'] as List).map((item)=>Map<String,dynamic>.from(item as Map)));
+      final refunded=returns.fold<double>(0,(sum,item)=>
+        sum+(item['refund_amount'] as num).toDouble());
+      final availableRefund=(full['paid_total'] as num).toDouble()-refunded;
+      final count=TextEditingController(text:'1'),money=TextEditingController(text:'0'),
+        reason=TextEditingController();
+      String? productId;
+      String method='Cash';
+      bool restock=true,busy=false;
+      final saved=await showModalBottomSheet<bool>(
+        context:context,isScrollControlled:true,
+        builder:(ctx)=>StatefulBuilder(builder:(ctx,update){
+          final line=lines.where((e)=>e['product_id']==productId).firstOrNull;
+          final sold=(line?['quantity'] as num?)?.toDouble()??0;
+          final returned=returns.where((e)=>e['product_id']==productId)
+            .fold<double>(0,(v,e)=>v+(e['quantity'] as num).toDouble());
+          final remaining=sold-returned;
+          return Padding(
+            padding:EdgeInsets.fromLTRB(16,16,16,MediaQuery.viewInsetsOf(ctx).bottom+20),
+            child:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,children:[
+              Text('Return / refund',style:Theme.of(ctx).textTheme.titleLarge),
+              const SizedBox(height:8),
+              Text('Maximum refundable: '+availableRefund.toStringAsFixed(2)),
+              const SizedBox(height:12),
+              DropdownButtonFormField<String>(
+                value:productId,isExpanded:true,
+                decoration:const InputDecoration(labelText:'Sold item',border:OutlineInputBorder()),
+                items:lines.map((e)=>DropdownMenuItem<String>(
+                  value:e['product_id'].toString(),
+                  child:Text(e['description'].toString(),overflow:TextOverflow.ellipsis))).toList(),
+                onChanged:(v)=>update(()=>productId=v),
+              ),
+              if(productId!=null)Padding(
+                padding:const EdgeInsets.only(top:8),
+                child:Text('Available to return: '+remaining.toString())),
+              const SizedBox(height:12),
+              TextField(controller:count,
+                keyboardType:const TextInputType.numberWithOptions(decimal:true),
+                decoration:const InputDecoration(labelText:'Quantity returned',border:OutlineInputBorder())),
+              const SizedBox(height:12),
+              TextField(controller:money,
+                keyboardType:const TextInputType.numberWithOptions(decimal:true),
+                decoration:const InputDecoration(labelText:'Refund amount (0 if no refund)',
+                  border:OutlineInputBorder())),
+              const SizedBox(height:12),
+              DropdownButtonFormField<String>(
+                value:method,
+                decoration:const InputDecoration(labelText:'Refund method',border:OutlineInputBorder()),
+                items:['Cash','Mobile Money','Bank Transfer','Card']
+                  .map((v)=>DropdownMenuItem(value:v,child:Text(v))).toList(),
+                onChanged:(v)=>update(()=>method=v??'Cash'),
+              ),
+              SwitchListTile(title:const Text('Return items to stock'),value:restock,
+                onChanged:(v)=>update(()=>restock=v)),
+              TextField(controller:reason,
+                decoration:const InputDecoration(labelText:'Reason',border:OutlineInputBorder())),
+              const SizedBox(height:14),
+              SizedBox(width:double.infinity,child:FilledButton(
+                onPressed:busy?null:()async{
+                  final qty=double.tryParse(count.text.trim());
+                  final amount=double.tryParse(money.text.trim());
+                  if(productId==null||qty==null||!qty.isFinite||qty<=0||qty>remaining||
+                      amount==null||!amount.isFinite||amount<0||amount>availableRefund||
+                      (amount*100).round()!=(amount*100)){
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                      content:Text('Check item, return quantity and refundable amount.')));
+                    return;
+                  }
+                  update(()=>busy=true);
+                  try{
+                    await SalesService.instance.returnItem(
+                      businessId:_businessId!,saleId:full['id'].toString(),
+                      productId:productId!,quantity:qty,refundAmount:amount,
+                      refundMethod:method,restock:restock,reason:reason.text.trim());
+                    if(ctx.mounted)Navigator.pop(ctx,true);
+                  }catch(e){
+                    if(ctx.mounted){
+                      update(()=>busy=false);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content:Text(_message(e))));
+                    }
+                  }
+                },
+                child:Text(busy?'Processing...':'Record return'),
+              )),
+            ])),
+          );
+        }),
+      );
+      count.dispose();money.dispose();reason.dispose();
+      if(saved==true)await _refresh();
+    }catch(e){
+      if(mounted)ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content:Text(_message(e))));
+    }
+  }
+
   Future<void> _new(String kind)async{
     if(_businessId==null)return;
     final id=await Navigator.of(context).push<String>(MaterialPageRoute(
@@ -172,7 +276,8 @@ class _SalesScreenState extends State<SalesScreen> {
             Text('Recent transactions',style:Theme.of(context).textTheme.titleMedium),
             if(_transactions.isEmpty)const Padding(
               padding:EdgeInsets.all(25),child:Text('No sales or quotations yet.',textAlign:TextAlign.center)),
-            ..._transactions.map((item)=>Card(child:ListTile(
+            ..._transactions.map((item)=>Card(child:Column(children:[
+              ListTile(
               leading:Icon(item['kind']=='sale'?Icons.receipt_long:Icons.request_quote),
               title:Text(item['document_number'].toString()),
               subtitle:Text(item['customer_name'].toString()+' · '+
@@ -189,7 +294,14 @@ class _SalesScreenState extends State<SalesScreen> {
                   )
                 :const Icon(Icons.chevron_right),
               onTap:()=>_preview(item['id'].toString()),
-            ))),
+              ),
+              if(item['kind']=='sale')
+                Align(alignment:Alignment.centerRight,child:TextButton.icon(
+                  onPressed:()=>_returnSale(item),
+                  icon:const Icon(Icons.assignment_return_outlined,size:18),
+                  label:const Text('Return / refund'),
+                )),
+            ]))),
           ],
         ]),
       ),
