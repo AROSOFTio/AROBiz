@@ -164,6 +164,28 @@ class DataService {
     await _saveInvoicesToStorage();
   }
 
+  Future<void> setInvoiceArchived(String id, bool value) async {
+    final index=invoices.indexWhere((document)=>document.id==id);
+    if(index<0) return;
+    final old=invoices[index];
+    final json=old.toJson();
+    json['archived']=value;
+    invoices[index]=Invoice.fromJson(json);
+    await _saveInvoicesToStorage();
+  }
+
+  Future<void> duplicateInvoice(String id) async {
+    final index=invoices.indexWhere((document)=>document.id==id);
+    if(index<0) return;
+    final json=invoices[index].toJson();
+    json['id']=DateTime.now().microsecondsSinceEpoch.toString();
+    json['invoiceNumber']='COPY-'+invoices[index].invoiceNumber+'-'+DateTime.now().millisecondsSinceEpoch.toString().substring(7);
+    json['issueDate']=DateTime.now().toIso8601String();
+    json['archived']=false;
+    invoices.add(Invoice.fromJson(json));
+    await _saveInvoicesToStorage();
+  }
+
   Future<void> deleteInvoice(String id) async {
     invoices.removeWhere((i) => i.id == id);
     await _saveInvoicesToStorage();
