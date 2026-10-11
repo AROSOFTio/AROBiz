@@ -5,7 +5,8 @@ import '../models/business_profile.dart';
 import '../services/data_service.dart';
 
 class SettingsScreen extends StatefulWidget {
-  const SettingsScreen({super.key});
+  const SettingsScreen({super.key, this.onSaved});
+  final VoidCallback? onSaved;
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
@@ -120,6 +121,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       await DataService().saveProfile(profile);
 
       if (mounted) {
+        widget.onSaved?.call();
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('✅ Business Profile Saved!'),
@@ -127,6 +129,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
         );
       }
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Enter the business name before saving.')),
+      );
+      setState(() => _step = 0);
     }
   }
 
