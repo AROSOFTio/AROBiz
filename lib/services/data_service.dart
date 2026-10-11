@@ -80,6 +80,11 @@ class DataService {
         data: {'businessName': businessName, 'businessCategory': category, 'location': location},
       );
       if (result.user == null) throw Exception('Registration failed. Please try again.');
+      // Supabase can return an obfuscated user for an already registered email.
+      // Do not falsely promise a new confirmation email in that case.
+      if (result.user!.identities != null && result.user!.identities!.isEmpty) {
+        throw Exception('This email may already have an account. Please sign in or recover your password.');
+      }
       if (result.session == null) throw Exception('Account created. Please verify your email or phone, then log in.');
       await saveProfile(BusinessProfile(name: businessName, category: category, location: location, email: isEmail ? identifier.trim().toLowerCase() : null, phone: isEmail ? null : identifier.trim()));
       return;
