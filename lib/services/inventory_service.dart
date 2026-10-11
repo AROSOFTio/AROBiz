@@ -42,6 +42,17 @@ class InventoryService {
       'p_business':business,'p_country':countryCode,
       'p_display_currency':currencyCode,
     });
+    if (_client.auth.currentUser != null) {
+      await _client.auth.updateUser(UserAttributes(data:{
+        'countryCode':countryCode,'currencyCode':currencyCode,
+      }));
+    }
+  }
+
+  Future<String> businessCurrency(String businessId) async {
+    final row=await _client.from('businesses').select('currency')
+      .eq('id',businessId).single();
+    return (row['currency']??'USD').toString();
   }
 
   Future<List<Map<String, dynamic>>> products(String businessId) async {
