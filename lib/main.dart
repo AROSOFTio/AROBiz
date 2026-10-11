@@ -133,48 +133,14 @@ class AppShellState extends State<AppShell> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Logo + App name row
-                      Row(
-                        children: [
-                          Container(
-                            height: 48,
-                            width: 48,
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.15),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Padding(
-                              padding: const EdgeInsets.all(6),
-                              child: Image.asset('assets/logo.png', fit: BoxFit.contain),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'ARO',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.w900,
-                                  letterSpacing: 2,
-                                  height: 1,
-                                ),
-                              ),
-                              const Text(
-                                'Bill',
-                                style: TextStyle(
-                                  color: Colors.white70,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w400,
-                                  letterSpacing: 4,
-                                  height: 1,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
+                      // ARODesk is the app brand. The selected company appears below.
+                      const Text(
+                        'ARODesk',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 23,
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
                       const SizedBox(height: 20),
                       // Business avatar + info
