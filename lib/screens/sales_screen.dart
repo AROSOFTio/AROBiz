@@ -54,14 +54,17 @@ class _SalesScreenState extends State<SalesScreen> {
         quantity:(r['quantity'] as num).toInt(),
         unitPrice:(r['unit_price'] as num).toDouble(),
       )).toList(),
+      discount:((sale['returned_total']??0) as num).toDouble(),
       type:sale['kind']=='quotation'?DocumentType.quotation:
         (sale['payment_status']=='paid'?DocumentType.receipt:DocumentType.invoice),
       paymentOption:sale['payment_method']?.toString(),
       currencyCode:sale['currency']?.toString(),
       notes:sale['kind']=='sale'?
         'Sales total: '+sale['total'].toString()+
-        ' | Paid: '+(sale['paid_total']??sale['total']).toString()+
-        ' | Balance: '+((sale['total'] as num).toDouble()-((sale['paid_total']??sale['total']) as num).toDouble()).toStringAsFixed(2)+
+        ' | Paid (net): '+(((sale['paid_total']??0) as num).toDouble()-((sale['refunded_total']??0) as num).toDouble()).toStringAsFixed(2)+
+        ' | Returned: '+(sale['returned_total']??0).toString()+
+        ' | Refunded: '+(sale['refunded_total']??0).toString()+
+        ' | Balance: '+((sale['total'] as num).toDouble()-((sale['returned_total']??0) as num).toDouble()-((sale['paid_total']??0) as num).toDouble()+((sale['refunded_total']??0) as num).toDouble()).toStringAsFixed(2)+
         (sale['due_date']==null?'':' | Due: '+sale['due_date'].toString())
         : 'Catalog quotation · Stock not deducted',
     );
@@ -80,7 +83,9 @@ class _SalesScreenState extends State<SalesScreen> {
     String method='Cash';
     bool processing=false;
     final remaining=(sale['total'] as num).toDouble()-
-      ((sale['paid_total']??0) as num).toDouble();
+      ((sale['returned_total']??0) as num).toDouble()-
+      ((sale['paid_total']??0) as num).toDouble()+
+      ((sale['refunded_total']??0) as num).toDouble();
     final result=await showModalBottomSheet<bool>(
       context:context,isScrollControlled:true,
       builder:(sheetContext)=>StatefulBuilder(builder:(sheetContext,update)=>
@@ -283,8 +288,8 @@ class _SalesScreenState extends State<SalesScreen> {
               title:Text(item['document_number'].toString()),
               subtitle:Text(item['customer_name'].toString()+' · '+
                 (item['kind']=='sale'
-                  ? 'Paid: '+(item['paid_total']??0).toString()+
-                    ' / '+item['total'].toString()+
+                  ? 'Net paid: '+(((item['paid_total']??0) as num).toDouble()-((item['refunded_total']??0) as num).toDouble()).toStringAsFixed(2)+
+                    ' / '+((item['total'] as num).toDouble()-((item['returned_total']??0) as num).toDouble()).toStringAsFixed(2)+
                     ' · '+item['payment_status'].toString()
                   : 'Quotation · '+item['total'].toString())),
               trailing:item['kind']=='sale' &&
