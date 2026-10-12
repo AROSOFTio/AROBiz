@@ -69,7 +69,18 @@ class _SalesScreenState extends State<SalesScreen> {
           _businessId=business;_products=products;_balances=balances;
           _transactions=transactions;_baseCurrency=currency;
         });
-        await offline.sync(business);
+        final uploaded=await offline.sync(business);
+        if(uploaded>0){
+          final updatedBalances=await InventoryService.instance.balances(business)
+            .timeout(const Duration(seconds:7));
+          final updatedTransactions=await SalesService.instance.list(business)
+            .timeout(const Duration(seconds:7));
+          await offline.cacheCatalog(business,products:products,
+            balances:updatedBalances,currency:currency,transactions:updatedTransactions);
+          if(mounted)setState((){
+            _balances=updatedBalances;_transactions=updatedTransactions;
+          });
+        }
       }catch(_){
         if(previous==null)rethrow;
       }
@@ -358,7 +369,20 @@ class _SalesScreenState extends State<SalesScreen> {
               label:const Text('Products / Add Stock'),
             ),
             const SizedBox(height:20),
-            Text('Recent transactions',style:Theme.of(context).textTheme.titleMedium),
+            Row(children:[
+              Expanded(child:Text('Recent transactions',
+                style:Theme.of(context).textTheme.titleMedium)),
+              if(_businessId!=null&&_transactions.any((r)=>
+                r['id'].toString().startsWith('offline:')))
+                TextButton.icon(
+                  onPressed:()async{
+                    await OfflineSalesService.instance.sync(_businessId!);
+                    if(mounted)await _refresh();
+                  },
+                  icon:const Icon(Icons.sync,size:18),
+                  label:const Text('Sync sales'),
+                ),
+            ]),
             if(_transactions.isEmpty)const Padding(
               padding:EdgeInsets.all(25),child:Text('No sales or quotations yet.',textAlign:TextAlign.center)),
             ..._transactions.map((item)=>Card(child:Column(children:[
