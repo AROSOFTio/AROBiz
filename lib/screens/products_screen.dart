@@ -176,7 +176,18 @@ class _ProductsScreenState extends State<ProductsScreen> {
         ]))),
       ));
     qty.dispose();note.dispose();location.dispose();receivedAt.dispose();reference.dispose();
-    if(saved==true)await _load();
+    if(saved==true){
+      if(_businessId!=null){
+        final snap=await OfflineSalesService.instance.snapshot(_businessId!);
+        if(snap!=null){
+          final base={for(final entry in Map<String,dynamic>.from(snap['balances'] as Map).entries)
+            entry.key:(entry.value as num).toDouble()};
+          final effective=await OfflineSalesService.instance.effectiveBalances(_businessId!,base);
+          if(mounted)setState(()=>_balances=effective);
+        }
+      }
+      await _load();
+    }
   }
   Future<void> _history(Map<String,dynamic> product)async{
     try{
