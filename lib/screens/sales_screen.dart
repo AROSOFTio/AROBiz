@@ -70,7 +70,7 @@ class _SalesScreenState extends State<SalesScreen> {
           _businessId=business;_products=products;_balances=balances;
           _transactions=transactions;_baseCurrency=currency;
         });
-        final uploaded=await offline.sync(business);
+        final uploaded=(await offline.sync(business))+(await offline.syncQuotes(business));
         if(uploaded>0){
           final updatedBalances=await InventoryService.instance.balances(business)
             .timeout(const Duration(seconds:7));
@@ -338,7 +338,9 @@ class _SalesScreenState extends State<SalesScreen> {
     if(id!=null&&mounted){
       if(id.startsWith('offline:')){
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content:Text('Sale saved. It will sync when internet returns.')));
+          content:Text(kind=='quotation'
+            ?'Quotation saved on device. Syncs when online.'
+            :'Sale saved on device. Syncs when online.')));
       }
       await _refresh();
       if(mounted&&!id.startsWith('offline:'))await _preview(id);
