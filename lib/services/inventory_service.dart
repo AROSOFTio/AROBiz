@@ -65,7 +65,9 @@ class InventoryService {
     if (memberships.isNotEmpty) {
       final chosen=await preferredBusinessId();
       final selected=memberships.where((m)=>m['business_id'].toString()==chosen).toList();
-      return (selected.isNotEmpty?selected.first:memberships.first)['business_id'].toString();
+      final id=(selected.isNotEmpty?selected.first:memberships.first)['business_id'].toString();
+      await (await SharedPreferences.getInstance()).setString('active_business_'+user.id,id);
+      return id;
     }
     // Creates the business and its owner membership in a single DB transaction.
     final result = await _client.rpc('arodesk_create_business', params: {
