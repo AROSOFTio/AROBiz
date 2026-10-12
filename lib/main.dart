@@ -21,6 +21,7 @@ import 'services/inventory_service.dart';
 import 'services/auth_security_service.dart';
 import 'services/offline_payment_service.dart';
 import 'services/offline_sales_service.dart';
+import 'services/sales_service.dart';
 import 'screens/team_screen.dart';
 
 void main() async {
@@ -202,15 +203,25 @@ class AppShellState extends State<AppShell> {
     try{
       final id=await InventoryService.instance.preferredBusinessId();
       if(id==null)return;
-      final items=await OfflinePaymentService.instance.pending(id);
-      if(items.isNotEmpty)await OfflinePaymentService.instance.sync(id);
-      if((await OfflineSalesService.instance.pendingStock(id)).isNotEmpty){
-        await OfflineSalesService.instance.syncStock(id);
+      final queuedPayments=await OfflinePaymentService.instance.pending(id);
+      if(queuedPayments.isNotEmpty)await OfflinePaymentService.instance.sync(id);
+      final stockSynced=(await OfflineSalesService.instance.pendingStock(id)).isEmpty
+        ?0:await OfflineSalesService.instance.syncStock(id);
+      final salesSynced=(await OfflineSalesService.instance.pendingCount(id))==0
+        ?0:await OfflineSalesService.instance.sync(id);
+      if(stockSynced>0||salesSynced>0){
+        // Acknowledge server postings by refreshing the authoritative cache.
+        final products=await InventoryService.instance.products(id);
+        final balances=await InventoryService.instance.balances(id);
+        final currency=await InventoryService.instance.businessCurrency(id);
+        final transactions=await SalesService.instance.list(id);
+        await OfflineSalesService.instance.cacheCatalog(id,
+          products:products,balances:balances,currency:currency,
+          transactions:transactions);
       }
-      if((await OfflineSalesService.instance.pendingCount(id))>0){
-        await OfflineSalesService.instance.sync(id);
-      }
-    }catch(_){/* Pending payments remain encrypted until connectivity returns. */}
+    }catch(_){
+      // Never clear local records after a network failure.
+    }
   }
   Future<void> _loadRole()async{
     try{
