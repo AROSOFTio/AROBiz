@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../main.dart';
+import '../services/auth_security_service.dart';
 
 class PasswordSecurityScreen extends StatefulWidget {
   final bool recovery;
@@ -39,6 +40,7 @@ class _PasswordSecurityScreenState extends State<PasswordSecurityScreen> {
         await auth.signInWithPassword(email:user.email,password:_current.text);
       }
       await auth.updateUser(UserAttributes(password:_next.text));
+      await AuthSecurityService.instance.markPasswordUpdated();
       if(mounted){
         setState((){_success=true;_message='Password updated successfully.';});
         if(widget.forced){
