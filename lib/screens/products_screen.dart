@@ -60,7 +60,8 @@ class _ProductsScreenState extends State<ProductsScreen> {
   Future<void> _move(Map<String,dynamic> product,{bool receive=true})async{
     if(_businessId==null)return;
     final qty=TextEditingController(),note=TextEditingController();
-    final location=TextEditingController(),reference=TextEditingController();
+    final location=TextEditingController(),receivedAt=TextEditingController(),
+      reference=TextEditingController();
     DateTime date=DateTime.now();
     bool incoming=receive,busy=false;
     final saved=await showModalBottomSheet<bool>(context:context,isScrollControlled:true,useSafeArea:true,
@@ -92,9 +93,15 @@ class _ProductsScreenState extends State<ProductsScreen> {
           const SizedBox(height:12),
           TextField(controller:location,
             decoration:InputDecoration(
-              labelText:incoming?'Received from / location *':'Issued to / destination *',
+              labelText:incoming?'Received from (supplier / branch) *':'Issued to / destination *',
               prefixIcon:Icon(incoming?Icons.call_received:Icons.outbox_outlined),
               border:const OutlineInputBorder())),
+          if(incoming)...[
+            const SizedBox(height:12),
+            TextField(controller:receivedAt,
+              decoration:const InputDecoration(labelText:'Received at (store / location) *',
+                prefixIcon:Icon(Icons.store_outlined),border:OutlineInputBorder())),
+          ],
           const SizedBox(height:12),
           TextField(controller:reference,
             decoration:const InputDecoration(labelText:'Reference / GRN / delivery note',
@@ -110,9 +117,9 @@ class _ProductsScreenState extends State<ProductsScreen> {
                 ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Enter a positive quantity with up to 3 decimal places.')));
                 return;
               }
-              if(location.text.trim().isEmpty){
+              if(location.text.trim().isEmpty||(incoming&&receivedAt.text.trim().isEmpty)){
                 ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(
-                  content:Text('Enter the receiving source or stock destination.')));
+                  content:Text('Enter the source and receiving store, or the issue destination.')));
                 return;
               }
               update(()=>busy=true);
@@ -121,7 +128,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
                   delta:incoming?n:-n,kind:incoming?'receive':'adjustment',
                   note:note.text.trim(),movementDate:date,
                   sourceLocation:incoming?location.text.trim():'',
-                  destinationLocation:incoming?'':location.text.trim(),
+                  destinationLocation:incoming?receivedAt.text.trim():location.text.trim(),
                   documentReference:reference.text.trim());
                 if(ctx.mounted)Navigator.pop(ctx,true);
               }catch(e){
@@ -132,7 +139,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
           )),
         ]))),
       ));
-    qty.dispose();note.dispose();location.dispose();reference.dispose();
+    qty.dispose();note.dispose();location.dispose();receivedAt.dispose();reference.dispose();
     if(saved==true)await _load();
   }
   Future<void> _history(Map<String,dynamic> product)async{
