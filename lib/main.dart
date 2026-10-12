@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:async';
+import 'package:app_links/app_links.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter/material.dart';
@@ -40,17 +41,65 @@ class InvoicingApp extends StatefulWidget {
   State<InvoicingApp> createState()=>_InvoicingAppState();
 }
 class _InvoicingAppState extends State<InvoicingApp> {
+  StreamSubscription<AuthState>? _authSubscription;
+  StreamSubscription<Uri>? _linkSubscription;
+  bool _recoveryOpen=false;
+  bool _incomingRecovery=false;
+
+  bool _isRecoveryLink(Uri uri)=>
+    uri.scheme=='io.supabase.arodesk' && uri.host=='reset-password';
+
+  void _openRecovery(){
+    if(!mounted||_recoveryOpen||Supabase.instance.client.auth.currentUser==null)return;
+    _recoveryOpen=true;
+    WidgetsBinding.instance.addPostFrameCallback((_){
+      if(!mounted)return;
+      final navigator=appNavigatorKey.currentState;
+      if(navigator==null){
+        _recoveryOpen=false;
+        return;
+      }
+      navigator.push(MaterialPageRoute(
+        builder:(_)=>const PasswordSecurityScreen(recovery:true)))
+        .whenComplete((){
+          _recoveryOpen=false;
+          _incomingRecovery=false;
+        });
+    });
+  }
+  Future<void> _checkInitialResetLink()async{
+    try{
+      final initial=await AppLinks().getInitialLink();
+      if(initial!=null && _isRecoveryLink(initial)){
+        _incomingRecovery=true;
+        _openRecovery();
+      }
+    }catch(_){/* Authentication event remains the primary recovery route. */}
+  }
   @override
   void initState(){
     super.initState();
-    Supabase.instance.client.auth.onAuthStateChange.listen((data){
+    _authSubscription=Supabase.instance.client.auth.onAuthStateChange.listen((data){
       if(data.event==AuthChangeEvent.passwordRecovery){
-        WidgetsBinding.instance.addPostFrameCallback((_){
-          appNavigatorKey.currentState?.push(MaterialPageRoute(
-            builder:(_)=>const PasswordSecurityScreen(recovery:true)));
-        });
+        _incomingRecovery=true;
+        _openRecovery();
+      }else if(data.event==AuthChangeEvent.signedIn && _incomingRecovery){
+        _openRecovery();
       }
     });
+    _linkSubscription=AppLinks().uriLinkStream.listen((uri){
+      if(_isRecoveryLink(uri)){
+        _incomingRecovery=true;
+        _openRecovery();
+      }
+    });
+    _checkInitialResetLink();
+  }
+  @override
+  void dispose(){
+    _authSubscription?.cancel();
+    _linkSubscription?.cancel();
+    super.dispose();
   }
   @override
   Widget build(BuildContext context) {
