@@ -118,6 +118,7 @@ class InventoryService {
     required double costPrice,
     required double reorderLevel,
     required bool trackStock,
+    double openingStock = 0,
   }) async {
     if (name.trim().length < 2) throw ArgumentError('Enter a product name.');
     if (salePrice < 0 || costPrice < 0 || reorderLevel < 0) {
@@ -136,7 +137,13 @@ class InventoryService {
       'track_stock': trackStock && type != 'service',
     };
     if (id == null) {
-      await _client.from('arodesk_products').insert(values);
+      if(openingStock>0 && trackStock && type!='service'){
+        await _client.rpc('arodesk_create_product_with_stock',params:{
+          'p_item':values,'p_opening':openingStock,
+        });
+      }else{
+        await _client.from('arodesk_products').insert(values);
+      }
     } else {
       // RLS and business scope prevent cross-tenant edits.
       await _client.from('arodesk_products').update(values)
