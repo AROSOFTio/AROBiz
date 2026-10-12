@@ -206,7 +206,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
             const SizedBox(height:12),
 
             TextField(onChanged:(v)=>setState(()=>_query=v),
-              decoration:const InputDecoration(labelText:'Search products or SKU',
+              decoration:const InputDecoration(labelText:'Search items',
                 prefixIcon:Icon(Icons.search),border:OutlineInputBorder())),
             const SizedBox(height:12),
             if(items.isEmpty)const Padding(padding:EdgeInsets.all(24),
@@ -385,10 +385,9 @@ class _ProductWizardState extends State<_ProductWizard>{
       child:Column(children:[
         Padding(padding:const EdgeInsets.all(20),child:Column(
           crossAxisAlignment:CrossAxisAlignment.stretch,children:[
-          Text('Step '+(_step+1).toString()+' of 3'),
-          const SizedBox(height:8),LinearProgressIndicator(value:(_step+1)/3),
+          LinearProgressIndicator(value:(_step+1)/3,minHeight:3),
           const SizedBox(height:12),
-          Text(['Item details','Pricing & stock','Review'][_step],
+          Text(['Item details','Pricing','Review'][_step],
             style:Theme.of(context).textTheme.titleLarge),
         ])),
         if(_error!=null)Card(color:Theme.of(context).colorScheme.errorContainer,
@@ -414,8 +413,7 @@ class _ProductWizardState extends State<_ProductWizard>{
               OutlinedButton.icon(onPressed:()=>_pickImage(ImageSource.gallery),
                 icon:const Icon(Icons.photo_library_outlined),label:const Text('Gallery')),
             ]),
-            const Text('Automatically compressed to 640 px / max 1 MB',
-              style:TextStyle(fontSize:11)),
+
             const SizedBox(height:12),
             _field(_name,'Product / service name'),
             DropdownButtonFormField<String>(value:_type,
