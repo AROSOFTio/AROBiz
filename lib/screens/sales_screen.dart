@@ -4,6 +4,7 @@ import '../services/data_service.dart';
 import '../services/inventory_service.dart';
 import '../services/sales_service.dart';
 import '../services/offline_sales_service.dart';
+import '../services/offline_payment_service.dart';
 import 'invoice_preview_screen.dart';
 import 'products_screen.dart';
 
@@ -188,8 +189,13 @@ class _SalesScreenState extends State<SalesScreen> {
                 }
                 update(()=>processing=true);
                 try{
-                  await SalesService.instance.addPayment(
-                    businessId:_businessId!,saleId:sale['id'].toString(),
+                  final alreadyQueued=await OfflinePaymentService.instance.queuedForSale(
+                    _businessId!,sale['id'].toString());
+                  if(value+alreadyQueued>remaining+0.001){
+                    throw StateError('Pending payments exceed the outstanding balance.');
+                  }
+                  await OfflinePaymentService.instance.record(
+                    business:_businessId!,sale:sale['id'].toString(),
                     amount:value,method:method,reference:reference.text.trim());
                   if(sheetContext.mounted)Navigator.pop(sheetContext,true);
                 }catch(e){
