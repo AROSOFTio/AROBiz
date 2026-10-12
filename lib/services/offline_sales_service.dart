@@ -38,6 +38,24 @@ class OfflineSalesService {
     final data=await _store.read(key:_key(business,'snapshot'));
     return data==null?null:Map<String,dynamic>.from(jsonDecode(data) as Map);
   }
+  // Retain printable details after server sync removes a pending operation.
+  Future<void> _archivePrint(String business,Map<String,dynamic> entry)async{
+    final rows=await _read(business,'print_archive');
+    rows.removeWhere((row)=>row['id']==entry['id']);
+    rows.insert(0,entry);
+    if(rows.length>250)rows.removeRange(250,rows.length);
+    await _write(business,'print_archive',rows);
+  }
+  Future<Map<String,dynamic>?> printable(String business,String localId)async{
+    final rawId=localId.startsWith('offline:')?localId.substring(8):localId;
+    for(final row in await _read(business,'print_archive')){
+      if(row['id']==rawId)return row;
+    }
+    for(final row in [...await pending(business),...await pendingQuotes(business)]){
+      if(row['id']==rawId)return row;
+    }
+    return null;
+  }
   Future<List<Map<String,dynamic>>> pendingQuotes(String business)=>
     _read(business,'quote_queue');
   Future<String> queueQuotation({
@@ -67,6 +85,7 @@ class OfflineSalesService {
       'total':total,'created_at':DateTime.now().toUtc().toIso8601String(),
     });
     await _write(business,'quote_queue',queue);
+    await _archivePrint(business,queue.last);
     return 'offline:$id';
   }
   Future<int> syncQuotes(String business)async{
@@ -192,6 +211,7 @@ class OfflineSalesService {
     queue.add(row);
     // Failure to persist MUST prevent marking a sale as recorded.
     await _write(business,'queue',queue);
+    await _archivePrint(business,queue.last);
     return 'offline:$id';
   }
   Future<List<Map<String,dynamic>>> localTransactions(String business)async{
