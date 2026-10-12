@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'offline_sales_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -24,7 +25,7 @@ class SalesService {
         business:businessId,quantities:quantities,customer:customer,
         phone:phone,address:address,payments:payments??[],dueDate:dueDate);
       // Attempt upload without making POS dependent on network availability.
-      await OfflineSalesService.instance.sync(businessId);
+      unawaited(OfflineSalesService.instance.sync(businessId));
       return local;
     }
     final lines = quantities.entries.map((entry) =>
