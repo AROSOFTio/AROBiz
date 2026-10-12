@@ -29,9 +29,12 @@ class _ProductsScreenState extends State<ProductsScreen> {
     try{
       final p=DataService().currentProfile;
       final id=await InventoryService.instance.ensureBusiness(name:p?.name??'My Business',category:p?.category??'Other');
-      final products=await InventoryService.instance.products(id);
-      final balances=await InventoryService.instance.balances(id);
-      final currency=await InventoryService.instance.businessCurrency(id);
+      final productsRequest=InventoryService.instance.products(id);
+      final balancesRequest=InventoryService.instance.balances(id);
+      final currencyRequest=InventoryService.instance.businessCurrency(id);
+      final products=await productsRequest;
+      final balances=await balancesRequest;
+      final currency=await currencyRequest;
       if(mounted)setState((){_businessId=id;_products=products;_balances=balances;_baseCurrency=currency;});
     }catch(e){if(mounted)setState(()=>_error=_message(e));}
     finally{if(mounted)setState(()=>_loading=false);}
