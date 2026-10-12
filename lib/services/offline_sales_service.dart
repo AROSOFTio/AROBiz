@@ -38,6 +38,59 @@ class OfflineSalesService {
     final data=await _store.read(key:_key(business,'snapshot'));
     return data==null?null:Map<String,dynamic>.from(jsonDecode(data) as Map);
   }
+  Future<List<Map<String,dynamic>>> pendingStock(String business)=>
+    _read(business,'stock_queue');
+  Future<void> queueStock(String business,{
+    required String product,required double delta,required String kind,
+    required String note,required DateTime date,required String source,
+    required String destination,required String reference,
+  })async{
+    if(!delta.isFinite||delta==0||delta.abs()>999999999){
+      throw ArgumentError('Invalid stock quantity.');
+    }
+    final snap=await snapshot(business);
+    if(snap==null)throw StateError('Load products online at least once.');
+    final catalog=(snap['products'] as List).map((e)=>Map<String,dynamic>.from(e as Map));
+    if(!catalog.any((p)=>p['id']==product&&p['track_stock']==true)){
+      throw StateError('This product cannot be adjusted offline.');
+    }
+    final available=await effectiveBalances(business,{
+      for(final entry in Map<String,dynamic>.from(snap['balances'] as Map).entries)
+        entry.key:(entry.value as num).toDouble(),
+    });
+    if(delta<0&&(available[product]??0)+delta<0){
+      throw StateError('Insufficient offline stock.');
+    }
+    final rows=await pendingStock(business);
+    rows.add({
+      'id':const Uuid().v4(),'product':product,'delta':delta,'kind':kind,
+      'note':note,'date':'${date.year.toString().padLeft(4,'0')}-${date.month.toString().padLeft(2,'0')}-${date.day.toString().padLeft(2,'0')}',
+      'source':source,'destination':destination,'reference':reference,
+      'queued_at':DateTime.now().toUtc().toIso8601String(),
+    });
+    await _write(business,'stock_queue',rows);
+  }
+  Future<int> syncStock(String business)async{
+    final rows=await pendingStock(business);
+    var count=0;
+    for(final item in rows){
+      try{
+        await Supabase.instance.client.rpc('arodesk_post_stock_offline_idempotent',params:{
+          'p_request':item['id'],'p_business':business,'p_product':item['product'],
+          'p_delta':item['delta'],'p_kind':item['kind'],'p_note':item['note'],
+          'p_movement_date':item['date'],
+          'p_source_location':item['source'],
+          'p_destination_location':item['destination'],
+          'p_reference':item['reference'],
+        }).timeout(const Duration(seconds:10));
+        final latest=await pendingStock(business);
+        latest.removeWhere((x)=>x['id']==item['id']);
+        await _write(business,'stock_queue',latest);
+        count++;
+      }catch(_){break;}
+    }
+    return count;
+  }
   Future<List<Map<String,dynamic>>> pending(String business)=>_read(business,'queue');
   Future<int> pendingCount(String business)async=>(await pending(business)).length;
   Future<String> queueSale({
@@ -106,6 +159,10 @@ class OfflineSalesService {
     final products=List<Map<String,dynamic>>.from(
       (snap['products'] as List).map((x)=>Map<String,dynamic>.from(x as Map)));
     final tracked={for(final p in products)if(p['track_stock']==true)p['id'].toString()};
+    for(final item in await pendingStock(business)){
+      final id=item['product'].toString();
+      result[id]=(result[id]??0)+(item['delta'] as num).toDouble();
+    }
     for(final row in await pending(business)){
       for(final item in Map<String,dynamic>.from(row['quantities'] as Map).entries){
         if(tracked.contains(item.key)){
