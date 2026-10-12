@@ -28,6 +28,13 @@ class SalesService {
       unawaited(OfflineSalesService.instance.sync(businessId));
       return local;
     }
+    if(kind=='quotation'){
+      final local=await OfflineSalesService.instance.queueQuotation(
+        business:businessId,quantities:quantities,
+        customer:customer,phone:phone);
+      unawaited(OfflineSalesService.instance.syncQuotes(businessId));
+      return local;
+    }
     final lines = quantities.entries.map((entry) =>
       {'product_id': entry.key, 'quantity': entry.value}).toList();
     final useCheckout = kind == 'sale';
