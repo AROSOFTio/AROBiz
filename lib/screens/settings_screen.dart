@@ -5,414 +5,182 @@ import '../models/business_profile.dart';
 import '../services/data_service.dart';
 import '../services/country_currency.dart';
 import '../services/inventory_service.dart';
+import 'password_security_screen.dart';
+import 'team_screen.dart';
 
-class SettingsScreen extends StatefulWidget {
-  const SettingsScreen({super.key, this.onSaved});
+class SettingsScreen extends StatefulWidget{
+  const SettingsScreen({super.key,this.onSaved});
   final VoidCallback? onSaved;
-
-  @override
-  State<SettingsScreen> createState() => _SettingsScreenState();
+  @override State<SettingsScreen> createState()=>_SettingsScreenState();
 }
-
-class _SettingsScreenState extends State<SettingsScreen> {
-  final _formKey = GlobalKey<FormState>();
-  int _step = 0;
-
-  late TextEditingController _nameController;
-  late TextEditingController _locationController;
-  late TextEditingController _phoneController;
-  late TextEditingController _emailController;
-  late TextEditingController _paymentController;
-  final TextEditingController _newServiceController = TextEditingController();
-
-  String _selectedCategory = 'Other';
-  String? _countryCode;
-  String _currencyCode = 'USD';
-  String? _logoPath;
-  List<String> _services = [];
-
-  final List<String> _categories = [
-    'Retail Shop',
-    'Wholesale',
-    'Restaurant & Food',
-    'Hotel & Accommodation',
-    'Salon & Beauty',
-    'Pharmacy & Health',
-    'Electronics & Gadgets',
-    'Clothing & Fashion',
-    'Hardware & Construction',
-    'Transport & Logistics',
-    'Agriculture & Farming',
-    'Education & Training',
-    'Technology & IT Services',
-    'Printing & Stationery',
-    'Events & Entertainment',
-    'Real Estate',
-    'Consultancy & Professional Services',
-    'General Merchandise',
-    'Other',
+class _SettingsScreenState extends State<SettingsScreen>{
+  late final TextEditingController _name,_location,_phone,_email,_payment;
+  String _category='Other',_currency='USD';
+  String? _country,_logo;
+  bool _saving=false;
+  int _section=0;
+  static const categories=[
+    'Retail Shop','Wholesale','Manufacturing','Restaurant & Food',
+    'Hotel & Accommodation','Salon & Beauty','Pharmacy & Health',
+    'Electronics & Gadgets','Clothing & Fashion','Hardware & Construction',
+    'Transport & Logistics','Agriculture & Farming','Education & Training',
+    'Technology & IT Services','Printing & Stationery','Events & Entertainment',
+    'Real Estate','Consultancy & Professional Services',
+    'General Merchandise','Other',
   ];
-
-  @override
-  void initState() {
+  @override void initState(){
     super.initState();
-    final profile = DataService().currentProfile;
-    _nameController = TextEditingController(text: profile?.name ?? '');
-    _locationController = TextEditingController(text: profile?.location ?? '');
-    _phoneController = TextEditingController(text: profile?.phone ?? '');
-    _emailController = TextEditingController(text: profile?.email ?? '');
-    _paymentController = TextEditingController(text: profile?.localPaymentDetails ?? '');
-    _logoPath = profile?.logoPath;
-    _countryCode = profile?.countryCode;
-    _currencyCode = profile?.currencyCode ?? CountryCurrency.currency(_countryCode);
-    _services = List<String>.from(profile?.servicesOffered ?? []);
-
-    if (profile?.category != null && _categories.contains(profile!.category)) {
-      _selectedCategory = profile.category!;
-    }
+    final p=DataService().currentProfile;
+    _name=TextEditingController(text:p?.name??'');
+    _location=TextEditingController(text:p?.location??'');
+    _phone=TextEditingController(text:p?.phone??'');
+    _email=TextEditingController(text:p?.email??'');
+    _payment=TextEditingController(text:p?.localPaymentDetails??'');
+    _category=categories.contains(p?.category)?p!.category!:'Other';
+    _country=p?.countryCode;
+    _currency=p?.currencyCode??CountryCurrency.currency(_country);
+    _logo=p?.logoPath;
   }
-
-  @override
-  void dispose() {
-    _nameController.dispose();
-    _locationController.dispose();
-    _phoneController.dispose();
-    _emailController.dispose();
-    _paymentController.dispose();
-    _newServiceController.dispose();
+  @override void dispose(){
+    _name.dispose();_location.dispose();_phone.dispose();_email.dispose();_payment.dispose();
     super.dispose();
   }
-
-  Future<void> _pickImage() async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
-    if (pickedFile != null) {
-      if (mounted) {
-        setState(() {
-          _logoPath = pickedFile.path;
-        });
-      }
+  Future<void> _chooseLogo()async{
+    final result=await ImagePicker().pickImage(source:ImageSource.gallery,imageQuality:85);
+    if(result!=null&&mounted)setState(()=>_logo=result.path);
+  }
+  Future<void> _save()async{
+    if(_saving)return;
+    if(_name.text.trim().length<2){
+      setState(()=>_section=0);
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Enter a valid business name.')));
+      return;
     }
-  }
-
-  void _addService() {
-    final text = _newServiceController.text.trim();
-    if (text.isNotEmpty && !_services.contains(text)) {
-      setState(() {
-        _services.add(text);
-        _newServiceController.clear();
-      });
-    }
-  }
-
-  void _removeService(String service) {
-    setState(() {
-      _services.remove(service);
-    });
-  }
-
-  Future<void> _saveProfile() async {
-    if (_nameController.text.trim().isNotEmpty) {
-      final profile = BusinessProfile(
-        name: _nameController.text,
-        location: _locationController.text,
-        phone: _phoneController.text,
-        email: _emailController.text,
-        servicesOffered: _services,
-        category: _selectedCategory,
-        localPaymentDetails: _paymentController.text,
-        logoPath: _logoPath,
-        countryCode: _countryCode,
-        currencyCode: _currencyCode,
-      );
-
-      try {
-        await InventoryService.instance.updateBusinessSettings(
-          countryCode:_countryCode,currencyCode:_currencyCode);
-        await DataService().saveProfile(profile);
-      } catch (error) {
-        if(mounted) ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content:Text('Could not save settings. Check your connection and try again.')));
-        return;
-      }
-
-      if (mounted) {
-        widget.onSaved?.call();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('✅ Business Profile Saved!'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      }
-    } else {
+    setState(()=>_saving=true);
+    try{
+      await InventoryService.instance.updateBusinessSettings(
+        countryCode:_country,currencyCode:_currency);
+      final p=DataService().currentProfile;
+      await DataService().saveProfile(BusinessProfile(
+        name:_name.text.trim(),category:_category,location:_location.text.trim(),
+        phone:_phone.text.trim(),email:_email.text.trim(),
+        localPaymentDetails:_payment.text.trim(),
+        logoPath:_logo,countryCode:_country,currencyCode:_currency,
+        servicesOffered:p?.servicesOffered??[],
+      ));
+      if(!mounted)return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Enter the business name before saving.')),
-      );
-      setState(() => _step = 0);
-    }
+        const SnackBar(content:Text('Business settings saved successfully.')));
+      widget.onSaved?.call();
+    }catch(_){
+      if(mounted)ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content:Text('Unable to save business settings. Check permissions and internet.')));
+    }finally{if(mounted)setState(()=>_saving=false);}
   }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.background,
-      body: SafeArea(child: Center(child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 620),
-        child: Form(
-        key: _formKey,
-        child: Column(children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              Text('Step ${_step + 1} of 3', style: Theme.of(context).textTheme.labelLarge),
-              const SizedBox(height: 8),
-              LinearProgressIndicator(value: (_step + 1) / 3),
-              const SizedBox(height: 12),
-              Text(['Business details', 'Services & items', 'Payment details'][_step],
-                   style: Theme.of(context).textTheme.titleLarge),
-            ]),
-          ),
-          Expanded(child: ListView(
-          padding: const EdgeInsets.all(16.0),
-          children: [
-            if (_step == 0) ...[
-            // Logo
-            Center(
-              child: GestureDetector(
-                onTap: _pickImage,
-                child: Stack(
-                  children: [
-                    CircleAvatar(
-                      radius: 55,
-                      backgroundColor: Theme.of(context).colorScheme.primary.withOpacity(0.1),
-                      backgroundImage: _logoPath != null ? FileImage(File(_logoPath!)) : null,
-                      child: _logoPath == null
-                          ? Icon(Icons.add_a_photo, size: 40, color: Theme.of(context).colorScheme.primary)
-                          : null,
-                    ),
-                    Positioned(
-                      bottom: 0,
-                      right: 0,
-                      child: Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.primary,
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(Icons.edit, size: 16, color: Colors.white),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 8),
-            const Center(child: Text('Tap to update Business Logo', style: TextStyle(color: Colors.grey))),
-            const SizedBox(height: 24),
-
-            // Business Details
-            const Text('Business Details', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _nameController,
-              decoration: const InputDecoration(
-                labelText: 'Business Name *',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.business),
-              ),
-              validator: (value) => value == null || value.isEmpty ? 'Please enter business name' : null,
-            ),
-            const SizedBox(height: 16),
-            DropdownButtonFormField<String>(
-              value: _selectedCategory,
-              decoration: const InputDecoration(
-                labelText: 'Business Category',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.category),
-              ),
-              isExpanded: true,
-              items: _categories.map((String category) {
-                return DropdownMenuItem<String>(
-                  value: category,
-                  child: Text(category),
-                );
-              }).toList(),
-              onChanged: (String? newValue) {
-                if (newValue != null) setState(() => _selectedCategory = newValue);
-              },
-            ),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _locationController,
-              decoration: const InputDecoration(
-                labelText: 'Location / Address',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.location_on),
-              ),
-            ),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _phoneController,
-              decoration: const InputDecoration(
-                labelText: 'Phone Number',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.phone),
-              ),
-              keyboardType: TextInputType.phone,
-            ),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _emailController,
-              decoration: const InputDecoration(
-                labelText: 'Email Address',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.email),
-              ),
-              keyboardType: TextInputType.emailAddress,
-            ),
-            const SizedBox(height: 24),
-
-            ],
-            if (_step == 1) ...[
-            // Services Section
-            Row(
-              children: [
-                const Icon(Icons.build_circle_outlined, color: Colors.blueGrey),
-                const SizedBox(width: 8),
-                const Text('My Services / Items', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-              ],
-            ),
-            const SizedBox(height: 4),
-            const Text(
-              'These appear as quick-select options when creating documents.',
-              style: TextStyle(color: Colors.grey, fontSize: 13),
-            ),
-            const SizedBox(height: 12),
-
-            // Chips for existing services
-            if (_services.isNotEmpty)
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: _services.map((service) {
-                  return Chip(
-                    label: Text(service),
-                    onDeleted: () => _removeService(service),
-                    deleteIcon: const Icon(Icons.close, size: 16),
-                    backgroundColor: Theme.of(context).colorScheme.tertiary,
-                    labelStyle: TextStyle(color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.w600),
-                  );
-                }).toList(),
-              ),
-
-            const SizedBox(height: 12),
-
-            // Add new service row
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _newServiceController,
-                    decoration: InputDecoration(
-                      hintText: 'Type a service/item to add...',
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    ),
-                    onSubmitted: (_) => _addService(),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                ElevatedButton(
-                  onPressed: _addService,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Theme.of(context).colorScheme.primary,
-                    foregroundColor: Colors.white,
-                    shape: const CircleBorder(),
-                    padding: const EdgeInsets.all(14),
-                  ),
-                  child: const Icon(Icons.add),
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-
-            ],
-            if (_step == 2) ...[
-            DropdownButtonFormField<String>(
-              value:_countryCode,
-              isExpanded:true,
-              decoration:const InputDecoration(labelText:'Country of residence',border:OutlineInputBorder()),
-              items:(CountryCurrency.countries.entries.toList()..sort((a,b)=>a.value.compareTo(b.value)))
-                .map((e)=>DropdownMenuItem<String>(value:e.key,
-                  child:Text(e.value,overflow:TextOverflow.ellipsis))).toList(),
-              onChanged:(v)=>setState(() {
-                _countryCode=v;
-                _currencyCode=CountryCurrency.currency(v);
-              }),
-            ),
+  Widget _field(TextEditingController c,String label,{TextInputType? type,int lines=1})=>
+    Padding(padding:const EdgeInsets.only(bottom:14),
+      child:TextField(controller:c,keyboardType:type,maxLines:lines,
+        decoration:InputDecoration(labelText:label,
+          border:const OutlineInputBorder())));
+  Widget _business()=>Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[
+    Center(child:Column(children:[
+      InkWell(onTap:_chooseLogo,borderRadius:BorderRadius.circular(56),
+        child:CircleAvatar(radius:48,
+          backgroundImage:_logo==null?null:FileImage(File(_logo!)),
+          child:_logo==null?const Icon(Icons.add_a_photo_outlined,size:34):null)),
+      const SizedBox(height:8),
+      const Text('Business logo · Tap to change'),
+    ])),
+    const SizedBox(height:22),
+    _field(_name,'Business name *'),
+    DropdownButtonFormField<String>(
+      value:_category,isExpanded:true,
+      decoration:const InputDecoration(labelText:'Industry',border:OutlineInputBorder()),
+      items:categories.map((x)=>DropdownMenuItem(value:x,
+        child:Text(x,overflow:TextOverflow.ellipsis))).toList(),
+      onChanged:(v)=>setState(()=>_category=v??'Other')),
+    const SizedBox(height:14),
+    _field(_location,'Business address'),
+    _field(_phone,'Business phone',type:TextInputType.phone),
+    _field(_email,'Business contact email',type:TextInputType.emailAddress),
+    DropdownButtonFormField<String>(
+      value:CountryCurrency.countries.containsKey(_country)?_country:null,
+      isExpanded:true,
+      decoration:const InputDecoration(labelText:'Country',border:OutlineInputBorder()),
+      items:(CountryCurrency.countries.entries.toList()
+        ..sort((a,b)=>a.value.compareTo(b.value)))
+        .map((e)=>DropdownMenuItem(value:e.key,
+          child:Text(e.value,overflow:TextOverflow.ellipsis))).toList(),
+      onChanged:(v)=>setState((){
+        _country=v;
+        _currency=CountryCurrency.currency(v);
+      })),
+    const SizedBox(height:14),
+    DropdownButtonFormField<String>(
+      value:CountryCurrency.currencies.contains(_currency)?_currency:'USD',
+      decoration:const InputDecoration(labelText:'Preferred currency',border:OutlineInputBorder()),
+      items:CountryCurrency.currencies.map((v)=>DropdownMenuItem(value:v,child:Text(v))).toList(),
+      onChanged:(v)=>setState(()=>_currency=v??'USD')),
+    const SizedBox(height:8),
+    const Text('Changing currency preference does not convert historical transactions or product prices.'),
+  ]);
+  Widget _payments()=>Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[
+    Text('Payment information',style:Theme.of(context).textTheme.titleLarge),
+    const SizedBox(height:8),
+    const Text('These details can appear on standalone documents. POS payments are entered in Sales & POS.'),
+    const SizedBox(height:20),
+    _field(_payment,'Payment instructions / Mobile Money / bank details',lines:4),
+  ]);
+  Widget _security()=>Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[
+    Text('Account & access',style:Theme.of(context).textTheme.titleLarge),
+    const SizedBox(height:12),
+    Card(child:ListTile(
+      leading:const Icon(Icons.lock_outline),
+      title:const Text('Change password'),
+      subtitle:const Text('Verify your current password and set a new one'),
+      trailing:const Icon(Icons.chevron_right),
+      onTap:()=>Navigator.push(context,MaterialPageRoute(
+        builder:(_)=>const PasswordSecurityScreen())),
+    )),
+    Card(child:ListTile(
+      leading:const Icon(Icons.manage_accounts_outlined),
+      title:const Text('Team & permissions'),
+      subtitle:const Text('Business owner, administrators, staff, and viewers'),
+      trailing:const Icon(Icons.chevron_right),
+      onTap:()=>Navigator.push(context,MaterialPageRoute(
+        builder:(_)=>const TeamScreen())),
+    )),
+    const SizedBox(height:14),
+    const Text('Products and services are managed in Products & Inventory, not in Settings.'),
+  ]);
+  @override Widget build(BuildContext context)=>Scaffold(
+    body:SafeArea(child:Center(child:ConstrainedBox(
+      constraints:const BoxConstraints(maxWidth:650),
+      child:Column(children:[
+        Padding(padding:const EdgeInsets.fromLTRB(16,16,16,10),
+          child:Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[
+            Text('Settings',style:Theme.of(context).textTheme.headlineSmall),
+            const SizedBox(height:6),
+            const Text('Business identity, payments, and security'),
             const SizedBox(height:14),
-            DropdownButtonFormField<String>(
-              value:CountryCurrency.currencies.contains(_currencyCode)?_currencyCode:'USD',
-              isExpanded:true,
-              decoration:const InputDecoration(labelText:'Display currency',border:OutlineInputBorder()),
-              items:CountryCurrency.currencies.map((v)=>DropdownMenuItem<String>(
-                value:v,child:Text(v))).toList(),
-              onChanged:(v)=>setState(()=>_currencyCode=v??'USD'),
-            ),
-            const SizedBox(height:8),
-            const Text('Changing display currency does not convert existing amounts or alter historical sales.'),
-            const SizedBox(height:18),
-            // Payment Details
-            const Text('Payment Details', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _paymentController,
-              decoration: const InputDecoration(
-                labelText: 'Local Payment Details',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.account_balance),
-                helperText: 'e.g., MTN Mobile Money: 0771234567, Airtel Money: 0701234567',
-              ),
-              maxLines: 3,
-            ),
-            const SizedBox(height: 32),
-            ],
-            if (_step == 2) ElevatedButton(
-              onPressed: _saveProfile,
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                backgroundColor: Theme.of(context).colorScheme.primary,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-              child: const Text('Save Profile', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            ),
-          ],
-          )),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-            child: Row(children: [
-              if (_step > 0) ...[
-                OutlinedButton(
-                  onPressed: () => setState(() => _step--),
-                  child: const Text('Back'),
-                ),
-                const SizedBox(width: 12),
-              ],
-              if (_step < 2) Expanded(child: FilledButton(
-                onPressed: () {
-                  if (_step == 0 && !_formKey.currentState!.validate()) return;
-                  FocusScope.of(context).unfocus();
-                  setState(() => _step++);
-                },
-                child: const Text('Next'),
-              )),
-            ]),
-          ),
-        ]),
-      ),
-      ))),
-    );
-  }
+            SegmentedButton<int>(
+              segments:const [
+                ButtonSegment(value:0,label:Text('Business'),icon:Icon(Icons.store_outlined)),
+                ButtonSegment(value:1,label:Text('Payments'),icon:Icon(Icons.payments_outlined)),
+                ButtonSegment(value:2,label:Text('Security'),icon:Icon(Icons.security_outlined)),
+              ],selected:{_section},onSelectionChanged:(v)=>setState(()=>_section=v.first)),
+          ])),
+        Expanded(child:ListView(padding:const EdgeInsets.fromLTRB(16,12,16,16),children:[
+          if(_section==0)_business(),
+          if(_section==1)_payments(),
+          if(_section==2)_security(),
+        ])),
+        if(_section!=2)Padding(padding:const EdgeInsets.all(16),
+          child:SizedBox(width:double.infinity,child:FilledButton.icon(
+            onPressed:_saving?null:_save,
+            icon:const Icon(Icons.save_outlined),
+            label:Text(_saving?'Saving...':'Save settings')))),
+      ]),
+    ))),
+  );
 }
