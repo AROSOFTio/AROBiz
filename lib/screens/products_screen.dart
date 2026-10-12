@@ -252,7 +252,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
                           icon:const Icon(Icons.remove_circle_outline,size:20)),
                       ]),
                     ]),
-                  ))));
+                  )));
               }).toList());
             }),
           ],
