@@ -526,27 +526,7 @@ class AppShellState extends State<AppShell> {
                     child: Divider(),
                   ),
 
-                  // Quick create button
-                  if (_canWrite) Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                    child: ElevatedButton.icon(
-                      onPressed: () {
-                        Navigator.pop(context);
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => const CreateInvoiceScreen()),
-                        ).then((_) => setState(() {}));
-                      },
-                      icon: const Icon(Icons.add_circle_outline),
-                      label: const Text('Create Document'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Theme.of(context).colorScheme.primary,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
-                    ),
-                  ),
+
                 ],
               ),
             ),
@@ -582,22 +562,12 @@ class AppShellState extends State<AppShell> {
         ),
       ),
 
-      body: _screens[_currentIndex],
-      bottomNavigationBar: SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 12),
-          child: Text(
-            'Powered by ARODesk  •  AROSOFT Innovations',
-            textAlign: TextAlign.center,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-          ),
-        ),
-      ),
+      body: AnimatedSwitcher(
+        duration:const Duration(milliseconds:180),
+        switchInCurve:Curves.easeOut,
+        switchOutCurve:Curves.easeIn,
+        child:KeyedSubtree(key:ValueKey(_currentIndex),
+          child:_screens[_currentIndex])),
     );
   }
 }
