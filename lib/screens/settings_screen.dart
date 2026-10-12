@@ -23,7 +23,7 @@ class _SettingsScreenState extends State<SettingsScreen>{
   bool _saving=false;
   late int _section=widget.initialSection;
   static const categories=[
-    'Retail Shop','Wholesale','Manufacturing','Restaurant & Food',
+    'Retail Shop','Supermarket','Motorcycle Spare Parts','Auto Parts','Wholesale','Manufacturing','Restaurant & Food',
     'Hotel & Accommodation','Salon & Beauty','Pharmacy & Health',
     'Electronics & Gadgets','Clothing & Fashion','Hardware & Construction',
     'Transport & Logistics','Agriculture & Farming','Education & Training',
@@ -136,7 +136,6 @@ class _SettingsScreenState extends State<SettingsScreen>{
       onChanged:(v)=>setState((){
         _country=v;
       })),
-    const SizedBox(height:14),
     const SizedBox(height:14),
     DropdownButtonFormField<String>(
       value:CountryCurrency.currencies.contains(_currency)?_currency:null,
