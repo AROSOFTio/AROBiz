@@ -208,9 +208,11 @@ class AppShellState extends State<AppShell> {
       if(queuedPayments.isNotEmpty)await OfflinePaymentService.instance.sync(id);
       final stockSynced=(await OfflineSalesService.instance.pendingStock(id)).isEmpty
         ?0:await OfflineSalesService.instance.syncStock(id);
+      final quotesSynced=(await OfflineSalesService.instance.pendingQuotes(id)).isEmpty
+        ?0:await OfflineSalesService.instance.syncQuotes(id);
       final salesSynced=(await OfflineSalesService.instance.pendingCount(id))==0
         ?0:await OfflineSalesService.instance.sync(id);
-      if(stockSynced>0||salesSynced>0){
+      if(stockSynced>0||salesSynced>0||quotesSynced>0){
         // Acknowledge server postings by refreshing the authoritative cache.
         final products=await InventoryService.instance.products(id);
         final balances=await InventoryService.instance.balances(id);
