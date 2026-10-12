@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/data_service.dart';
 import 'register_screen.dart';
+import 'forgot_password_screen.dart';
 import '../main.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -197,6 +198,12 @@ class _LoginScreenState extends State<LoginScreen> {
                             ? const CircularProgressIndicator(color: Colors.white)
                             : const Text('Login', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                       ),
+                    ),
+                    TextButton.icon(
+                      onPressed: _isLoading ? null : () => Navigator.push(
+                        context,MaterialPageRoute(builder:(_)=>const ForgotPasswordScreen())),
+                      icon: const Icon(Icons.lock_reset_outlined),
+                      label: const Text('Forgot password?'),
                     ),
                     TextButton.icon(
                       onPressed: _isLoading ? null : _resendConfirmation,
