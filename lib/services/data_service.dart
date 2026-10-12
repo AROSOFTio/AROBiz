@@ -33,6 +33,7 @@ class DataService {
         password: password,
       );
       if (result.session == null) throw Exception('Please confirm your email or phone before logging in.');
+      await loadProfile();
       final metadata = result.user?.userMetadata ?? {};
       await saveProfile(BusinessProfile(
         name: (metadata['businessName'] ?? 'My Business').toString(),
@@ -46,6 +47,7 @@ class DataService {
         servicesOffered: currentProfile?.servicesOffered ?? [],
         localPaymentDetails: currentProfile?.localPaymentDetails,
       ));
+      await loadInvoices();
       return;
     }
     final user = await DatabaseHelper().loginUser(identifier, password);
@@ -131,27 +133,67 @@ class DataService {
     // Clear from memory, but you can choose to keep the profile string or delete it.
     // For local-first, keeping the data string doesn't hurt, but for security:
     currentProfile = null;
+    invoices = [];
   }
 
+  String? get _signedInUserId =>
+      _onlineAuth ? Supabase.instance.client.auth.currentUser?.id : null;
+
   Future<void> loadProfile() async {
-    final String? profileJson = _prefs?.getString('business_profile');
-    if (profileJson != null) {
-      currentProfile = BusinessProfile.fromJson(jsonDecode(profileJson));
+    if (_onlineAuth && _signedInUserId == null) {
+      currentProfile = null;
+      return;
     }
+    final uid = _signedInUserId;
+    String? profileJson = _prefs?.getString(
+      uid == null ? 'business_profile' : 'business_profile_' + uid,
+    );
+    if (uid != null && profileJson == null &&
+        _prefs?.getString('legacy_profile_owner') == null) {
+      final legacy = _prefs?.getString('business_profile');
+      if (legacy != null) {
+        await _prefs?.setString('legacy_profile_owner', uid);
+        await _prefs?.setString('business_profile_' + uid, legacy);
+        profileJson = legacy;
+      }
+    }
+    currentProfile = profileJson == null ? null :
+      BusinessProfile.fromJson(jsonDecode(profileJson));
   }
 
   Future<void> saveProfile(BusinessProfile profile) async {
+    final uid = _signedInUserId;
+    if (_onlineAuth && uid == null) {
+      throw StateError('Sign in before saving a business profile.');
+    }
     currentProfile = profile;
-    await _prefs?.setString('business_profile', jsonEncode(profile.toJson()));
+    await _prefs?.setString(
+      uid == null ? 'business_profile' : 'business_profile_' + uid,
+      jsonEncode(profile.toJson()));
   }
 
   Future<void> loadInvoices() async {
-    final List<String>? invoicesJson = _prefs?.getStringList('invoices');
-    if (invoicesJson != null) {
-      invoices = invoicesJson
-          .map((jsonStr) => Invoice.fromJson(jsonDecode(jsonStr)))
-          .toList();
+    if (_onlineAuth && _signedInUserId == null) {
+      invoices = [];
+      return;
     }
+    final uid = _signedInUserId;
+    final key = uid == null ? 'invoices' : 'invoices_' + uid;
+    List<String>? invoicesJson = _prefs?.getStringList(key);
+    // Preserve legacy local documents for the first signed-in account.
+    // Do not expose them to other accounts using the same phone.
+    if (uid != null && invoicesJson == null &&
+        _prefs?.getString('legacy_documents_owner') == null) {
+      final legacy = _prefs?.getStringList('invoices');
+      if (legacy != null) {
+        await _prefs?.setString('legacy_documents_owner', uid);
+        await _prefs?.setStringList(key, legacy);
+        invoicesJson = legacy;
+      }
+    }
+    invoices = invoicesJson == null ? [] : invoicesJson
+        .map((jsonStr) => Invoice.fromJson(jsonDecode(jsonStr)))
+        .toList();
   }
 
   Future<void> saveInvoice(Invoice invoice) async {
@@ -195,6 +237,8 @@ class DataService {
     final List<String> invoicesJson = invoices
         .map((i) => jsonEncode(i.toJson()))
         .toList();
-    await _prefs?.setStringList('invoices', invoicesJson);
+    final uid = _signedInUserId;
+    if (_onlineAuth && uid == null) throw StateError('Sign in to save documents.');
+    await _prefs?.setStringList(uid == null ? 'invoices' : 'invoices_' + uid, invoicesJson);
   }
 }
