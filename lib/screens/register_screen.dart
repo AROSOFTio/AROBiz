@@ -221,8 +221,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
           constraints: const BoxConstraints(maxWidth: 520),
           child: Column(children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 6),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Center(child: Image.asset('assets/logo.png',width:74,height:74,fit:BoxFit.contain)),
+                const SizedBox(height:8),
                 Text('Step ' + (_step + 1).toString() + ' of 3',
                   style: Theme.of(context).textTheme.labelLarge),
                 const SizedBox(height: 8),
