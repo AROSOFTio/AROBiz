@@ -187,6 +187,7 @@ class AppShell extends StatefulWidget {
 
 class AppShellState extends State<AppShell> {
   int _currentIndex = 0;
+  String? _expandedDrawerGroup;
   String? _role;
   String? _activeBusinessName;
   Timer? _paymentSync;
@@ -266,7 +267,7 @@ class AppShellState extends State<AppShell> {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('You do not have access to this section.')));
       return;
     }
-    setState(()=>_currentIndex=page);
+    setState((){_currentIndex=page;_expandedDrawerGroup=null;});
   }
 
   List<Widget> get _screens => [
@@ -293,7 +294,7 @@ class AppShellState extends State<AppShell> {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Your role does not allow this action.')));
       return;
     }
-    setState(() => _currentIndex = index);
+    setState((){_currentIndex=index;_expandedDrawerGroup=null;});
     Navigator.pop(context); // Close drawer
   }
 
@@ -307,6 +308,11 @@ class AppShellState extends State<AppShell> {
 
     return Scaffold(
       key:_scaffoldKey,
+      onDrawerChanged:(opened){
+        if(!opened && mounted && _expandedDrawerGroup!=null){
+          setState(()=>_expandedDrawerGroup=null);
+        }
+      },
       appBar: AppBar(
         title: Row(
           children: [
@@ -465,7 +471,7 @@ class AppShellState extends State<AppShell> {
                   ),
                   // Top-level Documents aligns exactly with all _NavItem rows.
                   Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
+                    margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
                     decoration: BoxDecoration(
                       color: _currentIndex == 1
                           ? Theme.of(context).colorScheme.primary.withOpacity(0.1)
@@ -524,6 +530,9 @@ class AppShellState extends State<AppShell> {
                   _NavGroup(
                     icon:Icons.inventory_2_outlined,
                     label:'Products & Inventory',
+                    expanded:_expandedDrawerGroup=='Products & Inventory',
+                    onExpanded:(open)=>setState(()=>
+                      _expandedDrawerGroup=open?'Products & Inventory':null),
                     selected:_currentIndex==2,
                     children:[
                       _SubNavItem(label:'Product catalog',icon:Icons.list_alt_outlined,
@@ -540,6 +549,9 @@ class AppShellState extends State<AppShell> {
                   if(_canWrite)_NavGroup(
                     icon:Icons.point_of_sale_outlined,
                     label:'Sales & POS',
+                    expanded:_expandedDrawerGroup=='Sales & POS',
+                    onExpanded:(open)=>setState(()=>
+                      _expandedDrawerGroup=open?'Sales & POS':null),
                     selected:_currentIndex==3,
                     children:[
                       _SubNavItem(label:'Transactions',icon:Icons.receipt_long_outlined,
@@ -570,6 +582,9 @@ class AppShellState extends State<AppShell> {
                   if(_canManage)_NavGroup(
                     icon:Icons.settings_rounded,
                     label:'Settings',
+                    expanded:_expandedDrawerGroup=='Settings',
+                    onExpanded:(open)=>setState(()=>
+                      _expandedDrawerGroup=open?'Settings':null),
                     selected:_currentIndex==4,
                     children:[
                       _SubNavItem(label:'Business profile',icon:Icons.store_outlined,
@@ -748,7 +763,7 @@ class _NavItem extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
       decoration: BoxDecoration(
-        color: isSelected ? primary.withOpacity(0.1) : Colors.transparent,
+        color: isSelected ? primary.withOpacity(0.065) : Colors.transparent,
         borderRadius: BorderRadius.circular(12),
       ),
       child: ListTile(
@@ -789,38 +804,61 @@ class _SubNavItem extends StatelessWidget{
     dense:true,
     visualDensity:const VisualDensity(vertical:-3),
     minVerticalPadding:0,
-    contentPadding:const EdgeInsets.only(left:36,right:14),
-    leading:Icon(icon,size:19,color:Theme.of(context).colorScheme.onSurfaceVariant),
-    title:Text(label,style:const TextStyle(fontSize:13)),
+    contentPadding:const EdgeInsets.only(left:30,right:14),
+    leading:Icon(icon,size:18,color:Theme.of(context).colorScheme.onSurfaceVariant),
+    title:Text(label,style:const TextStyle(fontSize:13.5,fontWeight:FontWeight.w400)),
     onTap:onTap,
   );
 }
 
-class _NavGroup extends StatelessWidget{
-  final IconData icon;final String label;final bool selected;
+class _NavGroup extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final bool selected;
+  final bool expanded;
+  final ValueChanged<bool> onExpanded;
   final List<Widget> children;
-  const _NavGroup({required this.icon,required this.label,
-    required this.selected,required this.children});
-  @override Widget build(BuildContext context){
-    final primary=Theme.of(context).colorScheme.primary;
+
+  const _NavGroup({
+    required this.icon,
+    required this.label,
+    required this.selected,
+    required this.expanded,
+    required this.onExpanded,
+    required this.children,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme=Theme.of(context);
+    final primary=theme.colorScheme.primary;
+    final active=selected || expanded;
     return Container(
-      margin:const EdgeInsets.symmetric(horizontal:12,vertical:0),
+      margin:const EdgeInsets.symmetric(horizontal:12,vertical:2),
       decoration:BoxDecoration(
-        color:selected?primary.withOpacity(0.1):Colors.transparent,
-        borderRadius:BorderRadius.circular(12)),
+        color:active?primary.withOpacity(0.065):Colors.transparent,
+        borderRadius:BorderRadius.circular(10)),
       clipBehavior:Clip.antiAlias,
-      child:ExpansionTile(
-        dense:true,
-        visualDensity:const VisualDensity(vertical:-3),
-        tilePadding:const EdgeInsets.symmetric(horizontal:16),
-        childrenPadding:const EdgeInsets.only(bottom:2),
-        initiallyExpanded:selected,
-        leading:Icon(icon,size:24,
-          color:selected?primary:Colors.grey.shade700),
-        title:Text(label,style:TextStyle(
-          color:selected?primary:Colors.grey.shade800,
-          fontWeight:selected?FontWeight.bold:FontWeight.w500,fontSize:15)),
-        children:children,
+      child:Theme(
+        data:theme.copyWith(dividerColor:Colors.transparent),
+        child:ExpansionTile(
+          key:ValueKey('drawer-$label-$expanded'),
+          initiallyExpanded:expanded,
+          onExpansionChanged:onExpanded,
+          dense:true,
+          visualDensity:const VisualDensity(vertical:-2),
+          tilePadding:const EdgeInsets.symmetric(horizontal:14),
+          childrenPadding:const EdgeInsets.only(left:0,bottom:4),
+          shape:const Border(),
+          collapsedShape:const Border(),
+          leading:Icon(icon,size:21,
+            color:active?primary:theme.colorScheme.onSurfaceVariant),
+          title:Text(label,style:TextStyle(
+            color:active?primary:theme.colorScheme.onSurface,
+            fontWeight:active?FontWeight.w600:FontWeight.w500,
+            fontSize:14)),
+          children:children,
+        ),
       ),
     );
   }
