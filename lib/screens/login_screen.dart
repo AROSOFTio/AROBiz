@@ -110,126 +110,107 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   @override
+  void dispose(){
+    _identifierCtrl.dispose();
+    _passwordCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final theme=Theme.of(context);
     return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              Theme.of(context).colorScheme.primary,
-              Theme.of(context).colorScheme.secondary,
-            ],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
-        ),
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24.0),
-            child: Card(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-              elevation: 8,
-              child: Padding(
-                padding: const EdgeInsets.all(32.0),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Image.asset(
-                      'assets/logo.png',
-                      width: 110,
-                      height: 110,
-                      fit: BoxFit.contain,
-                      semanticLabel: 'ARODesk',
-                    ),
-                    const SizedBox(height: 4),
-                    const Text('ARODesk',
-                      style: TextStyle(fontSize: 25, fontWeight: FontWeight.w800,
-                        color: Color(0xFF142235)),),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Welcome Back',
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: Theme.of(context).colorScheme.primary,
-                          ),
-                    ),
-                    const SizedBox(height: 8),
-                    const Text('Login to continue to ARODesk'),
-                    const SizedBox(height: 32),
-                    TextField(
-                      controller: _identifierCtrl,
-                      decoration: InputDecoration(
-                        labelText: 'Email or Phone Number',
-                        prefixIcon: const Icon(Icons.person_outline),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    TextField(
-                      controller: _passwordCtrl,
-                      obscureText: _obscurePassword,
-                      decoration: InputDecoration(
-                        labelText: 'Password',
-                        prefixIcon: const Icon(Icons.lock_outline),
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                            _obscurePassword ? Icons.visibility : Icons.visibility_off,
-                          ),
-                          onPressed: () {
-                            setState(() => _obscurePassword = !_obscurePassword);
-                          },
-                        ),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 50,
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Theme.of(context).colorScheme.primary,
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        onPressed: _isLoading ? null : _login,
-                        child: _isLoading
-                            ? const CircularProgressIndicator(color: Colors.white)
-                            : const Text('Login', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                      ),
-                    ),
-                    TextButton.icon(
-                      onPressed: _isLoading ? null : () => Navigator.push(
-                        context,MaterialPageRoute(builder:(_)=>const ForgotPasswordScreen())),
-                      icon: const Icon(Icons.lock_reset_outlined),
-                      label: const Text('Forgot password?'),
-                    ),
-                    TextButton.icon(
-                      onPressed: _isLoading ? null : _resendConfirmation,
-                      icon: const Icon(Icons.mark_email_unread_outlined),
-                      label: const Text('Resend confirmation email'),
-                    ),
-                    const SizedBox(height: 16),
+      resizeToAvoidBottomInset:true,
+      body:DecoratedBox(
+        decoration:BoxDecoration(gradient:LinearGradient(
+          colors:[const Color(0xFF063B91),theme.colorScheme.primary],
+          begin:Alignment.topLeft,end:Alignment.bottomRight)),
+        child:SafeArea(child:Center(child:SingleChildScrollView(
+          keyboardDismissBehavior:ScrollViewKeyboardDismissBehavior.onDrag,
+          padding:EdgeInsets.fromLTRB(18,16,18,
+            MediaQuery.viewInsetsOf(context).bottom>0?24:28),
+          child:ConstrainedBox(
+            constraints:const BoxConstraints(maxWidth:430),
+            child:Card(
+              margin:EdgeInsets.zero,
+              elevation:5,
+              shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(22)),
+              child:Padding(
+                padding:const EdgeInsets.fromLTRB(24,22,24,22),
+                child:Column(mainAxisSize:MainAxisSize.min,children:[
+                  Image.asset('assets/logo.png',height:77,width:77,
+                    fit:BoxFit.contain,semanticLabel:'ARODesk'),
+                  const SizedBox(height:6),
+                  const Text('ARODesk',style:TextStyle(
+                    fontSize:24,fontWeight:FontWeight.w800,color:Color(0xFF142235))),
+                  const SizedBox(height:2),
+                  Text('Sign in to your workspace',style:theme.textTheme.bodySmall),
+                  const SizedBox(height:21),
+                  TextField(
+                    controller:_identifierCtrl,
+                    keyboardType:TextInputType.emailAddress,
+                    textInputAction:TextInputAction.next,
+                    autofillHints:const [AutofillHints.email,AutofillHints.username],
+                    decoration:const InputDecoration(
+                      labelText:'Email address',
+                      prefixIcon:Icon(Icons.mail_outline),
+                      border:OutlineInputBorder())),
+                  const SizedBox(height:12),
+                  TextField(
+                    controller:_passwordCtrl,
+                    obscureText:_obscurePassword,
+                    textInputAction:TextInputAction.done,
+                    autofillHints:const [AutofillHints.password],
+                    onSubmitted:(_){if(!_isLoading)_login();},
+                    decoration:InputDecoration(
+                      labelText:'Password',
+                      prefixIcon:const Icon(Icons.lock_outline),
+                      border:const OutlineInputBorder(),
+                      suffixIcon:IconButton(
+                        tooltip:_obscurePassword?'Show password':'Hide password',
+                        icon:Icon(_obscurePassword?Icons.visibility_outlined:
+                          Icons.visibility_off_outlined),
+                        onPressed:()=>setState(()=>_obscurePassword=!_obscurePassword)))),
+                  Align(alignment:Alignment.centerRight,
+                    child:TextButton(
+                      onPressed:_isLoading?null:()=>Navigator.push(context,
+                        MaterialPageRoute(builder:(_)=>const ForgotPasswordScreen())),
+                      child:const Text('Forgot password?'))),
+                  SizedBox(width:double.infinity,height:48,
+                    child:FilledButton(
+                      onPressed:_isLoading?null:_login,
+                      child:_isLoading
+                        ?const SizedBox(width:20,height:20,
+                          child:CircularProgressIndicator(strokeWidth:2))
+                        :const Text('Sign in'))),
+                  const SizedBox(height:10),
+                  Row(mainAxisAlignment:MainAxisAlignment.center,children:[
+                    const Flexible(child:Text('New to ARODesk?',
+                      style:TextStyle(fontSize:12))),
                     TextButton(
-                      onPressed: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(builder: (_) => const RegisterScreen()),
-                        );
-                      },
-                      child: const Text('Don\'t have an account? Register here.'),
-                    )
-                  ],
-                ),
+                      onPressed:_isLoading?null:()=>Navigator.push(context,
+                        MaterialPageRoute(builder:(_)=>const RegisterScreen())),
+                      child:const Text('Create account')),
+                  ]),
+                  PopupMenuButton<String>(
+                    tooltip:'Account help',
+                    initialValue:null,
+                    onSelected:(value){if(value=='resend')_resendConfirmation();},
+                    itemBuilder:(_)=>const [
+                      PopupMenuItem(value:'resend',child:Text('Resend verification email')),
+                    ],
+                    child:const Padding(
+                      padding:EdgeInsets.symmetric(horizontal:12,vertical:6),
+                      child:Row(mainAxisSize:MainAxisSize.min,children:[
+                        Text('Account help',style:TextStyle(fontSize:12)),
+                        Icon(Icons.expand_more,size:17),
+                      ])),
+                  ),
+                ]),
               ),
             ),
           ),
-        ),
+        ))),
       ),
     );
   }
