@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/data_service.dart';
 import '../services/auth_security_service.dart';
@@ -195,9 +196,15 @@ class _LoginScreenState extends State<LoginScreen> {
                   PopupMenuButton<String>(
                     tooltip:'Account help',
                     initialValue:null,
-                    onSelected:(value){if(value=='resend')_resendConfirmation();},
+                    onSelected:(value){
+                      if(value=='resend')_resendConfirmation();
+                      if(value=='privacy')launchUrl(Uri.parse(
+                        'https://github.com/AROSOFTio/AROBiz/blob/main/play-compliance/README.md#privacy-policy'),
+                        mode:LaunchMode.externalApplication);
+                    },
                     itemBuilder:(_)=>const [
                       PopupMenuItem(value:'resend',child:Text('Resend verification email')),
+                      PopupMenuItem(value:'privacy',child:Text('Privacy policy')),
                     ],
                     child:const Padding(
                       padding:EdgeInsets.symmetric(horizontal:12,vertical:6),
