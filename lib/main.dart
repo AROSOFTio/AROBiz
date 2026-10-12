@@ -11,6 +11,7 @@ import 'screens/create_invoice_screen.dart';
 import 'screens/products_screen.dart';
 import 'screens/sales_screen.dart';
 import 'screens/debtors_screen.dart';
+import 'screens/account_privacy_screen.dart';
 import 'screens/saas_admin_screen.dart';
 import 'services/saas_admin_service.dart';
 import 'services/inventory_service.dart';
@@ -476,6 +477,16 @@ class AppShellState extends State<AppShell> {
                           builder: (_) => const PasswordSecurityScreen()));
                       },
                     ),
+                  _NavItem(
+                    icon:Icons.verified_user_outlined,
+                    label:'Account & privacy',
+                    isSelected:false,
+                    onTap:(){
+                      Navigator.pop(context);
+                      Navigator.push(context,MaterialPageRoute(
+                        builder:(_)=>const AccountPrivacyScreen()));
+                    },
+                  ),
                   FutureBuilder<bool>(
                     future: SaaSAdminService.instance.isAdmin(),
                     builder: (context, snapshot) {
