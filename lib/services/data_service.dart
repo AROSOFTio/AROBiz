@@ -42,7 +42,8 @@ class DataService {
         email: result.user?.email,
         phone: result.user?.phone,
         countryCode: (metadata['countryCode'] ?? currentProfile?.countryCode)?.toString(),
-        currencyCode: (metadata['currencyCode'] ?? currentProfile?.currencyCode ?? 'USD').toString(),
+        currencyCode: (currentProfile?.currencyCode ?? metadata['currencyCode'] ??
+          CountryCurrency.currency((metadata['countryCode']??'').toString())).toString(),
         logoPath: currentProfile?.logoPath,
         servicesOffered: currentProfile?.servicesOffered ?? [],
         localPaymentDetails: currentProfile?.localPaymentDetails,
@@ -197,9 +198,13 @@ class DataService {
         invoicesJson = legacy;
       }
     }
-    invoices = invoicesJson == null ? [] : invoicesJson
-        .map((jsonStr) => Invoice.fromJson(jsonDecode(jsonStr)))
-        .toList();
+    if(invoicesJson==null){invoices=[];return;}
+    try{
+      invoices=invoicesJson.map((v)=>Invoice.fromJson(jsonDecode(v))).toList();
+    }catch(_){
+      // Preserve the stored bytes for recovery instead of crashing startup.
+      invoices=[];
+    }
   }
 
   Future<void> saveInvoice(Invoice invoice) async {
