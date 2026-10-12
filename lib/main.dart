@@ -45,9 +45,13 @@ class _InvoicingAppState extends State<InvoicingApp> {
   StreamSubscription<Uri>? _linkSubscription;
   bool _recoveryOpen=false;
   bool _incomingRecovery=false;
+  bool _incomingConfirmation=false;
+  bool _confirmationOpening=false;
 
   bool _isRecoveryLink(Uri uri)=>
     uri.scheme=='io.supabase.arodesk' && uri.host=='reset-password';
+  bool _isConfirmationLink(Uri uri)=>
+    uri.scheme=='io.supabase.arodesk' && uri.host=='auth-callback';
 
   void _openRecovery(){
     if(!mounted||_recoveryOpen||Supabase.instance.client.auth.currentUser==null)return;
@@ -67,14 +71,43 @@ class _InvoicingAppState extends State<InvoicingApp> {
         });
     });
   }
+
+  Future<void> _openConfirmation()async{
+    if(!mounted||_confirmationOpening||!_incomingConfirmation||
+       Supabase.instance.client.auth.currentSession==null)return;
+    _confirmationOpening=true;
+    try{
+      final mustChange=await AuthSecurityService.instance.mustChangePassword();
+      if(!mounted)return;
+      final navigator=appNavigatorKey.currentState;
+      if(navigator==null)return;
+      navigator.pushAndRemoveUntil(
+        MaterialPageRoute(builder:(_)=>mustChange
+          ?const PasswordSecurityScreen(forced:true):const AppShell()),
+        (route)=>false);
+      _incomingConfirmation=false;
+    }catch(_){
+      // Keep the authenticated session; a later sign-in can retry security checks.
+    }finally{
+      _confirmationOpening=false;
+    }
+  }
+
+  void _processIncomingLink(Uri uri){
+    if(_isRecoveryLink(uri)){
+      _incomingRecovery=true;
+      _openRecovery();
+    }else if(_isConfirmationLink(uri)){
+      _incomingConfirmation=true;
+      _openConfirmation();
+    }
+  }
+
   Future<void> _checkInitialResetLink()async{
     try{
       final initial=await AppLinks().getInitialLink();
-      if(initial!=null && _isRecoveryLink(initial)){
-        _incomingRecovery=true;
-        _openRecovery();
-      }
-    }catch(_){/* Authentication event remains the primary recovery route. */}
+      if(initial!=null)_processIncomingLink(initial);
+    }catch(_){/* The authentication event can still complete the session. */}
   }
   @override
   void initState(){
@@ -83,16 +116,12 @@ class _InvoicingAppState extends State<InvoicingApp> {
       if(data.event==AuthChangeEvent.passwordRecovery){
         _incomingRecovery=true;
         _openRecovery();
-      }else if(data.event==AuthChangeEvent.signedIn && _incomingRecovery){
-        _openRecovery();
+      }else if(data.event==AuthChangeEvent.signedIn){
+        if(_incomingRecovery)_openRecovery();
+        if(_incomingConfirmation)_openConfirmation();
       }
     });
-    _linkSubscription=AppLinks().uriLinkStream.listen((uri){
-      if(_isRecoveryLink(uri)){
-        _incomingRecovery=true;
-        _openRecovery();
-      }
-    });
+    _linkSubscription=AppLinks().uriLinkStream.listen(_processIncomingLink);
     _checkInitialResetLink();
   }
   @override
