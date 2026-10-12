@@ -123,9 +123,7 @@ class _LoginScreenState extends State<LoginScreen> {
     return Scaffold(
       resizeToAvoidBottomInset:true,
       body:DecoratedBox(
-        decoration:BoxDecoration(gradient:LinearGradient(
-          colors:[const Color(0xFF063B91),theme.colorScheme.primary],
-          begin:Alignment.topLeft,end:Alignment.bottomRight)),
+        decoration:const BoxDecoration(color:Color(0xFFF7F8FA)),
         child:SafeArea(child:Center(child:SingleChildScrollView(
           keyboardDismissBehavior:ScrollViewKeyboardDismissBehavior.onDrag,
           padding:EdgeInsets.fromLTRB(18,16,18,
