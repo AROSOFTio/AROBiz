@@ -61,6 +61,13 @@ class _ProductsScreenState extends State<ProductsScreen> {
           .timeout(const Duration(seconds:7));
         final canManage=await InventoryService.instance.canManageCatalog(id)
           .timeout(const Duration(seconds:7));
+        // Any successful catalog visit prepares this business for offline POS.
+        await OfflineSalesService.instance.cacheCatalog(
+          id,products:products,balances:balances,currency:currency,
+          transactions:local==null?[]:
+            List<Map<String,dynamic>>.from((local['transactions'] as List)
+              .map((v)=>Map<String,dynamic>.from(v as Map))),
+        );
         if(mounted){
           final remaining=await OfflineSalesService.instance.effectiveBalances(id,balances);
           if(!mounted)return;
