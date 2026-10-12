@@ -1,3 +1,4 @@
+import 'offline_sales_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// Catalog-driven sales/quotes are separate from manually prepared documents.
@@ -18,6 +19,14 @@ class SalesService {
     String? dueDate,
   }) async {
     if (quantities.isEmpty) throw ArgumentError('Add at least one item.');
+    if(kind=='sale'){
+      final local=await OfflineSalesService.instance.queueSale(
+        business:businessId,quantities:quantities,customer:customer,
+        phone:phone,address:address,payments:payments??[],dueDate:dueDate);
+      // Attempt upload without making POS dependent on network availability.
+      await OfflineSalesService.instance.sync(businessId);
+      return local;
+    }
     final lines = quantities.entries.map((entry) =>
       {'product_id': entry.key, 'quantity': entry.value}).toList();
     final useCheckout = kind == 'sale';
