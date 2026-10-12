@@ -10,13 +10,21 @@ class TeamService {
     return List<Map<String,dynamic>>.from(rows as List);
   }
   Future<List<Map<String,dynamic>>> members(String business)async{
-    final rows=await client.rpc('arodesk_team_list',params:{'p_business':business});
+    final rows=await client.rpc('arodesk_team_list_v2',params:{'p_business':business});
     return List<Map<String,dynamic>>.from(rows as List);
   }
-  Future<void> add(String business,String email,String role,String title)async{
-    await client.rpc('arodesk_team_add',params:{
-      'p_business':business,'p_email':email.trim().toLowerCase(),
-      'p_role':role,'p_title':title.trim()});
+  Future<void> add(String business,String email,String role,String title,
+      String first,String middle,String last)async{
+    final response=await client.functions.invoke('arodesk-team-register',body:{
+      'business_id':business,'email':email.trim().toLowerCase(),
+      'first_name':first.trim(),'middle_name':middle.trim(),'last_name':last.trim(),
+      'role':role,'job_title':title.trim(),
+    });
+    if(response.status!=200){
+      final body=response.data;
+      throw Exception(body is Map ? (body['error']??'Unable to register member').toString()
+        : 'Unable to register member. Check email service settings.');
+    }
   }
   Future<void> update(String business,String user,String role,String title)async{
     await client.rpc('arodesk_team_update',params:{
@@ -57,6 +65,9 @@ class _TeamScreenState extends State<TeamScreen>{
     if(_business==null)return;
     final email=TextEditingController(text:member?['email']?.toString()??'');
     final title=TextEditingController(text:member?['job_title']?.toString()??'');
+    final first=TextEditingController(text:member?['first_name']?.toString()??'');
+    final middle=TextEditingController(text:member?['middle_name']?.toString()??'');
+    final last=TextEditingController(text:member?['last_name']?.toString()??'');
     String role=member?['role']?.toString()??'staff';
     bool saving=false;
     final done=await showModalBottomSheet<bool>(
@@ -73,9 +84,20 @@ class _TeamScreenState extends State<TeamScreen>{
           Text(member==null?'Add team member':'Edit team member',
             style:Theme.of(ctx).textTheme.titleLarge),
           const SizedBox(height:14),
+          if(member==null)...[
+            TextField(controller:first,textCapitalization:TextCapitalization.words,
+              decoration:const InputDecoration(labelText:'First name *',border:OutlineInputBorder())),
+            const SizedBox(height:12),
+            TextField(controller:middle,textCapitalization:TextCapitalization.words,
+              decoration:const InputDecoration(labelText:'Middle name (optional)',border:OutlineInputBorder())),
+            const SizedBox(height:12),
+            TextField(controller:last,textCapitalization:TextCapitalization.words,
+              decoration:const InputDecoration(labelText:'Last name *',border:OutlineInputBorder())),
+            const SizedBox(height:12),
+          ],
           TextField(controller:email,enabled:member==null,
             keyboardType:TextInputType.emailAddress,
-            decoration:const InputDecoration(labelText:'Registered ARODesk email',
+            decoration:const InputDecoration(labelText:'Work email address *',
               border:OutlineInputBorder())),
           const SizedBox(height:12),
           DropdownButtonFormField<String>(
@@ -93,14 +115,23 @@ class _TeamScreenState extends State<TeamScreen>{
               labelText:'Job title (e.g. Cashier, Storekeeper)',
               border:OutlineInputBorder())),
           const SizedBox(height:12),
-          const Text('An existing member must have registered and confirmed their email. The business owner retains ownership.'),
+          Text(member==null
+            ?'A temporary password and download instructions will be sent by email. The employee must change the password before accessing the business.'
+            :'Change this user’s access role and job title. Ownership cannot be transferred here.'),
           const SizedBox(height:14),
           SizedBox(width:double.infinity,child:FilledButton(
             onPressed:saving?null:()async{
+              if(member==null&&(first.text.trim().isEmpty||last.text.trim().isEmpty||
+                  !email.text.contains('@'))){
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                  content:Text('First name, last name and a valid email are required.')));
+                return;
+              }
               update(()=>saving=true);
               try{
                 if(member==null){
-                  await TeamService.instance.add(_business!,email.text,role,title.text);
+                  await TeamService.instance.add(_business!,email.text,role,title.text,
+                    first.text,middle.text,last.text);
                 }else{
                   await TeamService.instance.update(_business!,
                     member['user_id'].toString(),role,title.text);
@@ -111,14 +142,14 @@ class _TeamScreenState extends State<TeamScreen>{
                   update(()=>saving=false);
                   ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                     content:Text(e is PostgrestException ? e.message :
-                      'Could not save team member. Check details and connection.')));
+                      e.toString().replaceFirst('Exception: ','').replaceFirst('FunctionException: ',''))));
                 }
               }
             },child:Text(saving?'Saving...':'Save member'),
           )),
         ]))))),
     );
-    email.dispose();title.dispose();
+    email.dispose();title.dispose();first.dispose();middle.dispose();last.dispose();
     if(done==true)await _load();
   }
   Future<void> _remove(Map<String,dynamic> member)async{
@@ -159,8 +190,12 @@ class _TeamScreenState extends State<TeamScreen>{
           padding:EdgeInsets.all(24),child:Text('No team members to display.')),
         ..._members.map((member)=>Card(child:ListTile(
           leading:CircleAvatar(child:Text(member['role'].toString().substring(0,1).toUpperCase())),
-          title:Text(member['email']?.toString()??'Member'),
-          subtitle:Text(member['role'].toString()+
+          title:Text([member['first_name'],member['middle_name'],member['last_name']]
+            .where((n)=>n!=null&&n.toString().trim().isNotEmpty)
+            .join(' ').isEmpty ? member['email'].toString() :
+            [member['first_name'],member['middle_name'],member['last_name']]
+              .where((n)=>n!=null&&n.toString().trim().isNotEmpty).join(' ')),
+          subtitle:Text(member['email'].toString()+' · '+member['role'].toString()+
             (member['job_title'].toString().isEmpty?'':' · '+member['job_title'].toString())),
           trailing:member['role']=='owner'||(member['role']=='admin'&&_role!='owner')
             ?const Icon(Icons.verified_user_outlined)
