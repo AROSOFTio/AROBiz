@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import '../services/data_service.dart';
 import '../services/inventory_service.dart';
 import '../services/sales_service.dart';
+import 'team_screen.dart';
 
 class HomeScreen extends StatefulWidget{
   final ValueChanged<int>? onNavigate;
@@ -24,12 +25,15 @@ class _HomeScreenState extends State<HomeScreen>{
       final p=DataService().currentProfile;
       final business=await InventoryService.instance.ensureBusiness(
         name:p?.name??'My Business',category:p?.category??'Other');
+      final teamsFuture=TeamService.instance.businesses();
       final productsFuture=InventoryService.instance.products(business);
       final stockFuture=InventoryService.instance.balances(business);
       final moneyFuture=InventoryService.instance.businessCurrency(business);
       final salesFuture=SalesService.instance.list(business);
       final products=await productsFuture,stock=await stockFuture;
       final currency=await moneyFuture,transactions=await salesFuture;
+      final memberships=await teamsFuture;
+      final current=memberships.where((m)=>m['business_id'].toString()==business).toList();
       final first=DateTime.now();
       final start=DateTime(first.year,first.month,first.day).subtract(const Duration(days:6));
       final daily=List<double>.filled(7,0);
@@ -49,7 +53,8 @@ class _HomeScreenState extends State<HomeScreen>{
         }
       }
       if(mounted)setState((){
-        _businessName=p?.name??'My Business';_currency=currency;
+        _businessName=current.isNotEmpty?current.first['business_name'].toString():
+          (p?.name??'My Business');_currency=currency;
         _productCount=products.length;
         _lowCount=products.where((x)=>x['track_stock']==true&&
           (stock[x['id'].toString()]??0)<=_n(x['reorder_level'])).length;
