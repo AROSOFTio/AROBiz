@@ -77,7 +77,9 @@ class _TeamScreenState extends State<TeamScreen>{
           MediaQuery.viewInsetsOf(ctx).bottom+
           MediaQuery.viewPaddingOf(ctx).bottom+48),
         child:ConstrainedBox(
-          constraints:BoxConstraints(maxHeight:MediaQuery.sizeOf(ctx).height*0.74),
+          constraints:BoxConstraints(maxHeight:(MediaQuery.sizeOf(ctx).height-
+            MediaQuery.viewInsetsOf(ctx).bottom-
+            MediaQuery.viewPaddingOf(ctx).bottom-115).clamp(180.0,680.0)),
           child:SingleChildScrollView(
             keyboardDismissBehavior:ScrollViewKeyboardDismissBehavior.onDrag,
             child:Column(mainAxisSize:MainAxisSize.min,children:[
