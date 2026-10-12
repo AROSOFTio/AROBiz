@@ -108,7 +108,7 @@ class _TeamScreenState extends State<TeamScreen>{
             items:['admin','staff','viewer'].where((v)=>
               _role=='owner'||v!='admin').map((v)=>DropdownMenuItem(
                 value:v,child:Text(v=='admin'?'Administrator':
-                  v=='staff'?'Staff (sales and inventory)':'Viewer (read only)'))).toList(),
+                  v=='staff'?'Staff':'Viewer (read only)'))).toList(),
             onChanged:(v)=>update(()=>role=v??'staff'),
           ),
           const SizedBox(height:12),
@@ -117,10 +117,7 @@ class _TeamScreenState extends State<TeamScreen>{
               labelText:'Job title (e.g. Cashier, Storekeeper)',
               border:OutlineInputBorder())),
           const SizedBox(height:12),
-          Text(member==null
-            ?'A temporary password and download instructions will be sent by email. The employee must change the password before accessing the business.'
-            :'Change this user’s access role and job title. Ownership cannot be transferred here.'),
-          const SizedBox(height:14),
+          const SizedBox(height:8),
           SizedBox(width:double.infinity,child:FilledButton(
             onPressed:saving?null:()async{
               if(member==null&&(first.text.trim().isEmpty||last.text.trim().isEmpty||
@@ -209,8 +206,7 @@ class _TeamScreenState extends State<TeamScreen>{
               ],
             ),
         ))),
-        const SizedBox(height:16),
-        const Text('Owner: full business control. Admin: operational management. Staff: register items and process sales. Viewer: read-only access. Job titles are descriptive and do not grant extra permissions.'),
+
       ]),
     ),
   );
