@@ -126,7 +126,7 @@ class PdfInvoiceApi {
       // Allocate finite paper length according to content instead.
       final base = 225.0 + invoice.items.fold<double>(0,
         (h,item)=>h+40+(item.description.length/20).ceil()*11);
-      final extra = (profile?.name.length??0) + (profile?.location?.length??0)
+      final extra = (profile?.name?.length??0) + (profile?.location?.length??0)
         + (invoice.clientName.length) + invoice.invoiceNumber.length;
       final requiredHeight=(base+extra*0.65+invoice.items.length*4)
         .clamp(350.0,10000.0).toDouble();
