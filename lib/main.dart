@@ -109,6 +109,7 @@ class AppShellState extends State<AppShell> {
   String? _role;
   String? _activeBusinessName;
   Timer? _paymentSync;
+  final GlobalKey<ScaffoldState> _scaffoldKey=GlobalKey<ScaffoldState>();
   static const _roleStore=FlutterSecureStorage();
   @override
   void initState(){
@@ -206,6 +207,7 @@ class AppShellState extends State<AppShell> {
     final logoPath = profile?.logoPath;
 
     return Scaffold(
+      key:_scaffoldKey,
       appBar: AppBar(
         title: Row(
           children: [
@@ -584,6 +586,35 @@ class AppShellState extends State<AppShell> {
         switchOutCurve:Curves.easeIn,
         child:KeyedSubtree(key:ValueKey(_currentIndex),
           child:_screens[_currentIndex])),
+      bottomNavigationBar:SafeArea(
+        top:false,
+        child:NavigationBar(
+          height:68,
+          labelBehavior:NavigationDestinationLabelBehavior.alwaysShow,
+          selectedIndex:(){
+            final pages=<int>[0,2,if(_canWrite)3,1,if(_canManage)4];
+            final i=pages.indexOf(_currentIndex);
+            return i<0?0:i;
+          }(),
+          onDestinationSelected:(index){
+            final pages=<int>[0,2,if(_canWrite)3,1,if(_canManage)4];
+            if(index<0||index>=pages.length)return;
+            _goToPage(pages[index]);
+          },
+          destinations:[
+            const NavigationDestination(icon:Icon(Icons.dashboard_outlined),
+              selectedIcon:Icon(Icons.dashboard_rounded),label:'Home'),
+            const NavigationDestination(icon:Icon(Icons.inventory_2_outlined),
+              selectedIcon:Icon(Icons.inventory_2),label:'Products'),
+            if(_canWrite)const NavigationDestination(icon:Icon(Icons.point_of_sale_outlined),
+              selectedIcon:Icon(Icons.point_of_sale),label:'Sales'),
+            const NavigationDestination(icon:Icon(Icons.description_outlined),
+              selectedIcon:Icon(Icons.description),label:'Docs'),
+            if(_canManage)const NavigationDestination(icon:Icon(Icons.settings_outlined),
+              selectedIcon:Icon(Icons.settings),label:'Settings'),
+          ],
+        ),
+      ),
     );
   }
 }
