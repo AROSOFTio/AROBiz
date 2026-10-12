@@ -201,17 +201,29 @@ class InventoryService {
     required double delta,
     required String kind,
     String note = '',
+    DateTime? movementDate,
+    String sourceLocation='',
+    String destinationLocation='',
+    String documentReference='',
   }) async {
     if (delta == 0) throw ArgumentError('Quantity must not be zero.');
-    await _client.rpc('arodesk_post_stock', params: {
+    final date=movementDate??DateTime.now();
+    final y=date.year.toString().padLeft(4,'0');
+    final m=date.month.toString().padLeft(2,'0');
+    final d=date.day.toString().padLeft(2,'0');
+    await _client.rpc('arodesk_post_stock_detailed', params: {
       'p_business': businessId, 'p_product': productId,
       'p_delta': delta, 'p_kind': kind, 'p_note': note,
+      'p_movement_date':'$y-$m-$d',
+      'p_source_location':sourceLocation,
+      'p_destination_location':destinationLocation,
+      'p_reference':documentReference,
     });
   }
 
   Future<List<Map<String, dynamic>>> movements(String businessId, String productId) async {
     final rows = await _client.from('arodesk_stock_movements')
-        .select('change_qty,quantity_after,kind,note,created_at')
+        .select('change_qty,quantity_after,kind,note,created_at,movement_date,source_location,destination_location,document_reference,created_by')
         .eq('business_id',businessId).eq('product_id', productId)
         .order('created_at', ascending:false).limit(100);
     return List<Map<String,dynamic>>.from(rows);
