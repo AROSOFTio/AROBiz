@@ -12,6 +12,7 @@ class SalesService {
     required Map<String, double> quantities,
     required String customer,
     required String phone,
+    String address = '',
     required String paymentMethod,
     List<Map<String, dynamic>>? payments,
     String? dueDate,
@@ -20,11 +21,12 @@ class SalesService {
     final lines = quantities.entries.map((entry) =>
       {'product_id': entry.key, 'quantity': entry.value}).toList();
     final useCheckout = kind == 'sale';
-    final result = await _client.rpc(useCheckout ? 'arodesk_checkout' : 'arodesk_record_sale', params: useCheckout ? { 
+    final result = await _client.rpc(useCheckout ? 'arodesk_checkout_customer' : 'arodesk_record_sale', params: useCheckout ? { 
       'p_business': businessId,
       'p_lines': lines,
       'p_customer': customer,
       'p_phone': phone,
+      'p_address': address,
       'p_payments': payments ?? [],
       'p_due_date': dueDate,
     } : {
@@ -71,6 +73,11 @@ class SalesService {
     return (remaining as num).toDouble();
   }
 
+  Future<List<Map<String,dynamic>>> debtors(String businessId) async {
+    final rows=await _client.rpc('arodesk_debtors',params:{'p_business':businessId});
+    return List<Map<String,dynamic>>.from(rows as List);
+  }
+
   Future<List<Map<String, dynamic>>> payments(String businessId, String saleId) async {
     final rows = await _client.from('arodesk_sale_payments')
       .select('amount,method,reference,paid_at')
@@ -81,7 +88,7 @@ class SalesService {
 
   Future<Map<String, dynamic>> byId(String businessId, String id) async {
     final row = await _client.from('arodesk_sales')
-      .select('id,business_id,document_number,kind,customer_name,customer_phone,payment_method,currency,subtotal,total,paid_total,returned_total,refunded_total,payment_status,due_date,lines,created_at')
+      .select('id,business_id,document_number,kind,customer_name,customer_phone,customer_address,payment_method,currency,subtotal,total,paid_total,returned_total,refunded_total,payment_status,due_date,lines,created_at')
       .eq('business_id', businessId).eq('id', id).single();
     return Map<String, dynamic>.from(row);
   }
