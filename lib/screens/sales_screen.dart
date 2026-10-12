@@ -356,6 +356,7 @@ class _SalesWizard extends StatefulWidget {
 class _SalesWizardState extends State<_SalesWizard> {
   final _customer=TextEditingController(text:'Walk-in customer');
   final _phone=TextEditingController();
+  final _address=TextEditingController();
   final _search=TextEditingController();
   final Map<String,double> _cart={};
   int _step=0;
@@ -368,7 +369,7 @@ class _SalesWizardState extends State<_SalesWizard> {
   String? _error;
   bool _saving=false;
   @override
-  void dispose(){_search.dispose();_customer.dispose();_phone.dispose();_amountOne.dispose();_amountTwo.dispose();super.dispose();}
+  void dispose(){_search.dispose();_customer.dispose();_phone.dispose();_address.dispose();_amountOne.dispose();_amountTwo.dispose();super.dispose();}
   Map<String,dynamic>? _product(String id){
     for(final p in widget.products){if(p['id'].toString()==id)return p;}
     return null;
@@ -436,17 +437,26 @@ class _SalesWizardState extends State<_SalesWizard> {
       setState(()=>_error='Enter the customer name.');return;
     }
     if(_step==1&&widget.kind=='sale'){
-      if(_paymentMode=='split'||_paymentMode=='credit'){
+      if(_paymentMode=='split'||_paymentMode=='credit'||_paymentMode=='split_credit'){
         final a=double.tryParse(_amountOne.text.trim());
         if(a==null||!a.isFinite||a<0||a>_total){setState(()=>_error='Enter a valid first payment amount.');return;}
-        if(_paymentMode=='split'){
+        if(_paymentMode=='split'||_paymentMode=='split_credit'){
           final b=double.tryParse(_amountTwo.text.trim());
-          if(b==null||!b.isFinite||b<=0||(a+b-_total).abs()>0.001){
-            setState(()=>_error='Split payments must equal the sale total.');return;
+          if(b==null||!b.isFinite||b<=0||
+             (_paymentMode=='split'?(a+b-_total).abs()>0.001:a+b>_total+0.001)){
+            setState(()=>_error=_paymentMode=='split'?
+              'Split payments must equal the sale total.':
+              'Payments cannot exceed the sale total.');return;
           }
         }
-        if(_paymentMode=='credit'&&a<_total&&_dueDate==null){
-          setState(()=>_error='Choose a credit due date.');return;
+        final b=(_paymentMode=='split_credit'||_paymentMode=='split')?
+          (double.tryParse(_amountTwo.text.trim())??0):0.0;
+        if(a+b<_total-0.005&&_dueDate==null){
+          setState(()=>_error='Choose a due date for the outstanding debt.');return;
+        }
+        if(a+b<_total-0.005&&(_customer.text.trim().toLowerCase()=='walk-in customer'||
+            _phone.text.trim().isEmpty||_address.text.trim().isEmpty)){
+          setState(()=>_error='Credit requires customer name, phone and address.');return;
         }
       }
     }
@@ -463,7 +473,7 @@ class _SalesWizardState extends State<_SalesWizard> {
         }else{
           final a=double.tryParse(_amountOne.text.trim())??0;
           if(a>0)paymentList.add({'method':_method,'amount':a});
-          if(_paymentMode=='split'){
+          if(_paymentMode=='split'||_paymentMode=='split_credit'){
             final b=double.tryParse(_amountTwo.text.trim())??0;
             if(b>0)paymentList.add({'method':_secondMethod,'amount':b});
           }
@@ -475,9 +485,10 @@ class _SalesWizardState extends State<_SalesWizard> {
         quantities:_cart,
         customer:_customer.text.trim(),
         phone:_phone.text.trim(),
+        address:_address.text.trim(),
         paymentMethod:_method,
         payments:paymentList,
-        dueDate:_paymentMode=='credit'&&_dueDate!=null
+        dueDate:(_paymentMode=='credit'||_paymentMode=='split_credit')&&_dueDate!=null
           ?_dueDate!.toIso8601String().substring(0,10):null,
       );
       if(mounted)Navigator.pop(context,id);
@@ -551,7 +562,11 @@ class _SalesWizardState extends State<_SalesWizard> {
                 decoration:const InputDecoration(labelText:'Customer name',border:OutlineInputBorder())),
               const SizedBox(height:16),
               TextField(controller:_phone,keyboardType:TextInputType.phone,
-                decoration:const InputDecoration(labelText:'Phone (optional)',border:OutlineInputBorder())),
+                decoration:const InputDecoration(labelText:'Customer phone (required for debts)',border:OutlineInputBorder())),
+              const SizedBox(height:14),
+              TextField(controller:_address,
+                textCapitalization:TextCapitalization.sentences,
+                decoration:const InputDecoration(labelText:'Customer address (required for debts)',border:OutlineInputBorder())),
               if(isSale)...[
                 const SizedBox(height:16),
                 DropdownButtonFormField<String>(
@@ -570,7 +585,8 @@ class _SalesWizardState extends State<_SalesWizard> {
                   decoration:const InputDecoration(labelText:'Payment arrangement',border:OutlineInputBorder()),
                   items:const [
                     DropdownMenuItem(value:'full',child:Text('Paid in full')),
-                    DropdownMenuItem(value:'split',child:Text('Split payments')),
+                    DropdownMenuItem(value:'split',child:Text('Split payments (fully paid)')),
+                    DropdownMenuItem(value:'split_credit',child:Text('Split paid / balance as debt')),
                     DropdownMenuItem(value:'credit',child:Text('Partial / credit sale')),
                   ],onChanged:(v)=>setState(()=>_paymentMode=v??'full'),
                 ),
@@ -580,7 +596,7 @@ class _SalesWizardState extends State<_SalesWizard> {
                     decoration:InputDecoration(labelText:_paymentMode=='credit'?'Amount paid now (0 if unpaid)':'First payment amount',
                       border:const OutlineInputBorder())),
                 ],
-                if(_paymentMode=='split')...[
+                if(_paymentMode=='split'||_paymentMode=='split_credit')...[
                   const SizedBox(height:14),
                   DropdownButtonFormField<String>(
                     value:_secondMethod,
@@ -593,7 +609,7 @@ class _SalesWizardState extends State<_SalesWizard> {
                   TextField(controller:_amountTwo,keyboardType:const TextInputType.numberWithOptions(decimal:true),
                     decoration:const InputDecoration(labelText:'Second payment amount',border:OutlineInputBorder())),
                 ],
-                if(_paymentMode=='credit')...[
+                if(_paymentMode=='credit'||_paymentMode=='split_credit')...[
                   const SizedBox(height:14),
                   OutlinedButton.icon(
                     onPressed:()async{
@@ -609,7 +625,7 @@ class _SalesWizardState extends State<_SalesWizard> {
                   ),
                 ],
                 const Padding(padding:EdgeInsets.all(12),
-                  child:Text('Record only payments actually received. Outstanding amounts remain on credit.')),
+                  child:Text('Only received funds count as payments. Remaining balances automatically appear under Debtors until fully paid.')),
               ],
             ]):Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[
               Text('Customer: '+_customer.text.trim()),
