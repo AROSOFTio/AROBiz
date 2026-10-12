@@ -131,19 +131,64 @@ class _SalesScreenState extends State<SalesScreen> {
         : 'Catalog quotation · Stock not deducted',
     );
   }
+  Future<Invoice> _offlineDocument(String id)async{
+    final entry=await OfflineSalesService.instance.printable(_businessId!,id);
+    if(entry==null)throw StateError('Local document is no longer available.');
+    final snap=await OfflineSalesService.instance.snapshot(_businessId!);
+    if(snap==null)throw StateError('Offline catalog not available.');
+    final catalog={
+      for(final raw in (snap['products'] as List))
+        Map<String,dynamic>.from(raw as Map)['id'].toString():
+          Map<String,dynamic>.from(raw as Map),
+    };
+    final items=<InvoiceItem>[];
+    for(final line in Map<String,dynamic>.from(entry['quantities'] as Map).entries){
+      final product=catalog[line.key];
+      if(product==null)throw StateError('Printable product data is missing.');
+      items.add(InvoiceItem(
+        description:product['name'].toString(),
+        quantity:line.value as num,
+        unitPrice:(product['sale_price'] as num).toDouble(),
+      ));
+    }
+    final kind=entry['kind']?.toString()??'sale';
+    final total=(entry['total'] as num).toDouble();
+    final paid=((entry['paid_total']??0) as num).toDouble();
+    final isQuote=kind=='quotation';
+    final type=isQuote?DocumentType.quotation:
+      (paid>=total-0.005?DocumentType.receipt:DocumentType.invoice);
+    return Invoice(
+      id:entry['id'].toString(),
+      invoiceNumber:(isQuote?'LQUO-':'LSALE-')+
+        entry['id'].toString().substring(0,12).toUpperCase(),
+      issueDate:DateTime.parse(entry['created_at'].toString()),
+      clientName:entry['customer'].toString(),
+      clientPhone:(entry['phone']??'').toString(),
+      items:items,
+      type:type,
+      currencyCode:entry['currency']?.toString(),
+      paymentOption:isQuote?null:
+        ((entry['payments'] as List).isEmpty?'Credit':
+        (entry['payments'] as List)
+          .map((p)=>Map<String,dynamic>.from(p as Map)['method'].toString()).join(', ')),
+      notes:isQuote?'Prepared offline':
+        'Paid: '+paid.toStringAsFixed(2)+
+        ' | Balance: '+(total-paid).toStringAsFixed(2)+
+        ' | Local reference (pending sync)',
+    );
+  }
   Future<void> _preview(String id)async{
     if(_businessId==null)return;
-    if(id.startsWith('offline:')){
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content:Text('Sale saved on this device. Receipt available after sync.')));
-      return;
-    }
     try{
-      final row=await SalesService.instance.byId(_businessId!,id);
+      final invoice=id.startsWith('offline:')
+        ?await _offlineDocument(id)
+        :_toInvoice(await SalesService.instance.byId(_businessId!,id));
       if(mounted)await Navigator.of(context).push(MaterialPageRoute(
-        builder:(_)=>InvoicePreviewScreen(invoice:_toInvoice(row))));
-    }catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content:Text(_message(e))));}
+        builder:(_)=>InvoicePreviewScreen(invoice:invoice)));
+    }catch(e){
+      if(mounted)ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content:Text('Could not prepare document: $e')));
+    }
   }
   Future<void> _collect(Map<String,dynamic> sale)async{
     final amount=TextEditingController(),reference=TextEditingController();
@@ -336,14 +381,9 @@ class _SalesScreenState extends State<SalesScreen> {
       builder:(_)=>_SalesWizard(
         businessId:_businessId!,kind:kind,products:_products,balances:_balances,currency:_baseCurrency)));
     if(id!=null&&mounted){
-      if(id.startsWith('offline:')){
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content:Text(kind=='quotation'
-            ?'Quotation saved on device. Syncs when online.'
-            :'Sale saved on device. Syncs when online.')));
-      }
-      await _refresh();
-      if(mounted&&!id.startsWith('offline:'))await _preview(id);
+      // Printing is part of completing checkout. It must not wait for sync.
+      await _preview(id);
+      if(mounted)await _refresh();
     }
   }
   @override
