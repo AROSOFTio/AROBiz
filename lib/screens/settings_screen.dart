@@ -1,6 +1,8 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../models/business_profile.dart';
 import '../services/data_service.dart';
 import '../services/country_currency.dart';
@@ -135,6 +137,31 @@ class _SettingsScreenState extends State<SettingsScreen>{
     const SizedBox(height:20),
     _field(_payment,'Payment instructions / Mobile Money / bank details',lines:4),
   ]);
+  static const deletionUrl='https://bqoutfgqfaangnnclgle.supabase.co/functions/v1/arodesk-privacy-deletion?page=delete';
+  static const privacyUrl='https://bqoutfgqfaangnnclgle.supabase.co/functions/v1/arodesk-privacy-deletion?page=privacy';
+  Future<void> _openPage(String url)async{
+    final ok=await launchUrl(Uri.parse(url),mode:LaunchMode.externalApplication);
+    if(!ok&&mounted)ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content:Text('Unable to open the link.')));
+  }
+  Future<void> _requestDeletion()async{
+    final accepted=await showDialog<bool>(context:context,builder:(ctx)=>AlertDialog(
+      title:const Text('Request account deletion?'),
+      content:const Text('We will verify your identity and review any business records subject to financial retention requirements. Your account is not deleted immediately.'),
+      actions:[
+        TextButton(onPressed:()=>Navigator.pop(ctx,false),child:const Text('Cancel')),
+        FilledButton(onPressed:()=>Navigator.pop(ctx,true),child:const Text('Submit request')),
+      ]));
+    if(accepted!=true)return;
+    try{
+      await Supabase.instance.client.rpc('arodesk_request_account_deletion');
+      if(mounted)ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content:Text('Deletion request received. We will verify ownership before processing.')));
+    }catch(_){
+      if(mounted)ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content:Text('Could not submit deletion request. Use the web form under Privacy.')));
+    }
+  }
   Widget _security()=>Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[
     Text('Account & access',style:Theme.of(context).textTheme.titleLarge),
     const SizedBox(height:12),
@@ -154,8 +181,19 @@ class _SettingsScreenState extends State<SettingsScreen>{
       onTap:()=>Navigator.push(context,MaterialPageRoute(
         builder:(_)=>const TeamScreen())),
     )),
-    const SizedBox(height:14),
-    const Text('Products and services are managed in Products & Inventory, not in Settings.'),
+    Card(child:ListTile(
+      leading:const Icon(Icons.privacy_tip_outlined),
+      title:const Text('Privacy policy'),
+      trailing:const Icon(Icons.open_in_new),
+      onTap:()=>_openPage(privacyUrl))),
+    Card(child:ListTile(
+      leading:const Icon(Icons.delete_forever_outlined),
+      title:const Text('Request account deletion'),
+      subtitle:const Text('Request erasure and review of retained business records'),
+      trailing:const Icon(Icons.chevron_right),
+      onTap:_requestDeletion)),
+    TextButton(onPressed:()=>_openPage(deletionUrl),
+      child:const Text('Web account-deletion form')),
   ]);
   @override Widget build(BuildContext context)=>Scaffold(
     resizeToAvoidBottomInset:true,
