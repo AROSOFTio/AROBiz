@@ -136,8 +136,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
         const Center(child:CircularProgressIndicator()):
         ListView(padding:const EdgeInsets.fromLTRB(16,16,16,100),children:[
           Text('Products & Inventory',style:Theme.of(context).textTheme.titleLarge),
-          const SizedBox(height:8),
-          const Text('Products, services, raw materials and finished goods in one catalog.'),
+
           const SizedBox(height:12),
           if(_error!=null)...[
             Card(color:Theme.of(context).colorScheme.errorContainer,
@@ -149,18 +148,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
               Chip(label:Text(low.toString()+' low-stock')),
             ]),
             const SizedBox(height:12),
-            Card(
-              child:Padding(padding:const EdgeInsets.all(12),
-                child:Row(children:[
-                  const Icon(Icons.add_box_outlined,size:26),
-                  const SizedBox(width:12),
-                  const Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-                    Text('Stock receiving',style:TextStyle(fontWeight:FontWeight.bold)),
-                    Text('Add stock to any tracked product using Add Stock below.',style:TextStyle(fontSize:12)),
-                  ])),
-                ])),
-            ),
-            const SizedBox(height:12),
+
             TextField(onChanged:(v)=>setState(()=>_query=v),
               decoration:const InputDecoration(labelText:'Search products or SKU',
                 prefixIcon:Icon(Icons.search),border:OutlineInputBorder())),
