@@ -81,6 +81,9 @@ class DataService {
     required String category,
     required String location,
     String? countryCode,
+    String firstName = '',
+    String middleName = '',
+    String lastName = '',
   }) async {
     if (_onlineAuth) {
       final result = await Supabase.instance.client.auth.signUp(
@@ -88,7 +91,10 @@ class DataService {
         phone: isEmail ? null : identifier.trim(),
         password: password,
         emailRedirectTo: 'https://arosoftlabs.com/',
-        data: {'businessName': businessName, 'businessCategory': category, 'location': location, 'countryCode': countryCode, 'currencyCode': CountryCurrency.currency(countryCode)},
+        data: {'businessName': businessName, 'businessCategory': category, 'location': location, 'countryCode': countryCode, 'currencyCode': CountryCurrency.currency(countryCode),
+          'first_name':firstName.trim(),'middle_name':middleName.trim(),
+          'last_name':lastName.trim(),
+          'full_name':[firstName,middleName,lastName].where((v)=>v.trim().isNotEmpty).join(' ')},
       );
       if (result.user == null) throw Exception('Registration failed. Please try again.');
       // Supabase can return an obfuscated user for an already registered email.
