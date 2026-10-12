@@ -12,7 +12,8 @@ class HomeScreen extends StatefulWidget{
 }
 class _HomeScreenState extends State<HomeScreen>{
   bool _loading=true; String? _error;
-  String _currency='USD'; String _businessName='';
+  String _currency=''; String _businessName='';
+  String? _displayCurrency;
   int _productCount=0,_lowCount=0,_saleCount=0,_debtorCount=0;
   double _sales=0,_collected=0,_outstanding=0;
   List<double> _days=List.filled(7,0);
@@ -29,9 +30,11 @@ class _HomeScreenState extends State<HomeScreen>{
       final productsFuture=InventoryService.instance.products(business);
       final stockFuture=InventoryService.instance.balances(business);
       final moneyFuture=InventoryService.instance.businessCurrency(business);
+      final displayFuture=InventoryService.instance.businessDisplayCurrency(business);
       final salesFuture=SalesService.instance.list(business);
       final products=await productsFuture,stock=await stockFuture;
       final currency=await moneyFuture,transactions=await salesFuture;
+      final displayed=await displayFuture;
       final memberships=await teamsFuture;
       final current=memberships.where((m)=>m['business_id'].toString()==business).toList();
       final first=DateTime.now();
@@ -55,6 +58,7 @@ class _HomeScreenState extends State<HomeScreen>{
       if(mounted)setState((){
         _businessName=current.isNotEmpty?current.first['business_name'].toString():
           (p?.name??'My Business');_currency=currency;
+        _displayCurrency=displayed;
         _productCount=products.length;
         _lowCount=products.where((x)=>x['track_stock']==true&&
           (stock[x['id'].toString()]??0)<=_n(x['reorder_level'])).length;
@@ -111,7 +115,8 @@ class _HomeScreenState extends State<HomeScreen>{
       ])));
   }
   @override Widget build(BuildContext context){
-    final money=NumberFormat.currency(name:_currency,symbol:_currency+' ');
+    final code=_currency.isNotEmpty?_currency:'—';
+    final money=NumberFormat.currency(name:_currency.isEmpty?'USD':_currency,symbol:code+' ');
     final denominator=_collected+_outstanding;
     final ratio=denominator>0?(_collected/denominator).clamp(0.0,1.0):0.0;
     return RefreshIndicator(onRefresh:_load,child:_loading?
@@ -119,6 +124,13 @@ class _HomeScreenState extends State<HomeScreen>{
       ListView(padding:const EdgeInsets.fromLTRB(16,16,16,55),children:[
         Text('Business overview',style:Theme.of(context).textTheme.headlineSmall),
         Text(_businessName),const SizedBox(height:12),
+        if(_displayCurrency!=null&&_displayCurrency!=_currency)
+          Card(child:ListTile(
+            dense:true,leading:const Icon(Icons.currency_exchange),
+            title:Text('Accounting: $_currency  ·  Preferred: $_displayCurrency'),
+            subtitle:const Text('Historical amounts retain their recorded currency.'),
+          )),
+
         if(_error!=null)Padding(padding:const EdgeInsets.all(10),child:Text(_error!)),
         LayoutBuilder(builder:(ctx,c){
           final columns=c.maxWidth>=600?3:2;
