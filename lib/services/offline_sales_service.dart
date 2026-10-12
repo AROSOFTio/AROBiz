@@ -1,0 +1,148 @@
+import 'dart:convert';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:uuid/uuid.dart';
+
+/// Encrypted, per-user and per-business sales queue.
+/// A sale is written to device storage before any network request.
+class OfflineSalesService {
+  OfflineSalesService._();
+  static final instance=OfflineSalesService._();
+  static const _store=FlutterSecureStorage();
+  bool _syncing=false;
+  String _key(String business,String part){
+    final user=Supabase.instance.client.auth.currentUser?.id;
+    if(user==null)throw StateError('Sign in once online before offline sales.');
+    return 'arodesk_offline_sales_${user}_${business}_${part}';
+  }
+  Future<List<Map<String,dynamic>>> _read(String business,String part)async{
+    final raw=await _store.read(key:_key(business,part));
+    if(raw==null)return [];
+    return (jsonDecode(raw) as List).map((v)=>Map<String,dynamic>.from(v as Map)).toList();
+  }
+  Future<void> _write(String business,String part,List<Map<String,dynamic>> rows)async{
+    await _store.write(key:_key(business,part),value:jsonEncode(rows));
+  }
+  Future<void> cacheCatalog(String business,{
+    required List<Map<String,dynamic>> products,
+    required Map<String,double> balances,
+    required String currency,
+    required List<Map<String,dynamic>> transactions,
+  })async{
+    await _store.write(key:_key(business,'snapshot'),value:jsonEncode({
+      'products':products,'balances':balances,'currency':currency,'transactions':transactions,
+      'cached_at':DateTime.now().toUtc().toIso8601String(),
+    }));
+  }
+  Future<Map<String,dynamic>?> snapshot(String business)async{
+    final data=await _store.read(key:_key(business,'snapshot'));
+    return data==null?null:Map<String,dynamic>.from(jsonDecode(data) as Map);
+  }
+  Future<List<Map<String,dynamic>>> pending(String business)=>_read(business,'queue');
+  Future<int> pendingCount(String business)async=>(await pending(business)).length;
+  Future<String> queueSale({
+    required String business,required Map<String,double> quantities,
+    required String customer,required String phone,required String address,
+    required List<Map<String,dynamic>> payments,String? dueDate,
+  })async{
+    if(quantities.isEmpty)throw ArgumentError('Add a product.');
+    if(quantities.values.any((v)=>!v.isFinite||v<=0))throw ArgumentError('Invalid quantity.');
+    final snap=await snapshot(business);
+    if(snap==null)throw StateError('Connect once to download your products before selling offline.');
+    final catalog=List<Map<String,dynamic>>.from(
+      (snap['products'] as List).map((x)=>Map<String,dynamic>.from(x as Map)));
+    final byId={for(final p in catalog)p['id'].toString():p};
+    final stock=Map<String,dynamic>.from(snap['balances'] as Map);
+    final queue=await pending(business);
+    for(final item in queue){
+      final q=Map<String,dynamic>.from(item['quantities'] as Map);
+      for(final e in q.entries){
+        final p=byId[e.key];
+        if(p!=null && p['track_stock']==true){
+          stock[e.key]=((stock[e.key] as num?)?.toDouble()??0)-
+            (e.value as num).toDouble();
+        }
+      }
+    }
+    for(final e in quantities.entries){
+      final p=byId[e.key];
+      if(p==null)throw StateError('Product is missing from the offline catalog.');
+      if(p['track_stock']==true && e.value>((stock[e.key] as num?)?.toDouble()??0)+0.00001){
+        throw StateError('Insufficient offline stock for ${p['name']}.');
+      }
+    }
+    final total=quantities.entries.fold<double>(0,(sum,e)=>
+      sum+((byId[e.key]!['sale_price'] as num).toDouble()*e.value));
+    final paid=payments.fold<double>(0,(sum,p)=>sum+(p['amount'] as num).toDouble());
+    if(paid>total+0.01)throw StateError('Payment exceeds sale total.');
+    final id=const Uuid().v4();
+    final row=<String,dynamic>{
+      'id':id,'business':business,'kind':'sale','customer':customer,'phone':phone,
+      'address':address,'payments':payments,'due_date':dueDate,
+      'quantities':quantities,'currency':snap['currency']??'USD',
+      'total':total,'paid_total':paid,
+      'created_at':DateTime.now().toUtc().toIso8601String(),
+    };
+    queue.add(row);
+    // Failure to persist MUST prevent marking a sale as recorded.
+    await _write(business,'queue',queue);
+    return 'offline:$id';
+  }
+  Future<List<Map<String,dynamic>>> localTransactions(String business)async{
+    final queue=await pending(business);
+    return queue.reversed.map((q)=><String,dynamic>{
+      'id':'offline:${q['id']}','document_number':'LOCAL-${q['id'].toString().substring(0,8).toUpperCase()}',
+      'kind':'sale','customer_name':q['customer'],'currency':q['currency'],
+      'total':q['total'],'paid_total':q['paid_total'],
+      'returned_total':0,'refunded_total':0,
+      'payment_status':'Pending sync','due_date':q['due_date'],
+      'created_at':q['created_at'],
+    }).toList();
+  }
+  Future<Map<String,double>> effectiveBalances(String business,Map<String,double> original)async{
+    final result=Map<String,double>.from(original);
+    final snap=await snapshot(business);
+    if(snap==null)return result;
+    final products=List<Map<String,dynamic>>.from(
+      (snap['products'] as List).map((x)=>Map<String,dynamic>.from(x as Map)));
+    final tracked={for(final p in products)if(p['track_stock']==true)p['id'].toString()};
+    for(final row in await pending(business)){
+      for(final item in Map<String,dynamic>.from(row['quantities'] as Map).entries){
+        if(tracked.contains(item.key)){
+          result[item.key]=(result[item.key]??0)-(item.value as num).toDouble();
+        }
+      }
+    }
+    return result;
+  }
+  /// Server function guarantees atomic checkout + request-id deduplication.
+  /// Retain failed/conflicted transactions for manual resolution, never discard.
+  Future<int> sync(String business)async{
+    if(_syncing)return 0;
+    _syncing=true;
+    var success=0;
+    try{
+      final queue=await pending(business);
+      for(final item in queue){
+        try{
+          final qty=Map<String,dynamic>.from(item['quantities'] as Map);
+          await Supabase.instance.client.rpc('arodesk_checkout_offline_idempotent',params:{
+            'p_request':item['id'],'p_business':business,
+            'p_lines':qty.entries.map((e)=>{'product_id':e.key,'quantity':e.value}).toList(),
+            'p_customer':item['customer'],'p_phone':item['phone'],
+            'p_address':item['address'],'p_payments':item['payments'],
+            'p_due_date':item['due_date'],
+          }).timeout(const Duration(seconds:12));
+          final latest=await pending(business);
+          latest.removeWhere((r)=>r['id']==item['id']);
+          await _write(business,'queue',latest);
+          success++;
+        }catch(_){
+          // A connection or business rule failure must leave the sale queued.
+          break;
+        }
+      }
+      return success;
+    }finally{_syncing=false;}
+  }
+}
