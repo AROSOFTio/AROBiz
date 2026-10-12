@@ -88,9 +88,11 @@ class _SettingsScreenState extends State<SettingsScreen>{
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content:Text('Business settings saved successfully.')));
       widget.onSaved?.call();
-    }catch(_){
+    }catch(e){
       if(mounted)ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content:Text('Unable to save business settings. Check permissions and internet.')));
+        SnackBar(content:Text(e.toString().contains('Accounting currency is locked')
+          ? 'Currency is locked for this business because records already exist. Existing amounts need an audited migration.'
+          : 'Unable to save business settings. Check access and internet.')));
     }finally{if(mounted)setState(()=>_saving=false);}
   }
   Widget _field(TextEditingController c,String label,{TextInputType? type,int lines=1})=>
@@ -129,13 +131,21 @@ class _SettingsScreenState extends State<SettingsScreen>{
           child:Text(e.value,overflow:TextOverflow.ellipsis))).toList(),
       onChanged:(v)=>setState((){
         _country=v;
-        _currency=CountryCurrency.currency(v);
       })),
     const SizedBox(height:14),
-    InputDecorator(
+    const SizedBox(height:14),
+    DropdownButtonFormField<String>(
+      value:CountryCurrency.currencies.contains(_currency)?_currency:null,
+      isExpanded:true,
       decoration:const InputDecoration(
-        labelText:'Business accounting currency',border:OutlineInputBorder()),
-      child:Text(_currency,style:const TextStyle(fontWeight:FontWeight.w700))),
+        labelText:'Accounting currency',prefixIcon:Icon(Icons.account_balance_wallet_outlined),
+        border:OutlineInputBorder()),
+      items:CountryCurrency.currencies.map((code)=>DropdownMenuItem(
+        value:code,child:Text(code))).toList(),
+      onChanged:(v){if(v!=null)setState(()=>_currency=v);}),
+    const SizedBox(height:8),
+    Text('Country does not determine your accounting currency. Changes are locked after products or transactions exist to protect amounts.',
+      style:Theme.of(context).textTheme.bodySmall),
   ]);
   Widget _payments()=>Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[
     Text('Payment information',style:Theme.of(context).textTheme.titleLarge),
