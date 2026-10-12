@@ -128,11 +128,17 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(
-                      Icons.receipt_long_rounded,
-                      size: 64,
-                      color: Theme.of(context).colorScheme.primary,
+                    Image.asset(
+                      'assets/logo.png',
+                      width: 110,
+                      height: 110,
+                      fit: BoxFit.contain,
+                      semanticLabel: 'ARODesk',
                     ),
+                    const SizedBox(height: 4),
+                    const Text('ARODesk',
+                      style: TextStyle(fontSize: 25, fontWeight: FontWeight.w800,
+                        color: Color(0xFF142235)),),
                     const SizedBox(height: 16),
                     Text(
                       'Welcome Back',
