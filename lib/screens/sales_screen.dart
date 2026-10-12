@@ -511,18 +511,16 @@ class _SalesWizardState extends State<_SalesWizard> {
   Widget build(BuildContext context){
     final isSale=widget.kind=='sale';
     return Scaffold(
-      appBar:AppBar(title:Text(isSale?'New sale':'Catalog quotation')),
+      appBar:AppBar(title:Text(isSale?'New sale':'Quotation')),
       resizeToAvoidBottomInset:true,
       body:SafeArea(child:Center(child:ConstrainedBox(
         constraints:const BoxConstraints(maxWidth:650),
         child:Column(children:[
           Padding(padding:const EdgeInsets.all(16),child:Column(
             crossAxisAlignment:CrossAxisAlignment.stretch,children:[
-              Text('Step '+(_step+1).toString()+' of 3'),
-              const SizedBox(height:8),
-              LinearProgressIndicator(value:(_step+1)/3),
+              LinearProgressIndicator(value:(_step+1)/3,minHeight:3),
               const SizedBox(height:12),
-              Text(['Select products','Customer & payment','Review'][_step],
+              Text(['Products','Payment','Review'][_step],
                 style:Theme.of(context).textTheme.titleLarge),
             ])),
           if(_error!=null)Card(color:Theme.of(context).colorScheme.errorContainer,
@@ -534,11 +532,11 @@ class _SalesWizardState extends State<_SalesWizard> {
               TextField(controller:_search,
                 onChanged:(_)=>setState((){}),
                 decoration:const InputDecoration(
-                  hintText:'Search product, SKU or category',
+                  hintText:'Search items',
                   prefixIcon:Icon(Icons.search),border:OutlineInputBorder())),
               const SizedBox(height:8),
               if(widget.products.isEmpty)const Padding(padding:EdgeInsets.all(20),
-                child:Text('Add products in Products & Inventory before using Sales.')),
+                child:Text('No products available')),
               LayoutBuilder(builder:(ctx,constraints){
                 final filtered=widget.products.where((p)=>[
                   p['name'],p['sku'],p['category']
