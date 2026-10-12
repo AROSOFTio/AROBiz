@@ -56,6 +56,19 @@ class InventoryService {
     return result.toString();
   }
 
+  Future<void> updateBusinessProfile({
+    required String name,required String category,
+    required String address,required String phone,required String email,
+  }) async {
+    final profile=DataService().currentProfile;
+    final business=await ensureBusiness(name:profile?.name??'My Business',
+      category:profile?.category??'Other');
+    await _client.from('businesses').update({
+      'name':name.trim(),'category':category,
+      'address':address.trim(),'phone':phone.trim(),'email':email.trim(),
+    }).eq('id',business);
+  }
+
   Future<void> updateBusinessSettings({
     String? countryCode, required String currencyCode,
   }) async {
