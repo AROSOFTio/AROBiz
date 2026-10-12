@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:async';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter/material.dart';
 import 'services/data_service.dart';
 import 'screens/home_screen.dart';
@@ -108,6 +109,7 @@ class AppShellState extends State<AppShell> {
   String? _role;
   String? _activeBusinessName;
   Timer? _paymentSync;
+  static const _roleStore=FlutterSecureStorage();
   @override
   void initState(){
     super.initState();
@@ -137,11 +139,25 @@ class AppShellState extends State<AppShell> {
       final activeId=await InventoryService.instance.ensureBusiness(
         name:profile?.name??'My Business',category:profile?.category??'Other');
       final active=memberships.where((b)=>b['business_id'].toString()==activeId).toList();
+      final role=active.isEmpty?null:active.first['role'].toString();
+      final businessName=active.isEmpty?null:active.first['business_name'].toString();
+      final uid=Supabase.instance.client.auth.currentUser?.id;
+      if(uid!=null&&role!=null){
+        await _roleStore.write(key:'arodesk_cached_role_'+uid,value:role);
+        if(businessName!=null)await _roleStore.write(
+          key:'arodesk_cached_business_name_'+uid,value:businessName);
+      }
       if(mounted)setState((){
-        _role=active.isEmpty?null:active.first['role'].toString();
-        _activeBusinessName=active.isEmpty?null:active.first['business_name'].toString();
+        _role=role;_activeBusinessName=businessName;
       });
-    }catch(_){if(mounted)setState(()=>_role=null);}
+    }catch(_){
+      final uid=Supabase.instance.client.auth.currentUser?.id;
+      if(uid==null)return;
+      final role=await _roleStore.read(key:'arodesk_cached_role_'+uid);
+      final name=await _roleStore.read(key:'arodesk_cached_business_name_'+uid);
+      if(mounted)setState(()=>_role=role);
+      if(mounted)setState(()=>_activeBusinessName=name);
+    }
   }
   bool get _canManage => _role=='owner'||_role=='admin';
   bool get _canWrite => _canManage||_role=='staff';
