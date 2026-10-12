@@ -71,7 +71,23 @@ class _InvoicingAppState extends State<InvoicingApp> {
           foregroundColor: Colors.white,
         ),
       ),
-      home: DataService().isLoggedIn ? const AppShell() : const LoginScreen(),
+      home: DataService().isLoggedIn
+        ? FutureBuilder<bool>(
+          future:Supabase.instance.client.rpc('arodesk_password_change_required')
+            .then((v)=>v==true),
+          builder:(context,snapshot){
+            if(!snapshot.hasData && !snapshot.hasError){
+              return const Scaffold(body:Center(child:CircularProgressIndicator()));
+            }
+            if(snapshot.hasError){
+              return const Scaffold(body:Center(child:Text(
+                'Unable to verify account security. Check your connection and reopen ARODesk.')));
+            }
+            return snapshot.data == true
+              ? const PasswordSecurityScreen(forced:true)
+              : const AppShell();
+          })
+        : const LoginScreen(),
     );
   }
 }
