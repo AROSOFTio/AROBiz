@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/data_service.dart';
+import '../services/auth_security_service.dart';
 import 'register_screen.dart';
 import 'forgot_password_screen.dart';
 import 'password_security_screen.dart';
@@ -51,8 +52,7 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = true);
     try {
       await DataService().login(_identifierCtrl.text.trim(), _passwordCtrl.text);
-      final requiresChange = await Supabase.instance.client
-        .rpc('arodesk_password_change_required') == true;
+      final requiresChange = await AuthSecurityService.instance.mustChangePassword();
       if (mounted) {
         Navigator.of(context).pushReplacement(MaterialPageRoute(
           builder: (_) => requiresChange
