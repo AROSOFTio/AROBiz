@@ -533,29 +533,76 @@ class _SalesWizardState extends State<_SalesWizard> {
               const SizedBox(height:8),
               if(widget.products.isEmpty)const Padding(padding:EdgeInsets.all(20),
                 child:Text('Add products in Products & Inventory before using Sales.')),
-              ...widget.products.where((p)=>[
-                p['name'],p['sku'],p['category']
-              ].any((v)=>v.toString().toLowerCase()
-                .contains(_search.text.trim().toLowerCase()))).map((p){
-                final id=p['id'].toString();
-                final track=p['track_stock']==true;
-                final balance=widget.balances[id]??0;
-                final qty=_cart[id]??0;
-                return Card(child:Padding(padding:const EdgeInsets.all(8),
-                  child:Column(children:[
-                    ListTile(
-                      title:Text(p['name'].toString(),maxLines:2),
-                      subtitle:Text('Price: '+widget.currency+' '+p['sale_price'].toString()+
-                        (track?' · In stock: '+balance.toString():' · Service')),
-                    ),
-                    Row(mainAxisAlignment:MainAxisAlignment.end,children:[
-                      IconButton(onPressed:qty>0?()=>_remove(id):null,
-                        icon:const Icon(Icons.remove_circle_outline)),
-                      TextButton(onPressed:()=>_setQuantity(p),
-                        child:Text(qty.toString(),style:const TextStyle(fontWeight:FontWeight.bold))),
-                      IconButton(onPressed:()=>_add(p),icon:const Icon(Icons.add_circle_outline)),
-                    ]),
-                  ])));
+              LayoutBuilder(builder:(ctx,constraints){
+                final filtered=widget.products.where((p)=>[
+                  p['name'],p['sku'],p['category']
+                ].any((v)=>v.toString().toLowerCase()
+                  .contains(_search.text.trim().toLowerCase()))).toList();
+                final columns=constraints.maxWidth>=750?4:
+                  constraints.maxWidth>=550?3:2;
+                return GridView.builder(
+                  shrinkWrap:true,
+                  physics:const NeverScrollableScrollPhysics(),
+                  itemCount:filtered.length,
+                  gridDelegate:SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount:columns,
+                    mainAxisSpacing:8,crossAxisSpacing:8,
+                    childAspectRatio:constraints.maxWidth<400?0.70:0.82),
+                  itemBuilder:(ctx,index){
+                    final p=filtered[index],id=p['id'].toString();
+                    final qty=_cart[id]??0;
+                    final tracking=p['track_stock']==true;
+                    final available=widget.balances[id]??0;
+                    final imageUrl=InventoryService.instance.publicProductImageUrl(p['image_path']);
+                    return Card(
+                      margin:EdgeInsets.zero,
+                      clipBehavior:Clip.antiAlias,
+                      child:InkWell(
+                        onTap:()=>_add(p),
+                        child:Padding(padding:const EdgeInsets.all(7),
+                          child:Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[
+                            Expanded(child:ClipRRect(
+                              borderRadius:BorderRadius.circular(8),
+                              child:imageUrl==null
+                                ?ColoredBox(color:Theme.of(context).colorScheme.surfaceContainerHigh,
+                                  child:const Icon(Icons.inventory_2_outlined,size:32))
+                                :Image.network(imageUrl,fit:BoxFit.cover,
+                                  cacheWidth:280,
+                                  errorBuilder:(_,__,___)=>const Icon(Icons.inventory_2_outlined)))),
+                            const SizedBox(height:5),
+                            Text(p['name'].toString(),maxLines:2,overflow:TextOverflow.ellipsis,
+                              style:const TextStyle(fontSize:12,fontWeight:FontWeight.w600)),
+                            Text(widget.currency+' '+p['sale_price'].toString(),
+                              maxLines:1,overflow:TextOverflow.ellipsis,
+                              style:const TextStyle(fontSize:11)),
+                            if(tracking)Text('Stock '+available.toString(),maxLines:1,
+                              style:TextStyle(fontSize:10,color:available<=0?Colors.red:null)),
+                            SizedBox(height:35,child:Row(
+                              mainAxisAlignment:MainAxisAlignment.center,children:[
+                                IconButton(
+                                  padding:EdgeInsets.zero,
+                                  visualDensity:VisualDensity.compact,
+                                  constraints:const BoxConstraints(minWidth:32),
+                                  onPressed:qty>0?()=>_remove(id):null,
+                                  icon:const Icon(Icons.remove_circle_outline,size:20)),
+                                Expanded(child:InkWell(
+                                  onTap:()=>_setQuantity(p),
+                                  child:Center(child:Text(qty.toString(),
+                                    style:const TextStyle(fontWeight:FontWeight.bold))))),
+                                IconButton(
+                                  padding:EdgeInsets.zero,
+                                  visualDensity:VisualDensity.compact,
+                                  constraints:const BoxConstraints(minWidth:32),
+                                  onPressed:()=>_add(p),
+                                  icon:const Icon(Icons.add_circle_outline,size:20)),
+                              ],
+                            )),
+                          ]),
+                        ),
+                      ),
+                    );
+                  },
+                );
               }),
             ]):_step==1?Column(children:[
               TextField(controller:_customer,
