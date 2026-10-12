@@ -1,4 +1,4 @@
-# arosoft
+# AROSOFT Innovations Ltd
 
 A new Flutter project.
 
