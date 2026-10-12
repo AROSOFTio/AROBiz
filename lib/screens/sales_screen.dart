@@ -95,10 +95,11 @@ class _SalesScreenState extends State<SalesScreen> {
       ((sale['paid_total']??0) as num).toDouble()+
       ((sale['refunded_total']??0) as num).toDouble();
     final result=await showModalBottomSheet<bool>(
-      context:context,isScrollControlled:true,
+      context:context,isScrollControlled:true,useSafeArea:true,
       builder:(sheetContext)=>StatefulBuilder(builder:(sheetContext,update)=>
         Padding(
-          padding:EdgeInsets.fromLTRB(20,20,20,MediaQuery.viewInsetsOf(sheetContext).bottom+20),
+          padding:EdgeInsets.fromLTRB(20,20,20,MediaQuery.viewInsetsOf(sheetContext).bottom+
+          MediaQuery.viewPaddingOf(sheetContext).bottom+48),
           child:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,children:[
             Text('Receive payment',style:Theme.of(sheetContext).textTheme.titleLarge),
             const SizedBox(height:8),
@@ -167,7 +168,7 @@ class _SalesScreenState extends State<SalesScreen> {
       String method='Cash';
       bool restock=true,busy=false;
       final saved=await showModalBottomSheet<bool>(
-        context:context,isScrollControlled:true,
+        context:context,isScrollControlled:true,useSafeArea:true,
         builder:(ctx)=>StatefulBuilder(builder:(ctx,update){
           final line=lines.where((e)=>e['product_id']==productId).firstOrNull;
           final sold=(line?['quantity'] as num?)?.toDouble()??0;
@@ -175,7 +176,8 @@ class _SalesScreenState extends State<SalesScreen> {
             .fold<double>(0,(v,e)=>v+(e['quantity'] as num).toDouble());
           final remaining=sold-returned;
           return Padding(
-            padding:EdgeInsets.fromLTRB(16,16,16,MediaQuery.viewInsetsOf(ctx).bottom+20),
+            padding:EdgeInsets.fromLTRB(16,16,16,MediaQuery.viewInsetsOf(ctx).bottom+
+              MediaQuery.viewPaddingOf(ctx).bottom+48),
             child:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,children:[
               Text('Return / refund',style:Theme.of(ctx).textTheme.titleLarge),
               const SizedBox(height:8),
