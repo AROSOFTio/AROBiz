@@ -121,6 +121,25 @@ class PdfInvoiceApi {
         break;
     }
 
+    if (size == InvoiceSize.thermal) {
+      // Roll-paper has no finite height: a multipage document cannot paginate it.
+      // Allocate finite paper length according to content instead.
+      final base = 225.0 + invoice.items.fold<double>(0,
+        (h,item)=>h+40+(item.description.length/20).ceil()*11);
+      final extra = (profile?.name.length??0) + (profile?.location?.length??0)
+        + (invoice.clientName.length) + invoice.invoiceNumber.length;
+      final requiredHeight=(base+extra*0.65+invoice.items.length*4)
+        .clamp(350.0,10000.0).toDouble();
+      pdf.addPage(pw.Page(
+        pageFormat:PdfPageFormat(80*PdfPageFormat.mm, requiredHeight),
+        margin:const pw.EdgeInsets.fromLTRB(10,12,10,12),
+        build:(_)=>pw.Column(
+          crossAxisAlignment:pw.CrossAxisAlignment.stretch,
+          mainAxisSize:pw.MainAxisSize.min,
+          children:_buildThermalReceipt(invoice,profile,currencyFormat,logoImage)),
+      ));
+      return pdf.save();
+    }
     pdf.addPage(
       pw.MultiPage(
         pageFormat: pageFormat,
@@ -150,10 +169,10 @@ class PdfInvoiceApi {
     final accent = _accentColor(invoice.type);
 
     return [
-      _buildHeader(invoice, profile, titleFontSize, accent, logo),
+      _buildHeader(invoice, profile, titleFontSize, accent, logo, size),
       pw.SizedBox(height: 0.8 * PdfPageFormat.cm),
       _buildDocumentTitle(invoice, titleFontSize, accent),
-      _buildDocumentInfo(invoice, accent),
+      _buildDocumentInfo(invoice, accent, size),
       pw.SizedBox(height: 0.8 * PdfPageFormat.cm),
       _buildTable(invoice, format, size, accent),
       pw.SizedBox(height: 0.5 * PdfPageFormat.cm),
@@ -170,29 +189,32 @@ class PdfInvoiceApi {
     double fontSize,
     PdfColor accent,
     pw.ImageProvider? logo,
+    InvoiceSize size,
   ) {
+    final compact=size==InvoiceSize.a5;
     return pw.Row(
       mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
       crossAxisAlignment: pw.CrossAxisAlignment.start,
       children: [
         // Logo or business name block
-        pw.Row(
-          crossAxisAlignment: pw.CrossAxisAlignment.center,
+        pw.Expanded(child:pw.Row(
+          crossAxisAlignment: pw.CrossAxisAlignment.start,
           children: [
             if (logo != null) ...[
               pw.Container(
-                height: 60,
-                width: 60,
+                height: compact?36:54,
+                width: compact?36:54,
                 child: pw.Image(logo, fit: pw.BoxFit.contain),
               ),
-              pw.SizedBox(width: 10),
+              pw.SizedBox(width: compact?5:10),
             ],
-            pw.Column(
+            pw.Expanded(child:pw.Column(
               crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
                 pw.Text(
                   profile?.name ?? 'My Business',
-                  style: pw.TextStyle(fontSize: fontSize, fontWeight: pw.FontWeight.bold, color: accent),
+                  style: pw.TextStyle(fontSize: compact?13:fontSize, fontWeight: pw.FontWeight.bold, color: accent),
+                  softWrap:true,
                 ),
                 if (profile?.category != null)
                   pw.Text(profile!.category!, style: pw.TextStyle(fontSize: 11, color: PdfColors.grey700)),
@@ -201,13 +223,14 @@ class PdfInvoiceApi {
                 if (profile?.phone != null)
                   pw.Text('Tel: ${profile!.phone}', style: const pw.TextStyle(fontSize: 11)),
               ],
-            ),
+            )),
           ],
-        ),
+        )),
+        pw.SizedBox(width: compact?8:14),
         // QR code
         pw.Container(
-          height: 55,
-          width: 55,
+          height: compact?38:50,
+          width: compact?38:50,
           child: pw.BarcodeWidget(
             barcode: pw.Barcode.qrCode(),
             data: invoice.invoiceNumber,
@@ -233,34 +256,36 @@ class PdfInvoiceApi {
   }
 
   // ─── Invoice info (billed to / ref) ─────────────────────────────────────
-  static pw.Widget _buildDocumentInfo(Invoice invoice, PdfColor accent) {
+  static pw.Widget _buildDocumentInfo(Invoice invoice, PdfColor accent, InvoiceSize size) {
+    final compact=size==InvoiceSize.a5;
     return pw.Padding(
       padding: const pw.EdgeInsets.only(top: 12),
       child: pw.Row(
         mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
         crossAxisAlignment: pw.CrossAxisAlignment.start,
         children: [
-          pw.Column(
+          pw.Expanded(child:pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.start,
             children: [
               pw.Text(_billedToLabel(invoice.type),
                   style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 12, color: accent)),
               pw.Text(invoice.clientName, style: const pw.TextStyle(fontSize: 12)),
               if (invoice.clientPhone.isNotEmpty)
-                pw.Text(invoice.clientPhone, style: const pw.TextStyle(fontSize: 12)),
+                pw.Text(invoice.clientPhone, style: pw.TextStyle(fontSize: compact?9:12),softWrap:true),
             ],
-          ),
-          pw.Column(
+          )),
+          pw.SizedBox(width:compact?8:18),
+          pw.Expanded(child:pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.start,
             children: [
               pw.Text('${_docRefLabel(invoice.type)} ${invoice.invoiceNumber}',
-                  style: const pw.TextStyle(fontSize: 12)),
+                  style: pw.TextStyle(fontSize: compact?9:12),softWrap:true),
               pw.Text('Date: ${DateFormat.yMd().format(invoice.issueDate)}',
-                  style: const pw.TextStyle(fontSize: 12)),
+                  style: pw.TextStyle(fontSize: compact?9:12)),
               if (invoice.paymentOption != null)
-                pw.Text('Payment: ${invoice.paymentOption}', style: const pw.TextStyle(fontSize: 12)),
+                pw.Text('Payment: ${invoice.paymentOption}', style: pw.TextStyle(fontSize: compact?9:12),softWrap:true),
             ],
-          ),
+          )),
         ],
       ),
     );
@@ -281,10 +306,12 @@ class PdfInvoiceApi {
       headers: headers,
       data: data,
       border: pw.TableBorder.all(color: PdfColors.grey300),
-      headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 12, color: PdfColors.white),
+      headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: size==InvoiceSize.a5?8:11, color: PdfColors.white),
       headerDecoration: pw.BoxDecoration(color: accent),
-      cellHeight: size == InvoiceSize.a5 ? 20 : 30,
-      cellStyle: const pw.TextStyle(fontSize: 11),
+      cellHeight: size == InvoiceSize.a5 ? 27 : 30,
+      columnWidths: {0: const pw.FlexColumnWidth(2.4),1: const pw.FlexColumnWidth(0.65),
+        2: const pw.FlexColumnWidth(1.55),3: const pw.FlexColumnWidth(1.55)},
+      cellStyle: pw.TextStyle(fontSize:size==InvoiceSize.a5?8:10),
       cellAlignments: {
         0: pw.Alignment.centerLeft,
         1: pw.Alignment.centerRight,
