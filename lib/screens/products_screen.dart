@@ -1,4 +1,6 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import '../services/data_service.dart';
 import '../services/inventory_service.dart';
 
@@ -208,6 +210,7 @@ class _ProductWizardState extends State<_ProductWizard>{
   String _type='product';
   String? _error;
   bool _track=true,_busy=false;
+  XFile? _image;
   @override
   void initState(){
     super.initState();
@@ -236,17 +239,27 @@ class _ProductWizardState extends State<_ProductWizard>{
     if(_step==1&&(open*1000).roundToDouble()!=open*1000){setState(()=>_error='Stock supports up to three decimal places.');return;}
     setState((){_error=null;_step++;});
   }
+  Future<void> _pickImage(ImageSource source)async{
+    try{
+      final image=await ImagePicker().pickImage(source:source,
+        imageQuality:62,maxWidth:640,maxHeight:640);
+      if(image!=null && mounted)setState(()=>_image=image);
+    }catch(_){if(mounted)setState(()=>_error='Camera or gallery access was unsuccessful.');}
+  }
   Future<void> _save()async{
     if(_busy)return;
     setState((){_busy=true;_error=null;});
     try{
-      await InventoryService.instance.saveProduct(widget.businessId,
+      final savedId=await InventoryService.instance.saveProduct(widget.businessId,
         id:widget.original?['id']?.toString(),name:_name.text,sku:_sku.text,
         category:_category.text,type:_type,unit:_unit.text,
         salePrice:double.parse(_sale.text),costPrice:double.parse(_cost.text),
         reorderLevel:double.parse(_reorder.text),trackStock:_track,
         openingStock:widget.original==null&&_track&&_type!='service'?
           (double.tryParse(_opening.text.trim())??0):0);
+      if(_image!=null){
+        await InventoryService.instance.uploadProductImage(widget.businessId,savedId,_image!);
+      }
       if(mounted)Navigator.pop(context,true);
     }catch(e){if(mounted)setState(()=>_error=e.toString().toLowerCase().contains('unique')
       ? 'This SKU is already in use.':'Cannot save this item. Check the details and retry.');}
@@ -273,6 +286,26 @@ class _ProductWizardState extends State<_ProductWizard>{
           keyboardDismissBehavior:ScrollViewKeyboardDismissBehavior.onDrag,
           padding:EdgeInsets.fromLTRB(20,8,20,MediaQuery.viewInsetsOf(context).bottom>0?120:20),
           child:_step==0?Column(children:[
+            Container(height:110,width:110,
+              clipBehavior:Clip.antiAlias,
+              decoration:BoxDecoration(borderRadius:BorderRadius.circular(14),
+                color:Theme.of(context).colorScheme.surfaceContainerHigh),
+              child:_image!=null?Image.file(File(_image!.path),fit:BoxFit.cover):
+                (widget.original?['image_path']!=null
+                  ?Image.network(InventoryService.instance.publicProductImageUrl(
+                    widget.original!['image_path'])!,fit:BoxFit.cover,
+                    errorBuilder:(_,__,___)=>const Icon(Icons.image_outlined,size:40))
+                  :const Icon(Icons.image_outlined,size:40))),
+            const SizedBox(height:8),
+            Wrap(spacing:8,alignment:WrapAlignment.center,children:[
+              OutlinedButton.icon(onPressed:()=>_pickImage(ImageSource.camera),
+                icon:const Icon(Icons.camera_alt_outlined),label:const Text('Camera')),
+              OutlinedButton.icon(onPressed:()=>_pickImage(ImageSource.gallery),
+                icon:const Icon(Icons.photo_library_outlined),label:const Text('Gallery')),
+            ]),
+            const Text('Automatically compressed to 640 px / max 1 MB',
+              style:TextStyle(fontSize:11)),
+            const SizedBox(height:12),
             _field(_name,'Product / service name'),
             DropdownButtonFormField<String>(value:_type,
               decoration:const InputDecoration(labelText:'Type',border:OutlineInputBorder()),
@@ -291,6 +324,7 @@ class _ProductWizardState extends State<_ProductWizard>{
             _field(_cost,'Cost price ('+widget.currency+')',number:true),
             if(_type!='service')...[
               _field(_reorder,'Low-stock alert level',number:true),
+              if(widget.original==null&&_track)_field(_opening,'Opening stock',number:true),
               SwitchListTile(title:const Text('Track quantity'),value:_track,
                 onChanged:(v)=>setState(()=>_track=v)),
             ],
