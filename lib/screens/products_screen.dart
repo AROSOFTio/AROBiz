@@ -19,13 +19,14 @@ class _ProductsScreenState extends State<ProductsScreen> {
   Map<String,double> _balances={};
   bool _loading=true;
   bool _launchedItem=false;
+  bool _canManageCatalog=false;
   String _baseCurrency='USD';
   String _query='';
   @override
   void initState(){super.initState();_load();}
   String _message(Object e){
     final t=e.toString().toLowerCase();
-    if(t.contains('unique')||t.contains('duplicate'))return 'The SKU is already used by this business.';
+    if(t.contains('unique')||t.contains('duplicate'))return 'This product name or SKU already exists. Select it and receive stock instead.';
     if(t.contains('insufficient stock'))return 'Not enough stock available.';
     if(t.contains('permission')||t.contains('not allowed'))return 'You do not have permission for this action.';
     return 'Unable to complete this action. Check your connection and try again.';
@@ -38,12 +39,14 @@ class _ProductsScreenState extends State<ProductsScreen> {
       final productsRequest=InventoryService.instance.products(id);
       final balancesRequest=InventoryService.instance.balances(id);
       final currencyRequest=InventoryService.instance.businessCurrency(id);
+      final manageRequest=InventoryService.instance.canManageCatalog(id);
       final products=await productsRequest;
       final balances=await balancesRequest;
       final currency=await currencyRequest;
+      final canManage=await manageRequest;
       if(mounted){
-        setState((){_businessId=id;_products=products;_balances=balances;_baseCurrency=currency;});
-        if(widget.newItemOnOpen&&!widget.readOnly&&!_launchedItem){
+        setState((){_businessId=id;_products=products;_balances=balances;_baseCurrency=currency;_canManageCatalog=canManage;});
+        if(widget.newItemOnOpen&&!widget.readOnly&&canManage&&!_launchedItem){
           _launchedItem=true;
           WidgetsBinding.instance.addPostFrameCallback((_){if(mounted)_edit();});
         }
@@ -52,7 +55,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
     finally{if(mounted)setState(()=>_loading=false);}
   }
   Future<void> _edit([Map<String,dynamic>? product])async{
-    if(_businessId==null)return;
+    if(_businessId==null||!_canManageCatalog)return;
     final ok=await Navigator.push<bool>(context,MaterialPageRoute(
       builder:(_)=>_ProductWizard(businessId:_businessId!,original:product,currency:_baseCurrency)));
     if(ok==true)await _load();
@@ -178,7 +181,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
       (_balances[p['id'].toString()]??0)<=(p['reorder_level'] as num).toDouble()).length;
     return Scaffold(
       resizeToAvoidBottomInset:true,
-      floatingActionButton:_businessId==null||widget.readOnly?null:FloatingActionButton.extended(
+      floatingActionButton:_businessId==null||widget.readOnly||!_canManageCatalog?null:FloatingActionButton.extended(
         onPressed:()=>_edit(),icon:const Icon(Icons.add),label:const Text('New item')),
       body:RefreshIndicator(onRefresh:_load,child:_loading?
         const Center(child:CircularProgressIndicator()):
@@ -234,14 +237,14 @@ class _ProductsScreenState extends State<ProductsScreen> {
                       Text(_baseCurrency+' '+p['sale_price'].toString(),
                         maxLines:1,overflow:TextOverflow.ellipsis,
                         style:Theme.of(context).textTheme.labelMedium),
-                      Text(track?'Stock: $qty undefined':'Service',
+                      Text(track?'Stock: $qty ${p['unit']}':'Service',
                         maxLines:1,overflow:TextOverflow.ellipsis,
                         style:TextStyle(fontSize:11,
                           color:track&&qty<=(p['reorder_level'] as num).toDouble()
                             ?Colors.deepOrange:null)),
                       const SizedBox(height:8),
                       Wrap(spacing:3,runSpacing:2,children:[
-                        if(!widget.readOnly)IconButton(
+                        if(!widget.readOnly&&_canManageCatalog)IconButton(
                           visualDensity:VisualDensity.compact,
                           tooltip:'Edit item',onPressed:()=>_edit(p),
                           icon:const Icon(Icons.edit_outlined,size:20)),
@@ -286,10 +289,12 @@ class _ProductWizardState extends State<_ProductWizard>{
   String _type='product';
   String? _error;
   bool _track=true,_busy=false;
+  List<String> _categories=[];
   XFile? _image;
   @override
   void initState(){
     super.initState();
+    _loadCategories();
     final p=widget.original;
     if(p!=null){
       _name.text=p['name'].toString();_sku.text=(p['sku']??'').toString();
@@ -298,6 +303,36 @@ class _ProductWizardState extends State<_ProductWizard>{
       _reorder.text=p['reorder_level'].toString();_type=p['item_type'].toString();
       _track=p['track_stock']==true;
     }else{_unit.text='pcs';_sale.text='0';_cost.text='0';_reorder.text='0';}
+  }
+  Future<void> _loadCategories()async{
+    try {
+      final names=await InventoryService.instance.productCategories(widget.businessId);
+      if(mounted)setState(()=>_categories=names);
+    }catch(_){/* Existing category stays available when offline. */}
+  }
+  Future<void> _addCategory()async{
+    final controller=TextEditingController();
+    final name=await showDialog<String>(context:context,builder:(ctx)=>AlertDialog(
+      title:const Text('New category'),
+      content:TextField(controller:controller,autofocus:true,
+        decoration:const InputDecoration(labelText:'Category name')),
+      actions:[
+        TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('Cancel')),
+        FilledButton(onPressed:()=>Navigator.pop(ctx,controller.text.trim()),
+          child:const Text('Add')),
+      ],
+    ));
+    controller.dispose();
+    if(name==null||name.isEmpty)return;
+    try{
+      await InventoryService.instance.addProductCategory(widget.businessId,name);
+      _category.text=name;
+      await _loadCategories();
+    }catch(e){
+      if(mounted)setState(()=>_error=e.toString().toLowerCase().contains('unique')
+        ? 'Category already exists. Select it from the list.'
+        : 'Unable to create category. Check access and connection.');
+    }
   }
   @override
   void dispose(){for(final c in [_name,_sku,_category,_unit,_sale,_cost,_reorder,_opening]){c.dispose();}super.dispose();}
@@ -338,7 +373,7 @@ class _ProductWizardState extends State<_ProductWizard>{
       }
       if(mounted)Navigator.pop(context,true);
     }catch(e){if(mounted)setState(()=>_error=e.toString().toLowerCase().contains('unique')
-      ? 'This SKU is already in use.':'Cannot save this item. Check the details and retry.');}
+      ? 'This product name or SKU already exists. Select the existing product and receive stock.':'Cannot save this item. Check the details and retry.');}
     finally{if(mounted)setState(()=>_busy=false);}
   }
   @override
@@ -394,7 +429,22 @@ class _ProductWizardState extends State<_ProductWizard>{
               onChanged:(v)=>setState((){_type=v??'product';if(_type=='service')_track=false;}),
             ),
             const SizedBox(height:14),_field(_sku,'SKU (optional)'),
-            _field(_category,'Category'),_field(_unit,'Unit e.g. pcs, kg, litre, hour'),
+            Row(children:[
+              Expanded(child:DropdownButtonFormField<String>(
+                value:_categories.contains(_category.text)?_category.text:null,
+                isExpanded:true,
+                decoration:const InputDecoration(labelText:'Category',
+                  border:OutlineInputBorder()),
+                items:_categories.map((value)=>DropdownMenuItem(
+                  value:value,child:Text(value,overflow:TextOverflow.ellipsis))).toList(),
+                onChanged:(value){if(value!=null)setState(()=>_category.text=value);},
+              )),
+              const SizedBox(width:8),
+              IconButton.filledTonal(tooltip:'New category',onPressed:_addCategory,
+                icon:const Icon(Icons.add)),
+            ]),
+            const SizedBox(height:14),
+            _field(_unit,'Unit e.g. pcs, kg, litre, hour'),
           ]):_step==1?Column(children:[
             _field(_sale,'Selling price ('+widget.currency+')',number:true),
             _field(_cost,'Cost price ('+widget.currency+')',number:true),
