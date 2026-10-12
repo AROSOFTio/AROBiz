@@ -1,5 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'data_service.dart';
 import 'country_currency.dart';
 
@@ -95,7 +97,7 @@ class InventoryService {
 
   Future<List<Map<String, dynamic>>> products(String businessId) async {
     final result = await _client.from('arodesk_products')
-        .select('id,name,sku,barcode,category,item_type,unit,sale_price,cost_price,reorder_level,track_stock,active')
+        .select('id,name,sku,barcode,category,item_type,unit,sale_price,cost_price,reorder_level,track_stock,active,image_path')
         .eq('business_id', businessId).eq('active', true).order('name');
     return List<Map<String, dynamic>>.from(result);
   }
@@ -107,7 +109,7 @@ class InventoryService {
       (row['quantity'] as num).toDouble()};
   }
 
-  Future<void> saveProduct(String businessId, {
+  Future<String> saveProduct(String businessId, {
     String? id,
     required String name,
     String? sku,
@@ -138,17 +140,36 @@ class InventoryService {
     };
     if (id == null) {
       if(openingStock>0 && trackStock && type!='service'){
-        await _client.rpc('arodesk_create_product_with_stock',params:{
+        final created=await _client.rpc('arodesk_create_product_with_stock',params:{
           'p_item':values,'p_opening':openingStock,
         });
+        return created.toString();
       }else{
-        await _client.from('arodesk_products').insert(values);
+        final created=await _client.from('arodesk_products')
+          .insert(values).select('id').single();
+        return created['id'].toString();
       }
     } else {
       // RLS and business scope prevent cross-tenant edits.
       await _client.from('arodesk_products').update(values)
           .eq('business_id', businessId).eq('id', id);
+      return id;
     }
+  }
+
+  String? publicProductImageUrl(dynamic path){
+    if(path==null||path.toString().isEmpty)return null;
+    return _client.storage.from('arodesk-product-images').getPublicUrl(path.toString());
+  }
+
+  Future<void> uploadProductImage(String businessId,String productId,XFile file)async{
+    final bytes=await file.readAsBytes();
+    if(bytes.length>1024*1024)throw ArgumentError('Image exceeds 1 MB. Choose a smaller image.');
+    final path='$businessId/$productId.jpg';
+    await _client.storage.from('arodesk-product-images').uploadBinary(
+      path,bytes,fileOptions:const FileOptions(upsert:true,contentType:'image/jpeg'));
+    await _client.from('arodesk_products').update({'image_path':path})
+      .eq('business_id',businessId).eq('id',productId);
   }
 
   Future<void> postStock(String businessId, String productId, {
