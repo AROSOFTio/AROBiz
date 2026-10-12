@@ -118,8 +118,8 @@ class _HomeScreenState extends State<HomeScreen>{
           final columns=c.maxWidth>=600?3:2;
           final w=(c.maxWidth-10*(columns-1))/columns;
           return Wrap(spacing:10,runSpacing:10,children:[
-            SizedBox(width:w,child:_metric('Net sales',money.format(_sales),Icons.trending_up)),
-            SizedBox(width:w,child:_metric('Collected',money.format(_collected),Icons.account_balance_wallet_outlined)),
+            SizedBox(width:w,child:_metric('Recent net sales',money.format(_sales),Icons.trending_up)),
+            SizedBox(width:w,child:_metric('Recent collections',money.format(_collected),Icons.account_balance_wallet_outlined)),
             SizedBox(width:w,child:_metric('Outstanding',money.format(_outstanding),Icons.receipt_long)),
             SizedBox(width:w,child:_metric('Sales',_saleCount.toString(),Icons.point_of_sale)),
             SizedBox(width:w,child:_metric('Open debtors',_debtorCount.toString(),Icons.people_outline)),
@@ -154,10 +154,7 @@ class _HomeScreenState extends State<HomeScreen>{
                 style:Theme.of(context).textTheme.labelSmall),
             ]),
         )),
-        const SizedBox(height:10),
-        Text('Summary of the latest 100 catalog transactions in the business accounting currency. '
-          'Standalone documents are excluded.',
-          style:Theme.of(context).textTheme.bodySmall),
+
       ]),
     );
   }
