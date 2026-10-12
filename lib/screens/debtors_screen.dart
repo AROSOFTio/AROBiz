@@ -3,8 +3,6 @@ import 'package:intl/intl.dart';
 import '../services/data_service.dart';
 import '../services/inventory_service.dart';
 import '../services/sales_service.dart';
-import 'invoice_preview_screen.dart';
-import '../models/invoice.dart';
 
 class DebtorsScreen extends StatefulWidget {
   const DebtorsScreen({super.key});
