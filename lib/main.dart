@@ -487,7 +487,7 @@ class AppShellState extends State<AppShell> {
                     children:[
                       _SubNavItem(label:'Product catalog',icon:Icons.list_alt_outlined,
                         onTap:()=>_onItemTapped(2)),
-                      if(_canWrite)_SubNavItem(label:'Add new product',icon:Icons.add_box_outlined,
+                      if(_canManage)_SubNavItem(label:'Add new product',icon:Icons.add_box_outlined,
                         onTap:(){
                           Navigator.pop(context);
                           Navigator.push(context,MaterialPageRoute(
