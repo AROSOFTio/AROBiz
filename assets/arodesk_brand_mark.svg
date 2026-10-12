@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1254" height="1254" viewBox="0 0 1254 1254">
+  <defs>
+    <linearGradient id="upper" x1="0.2" y1="0.12" x2="0.93" y2="0.97" gradientUnits="objectBoundingBox">
+      <stop offset="0" stop-color="#009dff"/><stop offset="0.43" stop-color="#006fff"/><stop offset="1" stop-color="#00289a"/>
+    </linearGradient>
+    <linearGradient id="middle" x1="0.15" y1="0.24" x2="0.92" y2="0.94" gradientUnits="objectBoundingBox">
+      <stop offset="0" stop-color="#009aff"/><stop offset="0.6" stop-color="#0077ff"/><stop offset="1" stop-color="#0043d6"/>
+    </linearGradient>
+    <linearGradient id="foot" x1="0" y1="0" x2="1" y2="1" gradientUnits="objectBoundingBox">
+      <stop offset="0" stop-color="#3b4555"/><stop offset="1" stop-color="#10151e"/>
+    </linearGradient>
+  </defs>
+  <!-- Brand icon derived from the user-supplied three-ribbon Arodesk design -->
+  <path fill="url(#upper)" d="M 326,539 C 351,485 385,435 429,388 C 481,330 545,335 631,340 C 736,333 820,377 891,477 C 971,584 1082,767 1179,924 C 1198,956 1188,987 1164,1004 C 1137,1026 1071,1017 1032,1016 C 976,1016 944,994 914,956 C 842,864 753,699 676,610 C 639,567 605,549 553,535 C 491,514 409,522 326,539 Z"/>
+  <path fill="url(#middle)" d="M 169,780 C 193,727 222,681 259,647 C 311,597 367,582 452,587 C 539,580 607,627 653,677 C 736,783 811,918 888,1021 C 816,1019 763,1022 708,1022 C 646,1021 611,996 584,958 C 541,900 516,825 469,797 C 419,761 345,763 291,765 C 249,764 212,768 169,780 Z"/>
+  <path fill="url(#foot)" d="M 67,1010 C 87,948 108,914 130,890 C 165,844 198,829 237,829 L 390,829 C 424,829 443,842 442,861 C 443,886 416,916 382,949 C 349,981 303,1008 269,1010 Z"/>
+</svg>
