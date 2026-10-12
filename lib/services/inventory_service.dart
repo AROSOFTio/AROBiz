@@ -13,8 +13,8 @@ Uint8List _compressProductPhoto(Uint8List source) {
   var photo=decoded;
   if(photo.width>640||photo.height>640){
     final ratio=640/photo.width.clamp(photo.height,double.infinity);
-    final width=(photo.width*ratio).round().clamp(1,640);
-    final height=(photo.height*ratio).round().clamp(1,640);
+    final width=(photo.width*ratio).round().clamp(1,640).toInt();
+    final height=(photo.height*ratio).round().clamp(1,640).toInt();
     photo=img.copyResize(photo,width:width,height:height);
   }
   for(final quality in [76,60,48,36]){
