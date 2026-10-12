@@ -14,6 +14,7 @@ import 'screens/create_invoice_screen.dart';
 import 'screens/products_screen.dart';
 import 'screens/sales_screen.dart';
 import 'screens/debtors_screen.dart';
+import 'screens/accounting_screen.dart';
 import 'screens/account_privacy_screen.dart';
 import 'screens/saas_admin_screen.dart';
 import 'services/saas_admin_service.dart';
@@ -556,6 +557,14 @@ class AppShellState extends State<AppShell> {
                         }),
                     ],
                   ),
+                  if(_canWrite)
+                    _NavItem(icon:Icons.account_balance_outlined,
+                      label:'Accounting',isSelected:false,
+                      onTap:(){
+                        Navigator.pop(context);
+                        Navigator.push(context,MaterialPageRoute(
+                          builder:(_)=>const AccountingScreen()));
+                      }),
                   if(_canManage)_NavGroup(
                     icon:Icons.settings_rounded,
                     label:'Settings',
