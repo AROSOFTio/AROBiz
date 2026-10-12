@@ -33,10 +33,14 @@ class _SalesScreenState extends State<SalesScreen> {
       final profile=DataService().currentProfile;
       final business=await InventoryService.instance.ensureBusiness(
         name:profile?.name??'My Business',category:profile?.category??'Other');
-      final products=await InventoryService.instance.products(business);
-      final balances=await InventoryService.instance.balances(business);
-      final currency=await InventoryService.instance.businessCurrency(business);
-      final transactions=await SalesService.instance.list(business);
+      final productRequest=InventoryService.instance.products(business);
+      final stockRequest=InventoryService.instance.balances(business);
+      final currencyRequest=InventoryService.instance.businessCurrency(business);
+      final salesRequest=SalesService.instance.list(business);
+      final products=await productRequest;
+      final balances=await stockRequest;
+      final currency=await currencyRequest;
+      final transactions=await salesRequest;
       if(mounted)setState((){
         _businessId=business;_products=products;_balances=balances;_transactions=transactions;_baseCurrency=currency;
       });
