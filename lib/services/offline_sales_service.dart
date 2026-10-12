@@ -107,6 +107,10 @@ class OfflineSalesService {
     final byId={for(final p in catalog)p['id'].toString():p};
     final stock=Map<String,dynamic>.from(snap['balances'] as Map);
     final queue=await pending(business);
+    for(final move in await pendingStock(business)){
+      final id=move['product'].toString();
+      stock[id]=((stock[id] as num?)?.toDouble()??0)+(move['delta'] as num).toDouble();
+    }
     for(final item in queue){
       final q=Map<String,dynamic>.from(item['quantities'] as Map);
       for(final e in q.entries){
