@@ -31,6 +31,12 @@ jobs:
           curl --fail --silent --show-error --retry 3 --max-time 15 -H "apikey: $SUPABASE_PUBLISHABLE_KEY" "$SUPABASE_URL/auth/v1/health" > /dev/null
           printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 -d > android/app/release.jks
           printf 'storeFile=release.jks\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n' "$ANDROID_STORE_PASSWORD" "$ANDROID_KEY_ALIAS" "$ANDROID_KEY_PASSWORD" > android/key.properties
+      - name: Generate branded launcher and splash resources
+        run: |
+          python3 -m pip install --break-system-packages --user "cairosvg>=2.7,<3" "Pillow>=10,<12"
+          python3 tool/generate_brand_assets.py
+          flutter pub get
+          dart run flutter_launcher_icons
       - name: Fetch dependencies and analyze
         run: |
           flutter pub get
