@@ -162,6 +162,7 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Scaffold(
+      resizeToAvoidBottomInset:true,
       backgroundColor: theme.colorScheme.background,
       appBar: AppBar(title: Text('Create New ${_selectedType.name}')),
       body: SafeArea(child: Center(child: ConstrainedBox(
@@ -181,7 +182,8 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
             ]),
           ),
           Expanded(child: ListView(
-          padding: const EdgeInsets.all(16.0),
+          keyboardDismissBehavior:ScrollViewKeyboardDismissBehavior.onDrag,
+          padding: EdgeInsets.fromLTRB(16,16,16,MediaQuery.viewInsetsOf(context).bottom>0?170:35),
           children: [
             if (_step == 0) ...[
             // Document Type Selector
@@ -243,10 +245,10 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
                       trailing: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Text(
-                            CountryCurrency.money(item.total, _currency),
+                          ConstrainedBox(constraints:const BoxConstraints(maxWidth:105),child:Text(
+                            CountryCurrency.money(item.total, _currency),maxLines:2,overflow:TextOverflow.ellipsis,
                             style: const TextStyle(fontWeight: FontWeight.bold),
-                          ),
+                          )),
                           IconButton(
                             icon: const Icon(Icons.delete, color: Colors.red),
                             onPressed: () => setState(() => _items.removeAt(index)),
@@ -379,7 +381,7 @@ class _CreateInvoiceScreenState extends State<CreateInvoiceScreen> {
               decoration: InputDecoration(
                 labelText: 'Discount Amount',
                 border: OutlineInputBorder(),
-                prefixText: 'UGX ',
+                prefixText: _currency + ' ',
               ),
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
             ),
