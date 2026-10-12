@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../main.dart';
 import '../services/data_service.dart';
 import '../services/country_currency.dart';
@@ -179,7 +180,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
         },
       ),
       const SizedBox(height: 18),
-      const Text('You will receive a confirmation email before your first login.'),
+      TextButton.icon(
+      onPressed:()=>launchUrl(Uri.parse(
+        'https://github.com/AROSOFTio/AROBiz/blob/main/play-compliance/README.md#privacy-policy'),
+        mode:LaunchMode.externalApplication),
+      icon:const Icon(Icons.privacy_tip_outlined,size:17),
+      label:const Text('Privacy policy')),
+
     ]),
   );
 
@@ -236,8 +243,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _item('Country', CountryCurrency.countries[_country]??'Not selected'),
     _item('Currency', CountryCurrency.currency(_country)),
     _item('Location', _location.text.trim().isEmpty ? 'Not provided' : _location.text.trim()),
-    const SizedBox(height: 16),
-    const Text('After creating your account, check your email and confirm your address.'),
+
   ]);
 
   Widget _item(String label, String value) => Padding(
@@ -273,8 +279,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     color: Theme.of(context).colorScheme.primary,
                   )),
                 const SizedBox(height: 8),
-                Text(_step == 0 ? 'Create your secure account.' :
-                  _step == 1 ? 'Tell us about your business.' : 'Confirm before registering.'),
+
               ]),
             ),
             if (_noticeText != null)
