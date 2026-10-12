@@ -28,10 +28,11 @@ class _DebtorsScreenState extends State<DebtorsScreen> {
     try{
       final profile=DataService().currentProfile;
       final b=await InventoryService.instance.ensureBusiness(name:profile?.name??'My Business',
-        category:profile?.category??'Other');
+        category:profile?.category??'Other').timeout(const Duration(seconds:8));
       _business=b;
       await OfflinePaymentService.instance.sync(b);
-      final rows=await SalesService.instance.debtors(b);
+      final rows=await SalesService.instance.debtors(b)
+        .timeout(const Duration(seconds:8));
       await OfflinePaymentService.instance.cacheDebtors(b,rows);
       final queued=await OfflinePaymentService.instance.pending(b);
       final amounts=<String,double>{};
