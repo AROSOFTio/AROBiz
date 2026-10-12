@@ -5,7 +5,8 @@ import '../services/data_service.dart';
 import 'invoice_preview_screen.dart';
 
 class InvoiceListScreen extends StatefulWidget {
-  const InvoiceListScreen({super.key});
+  final bool readOnly;
+  const InvoiceListScreen({super.key,this.readOnly=false});
   @override
   State<InvoiceListScreen> createState()=>_InvoiceListScreenState();
 }
@@ -24,6 +25,7 @@ class _InvoiceListScreenState extends State<InvoiceListScreen> {
     )))??false;
 
   Future<void> _action(Invoice document,String action) async {
+    if(widget.readOnly && action!='preview') return;
     if(action=='preview'){
       await Navigator.push(context,MaterialPageRoute(
         builder:(_)=>InvoicePreviewScreen(invoice:document)));
@@ -97,7 +99,7 @@ class _InvoiceListScreenState extends State<InvoiceListScreen> {
               title:Text(d.invoiceNumber,maxLines:1,overflow:TextOverflow.ellipsis),
               subtitle:Text('${d.clientName} · ${d.type.name}\n${DateFormat.yMMMd().format(d.issueDate)} · $total'),
               isThreeLine:true,
-              trailing:PopupMenuButton<String>(
+              trailing:widget.readOnly ? const Icon(Icons.visibility_outlined) : PopupMenuButton<String>(
                 tooltip:'Manage document',
                 onSelected:(action)=>_action(d,action),
                 itemBuilder:(_)=>[
