@@ -1,4 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'data_service.dart';
 import 'country_currency.dart';
 
@@ -8,6 +9,25 @@ class InventoryService {
   static final InventoryService instance = InventoryService._();
 
   SupabaseClient get _client => Supabase.instance.client;
+
+  Future<String?> preferredBusinessId() async {
+    final uid=_client.auth.currentUser?.id;
+    if(uid==null)return null;
+    final prefs=await SharedPreferences.getInstance();
+    return prefs.getString('active_business_'+uid);
+  }
+
+  Future<void> selectBusiness(String id) async {
+    final uid=_client.auth.currentUser?.id;
+    if(uid==null)throw StateError('Sign in first.');
+    final rows=await _client.rpc('arodesk_my_businesses');
+    if(!(rows as List).any((b)=>b['business_id'].toString()==id)){
+      throw StateError('Business not available for this user.');
+    }
+    final prefs=await SharedPreferences.getInstance();
+    await prefs.setString('active_business_'+uid,id);
+  }
+
 
   Future<String> ensureBusiness({
     required String name,
@@ -20,14 +40,19 @@ class InventoryService {
         .from('business_memberships')
         .select('business_id')
         .eq('user_id', user.id)
-        .limit(1);
-    if (memberships.isNotEmpty) return memberships.first['business_id'].toString();
+        .order('created_at').limit(100);
+    if (memberships.isNotEmpty) {
+      final chosen=await preferredBusinessId();
+      final selected=memberships.where((m)=>m['business_id'].toString()==chosen).toList();
+      return (selected.isNotEmpty?selected.first:memberships.first)['business_id'].toString();
+    }
     // Creates the business and its owner membership in a single DB transaction.
     final result = await _client.rpc('arodesk_create_business', params: {
       'p_name': name.trim().isEmpty ? 'My Business' : name.trim(),
       'p_category': category.trim().isEmpty ? 'Other' : category.trim(),
       'p_currency': currency ?? DataService().currentProfile?.currencyCode ?? CountryCurrency.currency(DataService().currentProfile?.countryCode),
     });
+    await selectBusiness(result.toString());
     return result.toString();
   }
 
