@@ -108,23 +108,67 @@ class _InvoicingAppState extends State<InvoicingApp> {
       title: 'ARODesk',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF006FFF), // Deep Professional Blue
-          secondary: const Color(0xFF009CFF),
-          tertiary: const Color(0xFFDCEEFF),
-          background: const Color(0xFFF9F9F9),
+        useMaterial3:true,
+        scaffoldBackgroundColor:const Color(0xFFF7F8FA),
+        colorScheme:ColorScheme.fromSeed(
+          seedColor:const Color(0xFF152C3E),
+          brightness:Brightness.light,
+          primary:const Color(0xFF152C3E),
+          secondary:const Color(0xFFB68C48),
+          tertiary:const Color(0xFF267B84),
+          surface:Colors.white,
+          error:const Color(0xFFBF3C42),
         ),
-        useMaterial3: true,
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Color(0xFF0F4C75),
-          foregroundColor: Colors.white,
-          elevation: 0,
-          centerTitle: true,
+        textTheme:const TextTheme(
+          headlineSmall:TextStyle(fontSize:22,fontWeight:FontWeight.w700,letterSpacing:-0.6,height:1.16),
+          titleLarge:TextStyle(fontSize:19,fontWeight:FontWeight.w700,letterSpacing:-0.35),
+          titleMedium:TextStyle(fontSize:16,fontWeight:FontWeight.w600),
+          bodyLarge:TextStyle(fontSize:15,height:1.4),
+          bodyMedium:TextStyle(fontSize:14,height:1.38),
+          labelLarge:TextStyle(fontSize:14,fontWeight:FontWeight.w600),
+          labelMedium:TextStyle(fontSize:12,fontWeight:FontWeight.w600),
         ),
-        floatingActionButtonTheme: const FloatingActionButtonThemeData(
-          backgroundColor: Color(0xFF3282B8),
-          foregroundColor: Colors.white,
+        appBarTheme:const AppBarTheme(
+          backgroundColor:Color(0xFFF7F8FA),
+          foregroundColor:Color(0xFF152C3E),
+          scrolledUnderElevation:0,elevation:0,centerTitle:false,
+          titleTextStyle:TextStyle(fontSize:19,fontWeight:FontWeight.w700,
+            color:Color(0xFF152C3E),letterSpacing:-0.4),
         ),
+        cardTheme:CardThemeData(
+          color:Colors.white,elevation:0,
+          margin:const EdgeInsets.symmetric(vertical:4),
+          shape:RoundedRectangleBorder(
+            borderRadius:BorderRadius.circular(16),
+            side:const BorderSide(color:Color(0xFFE7EAEE))),
+        ),
+        inputDecorationTheme:InputDecorationTheme(
+          isDense:true,filled:true,fillColor:Colors.white,
+          contentPadding:const EdgeInsets.symmetric(horizontal:14,vertical:14),
+          hintStyle:const TextStyle(fontSize:14,color:Color(0xFF8C96A3)),
+          border:OutlineInputBorder(borderRadius:BorderRadius.circular(12),
+            borderSide:const BorderSide(color:Color(0xFFDCE1E6))),
+          enabledBorder:OutlineInputBorder(borderRadius:BorderRadius.circular(12),
+            borderSide:const BorderSide(color:Color(0xFFDCE1E6))),
+          focusedBorder:OutlineInputBorder(borderRadius:BorderRadius.circular(12),
+            borderSide:const BorderSide(color:Color(0xFF267B84),width:1.6)),
+        ),
+        filledButtonTheme:FilledButtonThemeData(style:FilledButton.styleFrom(
+          minimumSize:const Size(0,46),
+          shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(12)),
+          textStyle:const TextStyle(fontSize:14,fontWeight:FontWeight.w600))),
+        outlinedButtonTheme:OutlinedButtonThemeData(style:OutlinedButton.styleFrom(
+          minimumSize:const Size(0,44),
+          shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(12)))),
+        navigationBarTheme:NavigationBarThemeData(
+          height:64,backgroundColor:Colors.white,elevation:0,
+          indicatorColor:const Color(0xFFE6F1F1),
+          labelTextStyle:WidgetStateProperty.all(const TextStyle(
+            fontSize:11.5,fontWeight:FontWeight.w600)),
+        ),
+        dividerTheme:const DividerThemeData(color:Color(0xFFE6E9ED),thickness:1),
+        floatingActionButtonTheme:const FloatingActionButtonThemeData(
+          backgroundColor:Color(0xFF152C3E),foregroundColor:Colors.white),
       ),
       home: DataService().isLoggedIn
         ? FutureBuilder<bool>(
