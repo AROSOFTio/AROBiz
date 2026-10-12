@@ -12,6 +12,9 @@ class RegisterScreen extends StatefulWidget {
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
+  final _firstName = TextEditingController();
+  final _middleName = TextEditingController();
+  final _lastName = TextEditingController();
   final _email = TextEditingController();
   final _password = TextEditingController();
   final _business = TextEditingController();
@@ -36,6 +39,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   void dispose() {
+    _firstName.dispose();
+    _middleName.dispose();
+    _lastName.dispose();
     _email.dispose();
     _password.dispose();
     _business.dispose();
@@ -68,7 +74,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
     if (message.contains('weak_password') || message.contains('password should') ||
         message.contains('password must') || message.contains('password is too short')) {
-      return 'Choose a stronger password with at least 8 characters.';
+      return 'Use at least 6 characters with uppercase, lowercase and a special character.';
     }
     return 'Registration was not completed. If you previously registered this email, sign in instead; otherwise try again.';
   }
@@ -93,6 +99,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
         category: _category ?? 'Other',
         location: _location.text.trim(),
         countryCode: _country,
+        firstName:_firstName.text.trim(),
+        middleName:_middleName.text.trim(),
+        lastName:_lastName.text.trim(),
       ).timeout(const Duration(seconds: 35));
       if (!mounted) return;
       Navigator.of(context).pushAndRemoveUntil(
@@ -124,6 +133,23 @@ class _RegisterScreenState extends State<RegisterScreen> {
     key: _accountForm,
     child: Column(children: [
       TextFormField(
+        controller:_firstName,textCapitalization:TextCapitalization.words,
+        decoration:_decoration('First name *',Icons.person_outline),
+        validator:(v)=>(v?.trim().isEmpty??true)?'Enter your first name':null,
+      ),
+      const SizedBox(height:14),
+      TextFormField(
+        controller:_middleName,textCapitalization:TextCapitalization.words,
+        decoration:_decoration('Middle name (optional)',Icons.person_outline),
+      ),
+      const SizedBox(height:14),
+      TextFormField(
+        controller:_lastName,textCapitalization:TextCapitalization.words,
+        decoration:_decoration('Last name *',Icons.person_outline),
+        validator:(v)=>(v?.trim().isEmpty??true)?'Enter your last name':null,
+      ),
+      const SizedBox(height:18),
+      TextFormField(
         controller: _email, keyboardType: TextInputType.emailAddress,
         decoration: _decoration('Email address', Icons.email_outlined),
         validator: (v) {
@@ -142,7 +168,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
             onPressed: () => setState(() => _showPassword = !_showPassword),
           ),
         ),
-        validator: (v) => (v?.length ?? 0) < 8 ? 'Use at least 8 characters' : null,
+        validator:(v){
+          final value=v??'';
+          if(value.length<6||!RegExp(r'[A-Z]').hasMatch(value)||
+              !RegExp(r'[a-z]').hasMatch(value)||
+              !RegExp(r'[^a-zA-Z0-9]').hasMatch(value)){
+            return '6+ characters, uppercase, lowercase and a special character';
+          }
+          return null;
+        },
       ),
       const SizedBox(height: 18),
       const Text('You will receive a confirmation email before your first login.'),
@@ -193,7 +227,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
   );
 
   Widget _review() => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+    _item('Name',[_firstName.text,_middleName.text,_lastName.text]
+      .where((v)=>v.trim().isNotEmpty).join(' ')),
     _item('Email', _email.text.trim()),
+    _item('Role','Business Owner'),
     _item('Business', _business.text.trim()),
     _item('Industry', _category ?? 'Other'),
     _item('Country', CountryCurrency.countries[_country]??'Not selected'),
@@ -271,13 +308,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
               ),
             Expanded(child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+              keyboardDismissBehavior:ScrollViewKeyboardDismissBehavior.onDrag,
+              padding:EdgeInsets.fromLTRB(20,14,20,
+                MediaQuery.viewInsetsOf(context).bottom>0?90:24),
               child: _registrationComplete
                   ? const Center(child: Icon(Icons.mark_email_read_outlined, size: 72, color: Colors.green))
                   : (_step == 0 ? _account() : _step == 1 ? _businessDetails() : _review()),
             )),
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+              padding: EdgeInsets.fromLTRB(20,12,20,
+                MediaQuery.viewPaddingOf(context).bottom+28),
               child: _registrationComplete ? const SizedBox.shrink() : Row(children: [
                 if (_step > 0) ...[
                   OutlinedButton(
