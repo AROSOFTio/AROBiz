@@ -108,6 +108,12 @@ class InventoryService {
     }
   }
 
+  Future<String?> businessDisplayCurrency(String businessId) async {
+    final row=await _client.from('businesses')
+      .select('display_currency').eq('id',businessId).single();
+    return row['display_currency']?.toString();
+  }
+
   Future<String> businessCurrency(String businessId) async {
     final row=await _client.from('businesses').select('currency')
       .eq('id',businessId).single();
