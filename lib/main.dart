@@ -414,7 +414,7 @@ class AppShellState extends State<AppShell> {
                       );
                     },
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 2),
 
                   _NavItem(
                     icon: Icons.dashboard_rounded,
@@ -424,7 +424,7 @@ class AppShellState extends State<AppShell> {
                   ),
                   // Top-level Documents aligns exactly with all _NavItem rows.
                   Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                    margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
                     decoration: BoxDecoration(
                       color: _currentIndex == 1
                           ? Theme.of(context).colorScheme.primary.withOpacity(0.1)
@@ -434,8 +434,10 @@ class AppShellState extends State<AppShell> {
                     clipBehavior: Clip.antiAlias,
                     child: ExpansionTile(
                       key: const PageStorageKey<String>('documents-navigation'),
+                      dense:true,
+                      visualDensity:const VisualDensity(vertical:-3),
                       tilePadding: const EdgeInsets.symmetric(horizontal: 16),
-                      childrenPadding: const EdgeInsets.only(left: 24, right: 8, bottom: 6),
+                      childrenPadding: const EdgeInsets.only(left: 24, right: 8, bottom: 2),
                       initiallyExpanded: _currentIndex == 1,
                       leading: Icon(Icons.description_rounded,
                         size: 24,
@@ -454,6 +456,7 @@ class AppShellState extends State<AppShell> {
                       children: [
                         ListTile(
                           dense: true,
+                          visualDensity:const VisualDensity(vertical:-3),
                           contentPadding: const EdgeInsets.symmetric(horizontal: 12),
                           leading: const Icon(Icons.folder_open_outlined, size: 20),
                           title: const Text('View documents'),
@@ -694,13 +697,16 @@ class _NavItem extends StatelessWidget {
     final effectiveLabel = labelColor ?? (isSelected ? primary : Colors.grey.shade800);
 
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
       decoration: BoxDecoration(
         color: isSelected ? primary.withOpacity(0.1) : Colors.transparent,
         borderRadius: BorderRadius.circular(12),
       ),
       child: ListTile(
-        leading: Icon(icon, color: effectiveIcon, size: 24),
+        dense:true,
+        visualDensity:const VisualDensity(vertical:-3),
+        minVerticalPadding:0,
+        leading: Icon(icon, color: effectiveIcon, size: 22),
         title: Text(
           label,
           style: TextStyle(
@@ -732,6 +738,8 @@ class _SubNavItem extends StatelessWidget{
   const _SubNavItem({required this.label,required this.icon,required this.onTap});
   @override Widget build(BuildContext context)=>ListTile(
     dense:true,
+    visualDensity:const VisualDensity(vertical:-3),
+    minVerticalPadding:0,
     contentPadding:const EdgeInsets.only(left:36,right:14),
     leading:Icon(icon,size:19,color:Theme.of(context).colorScheme.onSurfaceVariant),
     title:Text(label,style:const TextStyle(fontSize:13)),
@@ -747,14 +755,16 @@ class _NavGroup extends StatelessWidget{
   @override Widget build(BuildContext context){
     final primary=Theme.of(context).colorScheme.primary;
     return Container(
-      margin:const EdgeInsets.symmetric(horizontal:12,vertical:2),
+      margin:const EdgeInsets.symmetric(horizontal:12,vertical:0),
       decoration:BoxDecoration(
         color:selected?primary.withOpacity(0.1):Colors.transparent,
         borderRadius:BorderRadius.circular(12)),
       clipBehavior:Clip.antiAlias,
       child:ExpansionTile(
+        dense:true,
+        visualDensity:const VisualDensity(vertical:-3),
         tilePadding:const EdgeInsets.symmetric(horizontal:16),
-        childrenPadding:const EdgeInsets.only(bottom:6),
+        childrenPadding:const EdgeInsets.only(bottom:2),
         initiallyExpanded:selected,
         leading:Icon(icon,size:24,
           color:selected?primary:Colors.grey.shade700),
