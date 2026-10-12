@@ -4,6 +4,7 @@ import '../services/data_service.dart';
 import '../services/inventory_service.dart';
 import '../services/sales_service.dart';
 import 'invoice_preview_screen.dart';
+import 'products_screen.dart';
 
 class SalesScreen extends StatefulWidget {
   const SalesScreen({super.key});
@@ -291,6 +292,15 @@ class _SalesScreenState extends State<SalesScreen> {
               Expanded(child:OutlinedButton.icon(onPressed:()=>_new('quotation'),
                 icon:const Icon(Icons.request_quote),label:const Text('Quotation'))),
             ]),
+            OutlinedButton.icon(
+              onPressed:()async{
+                await Navigator.push(context,MaterialPageRoute(
+                  builder:(_)=>const ProductsScreen()));
+                if(mounted)await _refresh();
+              },
+              icon:const Icon(Icons.add_box_outlined),
+              label:const Text('Products / Add Stock'),
+            ),
             const SizedBox(height:20),
             Text('Recent transactions',style:Theme.of(context).textTheme.titleMedium),
             if(_transactions.isEmpty)const Padding(
@@ -340,6 +350,7 @@ class _SalesWizard extends StatefulWidget {
 class _SalesWizardState extends State<_SalesWizard> {
   final _customer=TextEditingController(text:'Walk-in customer');
   final _phone=TextEditingController();
+  final _search=TextEditingController();
   final Map<String,double> _cart={};
   int _step=0;
   String _method='Cash';
@@ -351,7 +362,7 @@ class _SalesWizardState extends State<_SalesWizard> {
   String? _error;
   bool _saving=false;
   @override
-  void dispose(){_customer.dispose();_phone.dispose();_amountOne.dispose();_amountTwo.dispose();super.dispose();}
+  void dispose(){_search.dispose();_customer.dispose();_phone.dispose();_amountOne.dispose();_amountTwo.dispose();super.dispose();}
   Map<String,dynamic>? _product(String id){
     for(final p in widget.products){if(p['id'].toString()==id)return p;}
     return null;
@@ -373,6 +384,38 @@ class _SalesWizardState extends State<_SalesWizard> {
       return;
     }
     setState((){_cart[id]=existing+1;_error=null;});
+  }
+  Future<void> _setQuantity(Map<String,dynamic> product) async {
+    final id=product['id'].toString();
+    final controller=TextEditingController(text:(_cart[id]??0).toString());
+    final entered=await showDialog<double>(context:context,builder:(dialogContext)=>AlertDialog(
+      title:Text('Quantity · '+product['name'].toString()),
+      content:TextField(controller:controller,autofocus:true,
+        keyboardType:const TextInputType.numberWithOptions(decimal:true),
+        decoration:const InputDecoration(labelText:'Quantity (0 to remove)',border:OutlineInputBorder())),
+      actions:[
+        TextButton(onPressed:()=>Navigator.pop(dialogContext),child:const Text('Cancel')),
+        FilledButton(onPressed:(){
+          final n=double.tryParse(controller.text.trim());
+          if(n==null||!n.isFinite||n<0||n>1000000||(n*1000).roundToDouble()!=n*1000){
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Enter 0 or a positive quantity with up to 3 decimals.')));
+            return;
+          }
+          Navigator.pop(dialogContext,n);
+        },child:const Text('Apply')),
+      ],
+    ));
+    controller.dispose();
+    if(entered==null||!mounted)return;
+    if(widget.kind=='sale'&&product['track_stock']==true&&
+      entered>(widget.balances[id]??0)){
+      setState(()=>_error='Insufficient stock for '+product['name'].toString()+'. Receive stock in Inventory.');
+      return;
+    }
+    setState((){
+      if(entered==0){_cart.remove(id);}else{_cart[id]=entered;}
+      _error=null;
+    });
   }
   void _remove(String id){
     setState((){
@@ -463,9 +506,18 @@ class _SalesWizardState extends State<_SalesWizard> {
           Expanded(child:SingleChildScrollView(
             padding:const EdgeInsets.symmetric(horizontal:16),
             child:_step==0?Column(children:[
+              TextField(controller:_search,
+                onChanged:(_)=>setState((){}),
+                decoration:const InputDecoration(
+                  hintText:'Search product, SKU or category',
+                  prefixIcon:Icon(Icons.search),border:OutlineInputBorder())),
+              const SizedBox(height:8),
               if(widget.products.isEmpty)const Padding(padding:EdgeInsets.all(20),
                 child:Text('Add products in Products & Inventory before using Sales.')),
-              ...widget.products.map((p){
+              ...widget.products.where((p)=>[
+                p['name'],p['sku'],p['category']
+              ].any((v)=>v.toString().toLowerCase()
+                .contains(_search.text.trim().toLowerCase()))).map((p){
                 final id=p['id'].toString();
                 final track=p['track_stock']==true;
                 final balance=widget.balances[id]??0;
@@ -480,7 +532,8 @@ class _SalesWizardState extends State<_SalesWizard> {
                     Row(mainAxisAlignment:MainAxisAlignment.end,children:[
                       IconButton(onPressed:qty>0?()=>_remove(id):null,
                         icon:const Icon(Icons.remove_circle_outline)),
-                      Text(qty.toString(),style:const TextStyle(fontWeight:FontWeight.bold)),
+                      TextButton(onPressed:()=>_setQuantity(p),
+                        child:Text(qty.toString(),style:const TextStyle(fontWeight:FontWeight.bold))),
                       IconButton(onPressed:()=>_add(p),icon:const Icon(Icons.add_circle_outline)),
                     ]),
                   ])));
