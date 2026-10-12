@@ -33,9 +33,9 @@ class InvoicingApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF0F4C75), // Deep Professional Blue
-          secondary: const Color(0xFF3282B8),
-          tertiary: const Color(0xFFBBE1FA),
+          seedColor: const Color(0xFF006FFF), // Deep Professional Blue
+          secondary: const Color(0xFF009CFF),
+          tertiary: const Color(0xFFDCEEFF),
           background: const Color(0xFFF9F9F9),
         ),
         useMaterial3: true,
@@ -140,13 +140,23 @@ class AppShellState extends State<AppShell> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // ARODesk is the app brand. The selected company appears below.
-                      const Text(
-                        'ARODesk',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 23,
-                          fontWeight: FontWeight.w800,
-                        ),
+                      Row(
+                        children: [
+                          Container(
+                            height: 48, width: 48,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            padding: const EdgeInsets.all(2),
+                            child: Image.asset('assets/logo.png',
+                              fit: BoxFit.contain, semanticLabel: 'ARODesk logo'),
+                          ),
+                          const SizedBox(width: 12),
+                          const Text('ARODesk',
+                            style: TextStyle(color: Colors.white,
+                              fontSize: 23, fontWeight: FontWeight.w800)),
+                        ],
                       ),
                       const SizedBox(height: 20),
                       // Business avatar + info
