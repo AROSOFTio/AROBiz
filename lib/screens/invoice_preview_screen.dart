@@ -68,7 +68,7 @@ class _InvoicePreviewScreenState extends State<InvoicePreviewScreen> {
             ? PdfPageFormat.a4
             : _selectedSize == InvoiceSize.a5
                 ? PdfPageFormat.a5
-                : PdfPageFormat.roll80,
+                : PdfPageFormat(80*PdfPageFormat.mm, 260*PdfPageFormat.mm),
       )),
       ]),
     );
