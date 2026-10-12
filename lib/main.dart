@@ -12,6 +12,7 @@ import 'screens/products_screen.dart';
 import 'screens/sales_screen.dart';
 import 'screens/saas_admin_screen.dart';
 import 'services/saas_admin_service.dart';
+import 'screens/team_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -83,9 +84,27 @@ class AppShell extends StatefulWidget {
 
 class AppShellState extends State<AppShell> {
   int _currentIndex = 0;
+  String? _role;
+  @override
+  void initState(){super.initState();_loadRole();}
+  Future<void> _loadRole()async{
+    try{
+      final memberships=await TeamService.instance.businesses();
+      if(mounted)setState(()=>_role=memberships.isEmpty?null:memberships.first['role'].toString());
+    }catch(_){if(mounted)setState(()=>_role=null);}
+  }
+  bool get _canManage => _role=='owner'||_role=='admin';
+  bool get _canWrite => _canManage||_role=='staff';
+  void _goToPage(int page){
+    if((page==4&&!_canManage)||(page==3&&!_canWrite)){
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('You do not have access to this section.')));
+      return;
+    }
+    setState(()=>_currentIndex=page);
+  }
 
   List<Widget> get _screens => [
-    const HomeScreen(),
+    HomeScreen(onNavigate:_goToPage),
     const InvoiceListScreen(),
     const ProductsScreen(),
     const SalesScreen(),
@@ -103,6 +122,11 @@ class AppShellState extends State<AppShell> {
   ];
 
   void _onItemTapped(int index) {
+    if((index==4&&!_canManage)||(index==3&&!_canWrite)){
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Your role does not allow this action.')));
+      return;
+    }
     setState(() => _currentIndex = index);
     Navigator.pop(context); // Close drawer
   }
@@ -263,19 +287,41 @@ class AppShellState extends State<AppShell> {
                     isSelected: _currentIndex == 2,
                     onTap: () => _onItemTapped(2),
                   ),
-                  _NavItem(
+                  if (_canWrite) _NavItem(
                     icon: Icons.point_of_sale_outlined,
                     label: 'Sales & POS',
                     isSelected: _currentIndex == 3,
                     onTap: () => _onItemTapped(3),
                   ),
-                  _NavItem(
+                  if (_canManage) _NavItem(
                     icon: Icons.settings_rounded,
                     label: 'Settings',
                     isSelected: _currentIndex == 4,
                     onTap: () => _onItemTapped(4),
                   ),
 
+                  if (_role == 'owner' || _role == 'admin')
+                    _NavItem(
+                      icon: Icons.groups_outlined,
+                      label: 'Team & Permissions',
+                      isSelected: false,
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.push(context,MaterialPageRoute(
+                          builder: (_) => const TeamScreen())).then((_)=>_loadRole());
+                      },
+                    ),
+                  if (!_canManage)
+                    _NavItem(
+                      icon: Icons.lock_outline,
+                      label: 'Change password',
+                      isSelected: false,
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.push(context,MaterialPageRoute(
+                          builder: (_) => const PasswordSecurityScreen()));
+                      },
+                    ),
                   FutureBuilder<bool>(
                     future: SaaSAdminService.instance.isAdmin(),
                     builder: (context, snapshot) {
@@ -299,7 +345,7 @@ class AppShellState extends State<AppShell> {
                   ),
 
                   // Quick create button
-                  Padding(
+                  if (_canWrite) Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                     child: ElevatedButton.icon(
                       onPressed: () {
