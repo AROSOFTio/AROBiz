@@ -1,314 +1,113 @@
 import 'package:flutter/material.dart';
-import '../services/data_service.dart';
-import '../models/invoice.dart';
 import 'package:intl/intl.dart';
-import 'create_invoice_screen.dart';
+import '../services/data_service.dart';
+import '../services/inventory_service.dart';
+import '../services/sales_service.dart';
+import 'team_screen.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
-
-  @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  final ValueChanged<int>? onNavigate;
+  const HomeScreen({super.key,this.onNavigate});
+  @override State<HomeScreen> createState()=>_HomeScreenState();
 }
-
-class _HomeScreenState extends State<HomeScreen> {
-  late List<Invoice> recentInvoices;
-  NumberFormat get _currencyFormat => NumberFormat.currency(name: DataService().currentProfile?.currencyCode ?? 'USD', symbol: (DataService().currentProfile?.currencyCode ?? 'USD') + ' ');
-
-  @override
-  void initState() {
-    super.initState();
-    _loadInvoices();
-  }
-
-  void _loadInvoices() {
-    setState(() {
-      recentInvoices = DataService().invoices;
-      recentInvoices.sort((a, b) => b.issueDate.compareTo(a.issueDate));
-      if (recentInvoices.length > 5) {
-        recentInvoices = recentInvoices.sublist(0, 5);
+class _HomeScreenState extends State<HomeScreen>{
+  bool _loading=true;
+  String? _error,_role;
+  String _currency='USD';
+  int _products=0,_lowStock=0,_salesCount=0;
+  double _salesTotal=0,_owed=0;
+  @override void initState(){super.initState();_load();}
+  Future<void> _load()async{
+    setState((){_loading=true;_error=null;});
+    try{
+      final p=DataService().currentProfile;
+      final business=await InventoryService.instance.ensureBusiness(
+        name:p?.name??'My Business',category:p?.category??'Other');
+      final memberships=await TeamService.instance.businesses();
+      final role=memberships.where((m)=>m['business_id']==business)
+        .map((m)=>m['role'].toString()).firstOrNull;
+      final items=await InventoryService.instance.products(business);
+      final balances=await InventoryService.instance.balances(business);
+      final currency=await InventoryService.instance.businessCurrency(business);
+      final transactions=await SalesService.instance.list(business);
+      double net=0,owed=0;
+      for(final row in transactions){
+        if(row['kind']!='sale'||row['currency']!=currency)continue;
+        final value=(row['total'] as num).toDouble()-
+          ((row['returned_total']??0) as num).toDouble();
+        final paid=((row['paid_total']??0) as num).toDouble()-
+          ((row['refunded_total']??0) as num).toDouble();
+        net+=value;owed+=(value-paid).clamp(0,double.infinity);
       }
-    });
+      if(mounted)setState((){
+        _role=role;_currency=currency;_products=items.length;
+        _lowStock=items.where((x)=>x['track_stock']==true&&
+          (balances[x['id'].toString()]??0)<=(x['reorder_level'] as num).toDouble()).length;
+        _salesCount=transactions.where((x)=>x['kind']=='sale').length;
+        _salesTotal=net;_owed=owed;
+      });
+    }catch(_){if(mounted)setState(()=>_error='Unable to refresh business dashboard.');}
+    finally{if(mounted)setState(()=>_loading=false);}
   }
-
-  double _calculateTotalRevenue() {
-    final code=DataService().currentProfile?.currencyCode ?? 'USD';
-    return DataService().invoices
-        .where((inv) => inv.type != DocumentType.quotation &&
-          (inv.currencyCode == null || inv.currencyCode == code))
-        .fold(0, (sum, inv) => sum + inv.finalTotal);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final profile = DataService().currentProfile;
-    final hasProfile = profile?.name != null && profile!.name!.isNotEmpty;
-    final totalRevenue = _calculateTotalRevenue();
-
-    if (!hasProfile) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.warning_amber_rounded, size: 80, color: Colors.orange),
-              const SizedBox(height: 24),
-              Text(
-                'Profile Incomplete',
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'Please set up your Business Profile in Settings to start creating professional invoices.',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 16, color: Colors.black54),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.background,
-      body: RefreshIndicator(
-        onRefresh: () async {
-          _loadInvoices();
-        },
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Powerful Summary Card
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      Theme.of(context).colorScheme.primary,
-                      Theme.of(context).colorScheme.secondary,
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Theme.of(context).colorScheme.secondary.withOpacity(0.4),
-                      blurRadius: 10,
-                      offset: const Offset(0, 5),
-                    )
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text(
-                          'Standalone Document Value',
-                          style: TextStyle(color: Colors.white70, fontSize: 16, fontWeight: FontWeight.w500),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(DataService().currentProfile?.currencyCode ?? 'USD', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                        )
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      _currencyFormat.format(totalRevenue),
-                      style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      '${DataService().invoices.length} Standalone Documents',
-                      style: const TextStyle(color: Colors.white70, fontSize: 14),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 32),
-              
-              // Quick Actions
-              const Text(
-                'Quick Actions',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  _buildActionButton(
-                    context,
-                    icon: Icons.add_circle_outline,
-                    label: 'New Document',
-                    color: Theme.of(context).colorScheme.primary,
-                    onTap: () async {
-                      await Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => const CreateInvoiceScreen()),
-                      );
-                      _loadInvoices();
-                    },
-                  ),
-                  _buildActionButton(
-                    context,
-                    icon: Icons.people_outline,
-                    label: 'Clients',
-                    color: Colors.teal,
-                    onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Client management coming soon')));
-                    },
-                  ),
-                  _buildActionButton(
-                    context,
-                    icon: Icons.inventory_2_outlined,
-                    label: 'Items',
-                    color: Colors.orange,
-                    onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Item management coming soon')));
-                    },
-                  ),
-                ],
-              ),
-              
-              const SizedBox(height: 32),
-              
-              // Recent Invoices List
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'Recent Documents',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                  ),
-                  TextButton(
-                    onPressed: () {
-                      // Handled by Nav Drawer
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Use the side menu to view all')));
-                    },
-                    child: const Text('View All'),
-                  )
-                ],
-              ),
-              const SizedBox(height: 8),
-              recentInvoices.isEmpty
-                  ? Center(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 24.0),
-                        child: Column(
-                          children: [
-                            Icon(Icons.receipt_long_rounded, size: 64, color: Colors.grey.shade300),
-                            const SizedBox(height: 16),
-                            Text('No documents yet. Create one above!', style: TextStyle(color: Colors.grey.shade600)),
-                          ],
-                        ),
-                      ),
-                    )
-                  : ListView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: recentInvoices.length,
-                      itemBuilder: (context, index) {
-                        final invoice = recentInvoices[index];
-                        return Card(
-                          elevation: 2,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                          margin: const EdgeInsets.only(bottom: 12.0),
-                          child: ListTile(
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                            leading: CircleAvatar(
-                              radius: 24,
-                              backgroundColor: Theme.of(context).colorScheme.tertiary,
-                              child: Icon(Icons.receipt_rounded, color: Theme.of(context).colorScheme.primary),
-                            ),
-                            title: Text(invoice.clientName, style: const TextStyle(fontWeight: FontWeight.bold)),
-                            subtitle: Padding(
-                              padding: const EdgeInsets.only(top: 4.0),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text('${invoice.invoiceNumber} • ${DateFormat.yMd().format(invoice.issueDate)}'),
-                                  const SizedBox(height: 4),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                    decoration: BoxDecoration(
-                                      color: invoice.type == DocumentType.invoice
-                                          ? Colors.blue.withOpacity(0.1)
-                                          : invoice.type == DocumentType.receipt
-                                              ? Colors.green.withOpacity(0.1)
-                                              : Colors.orange.withOpacity(0.1),
-                                      borderRadius: BorderRadius.circular(4),
-                                    ),
-                                    child: Text(
-                                      invoice.type.name.toUpperCase(),
-                                      style: TextStyle(
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.bold,
-                                        color: invoice.type == DocumentType.invoice
-                                            ? Colors.blue
-                                            : invoice.type == DocumentType.receipt
-                                                ? Colors.green
-                                                : Colors.orange,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            trailing: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                Text(
-                                  _currencyFormat.format(invoice.finalTotal),
-                                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Theme.of(context).colorScheme.primary),
-                                ),
-                                const SizedBox(height: 4),
-                                const Text('Paid', style: TextStyle(color: Colors.green, fontSize: 12, fontWeight: FontWeight.bold)), // Example status
-                              ],
-                            ),
-                            onTap: () {
-                              // Could preview invoice directly here
-                            },
-                          ),
-                        );
-                      },
-                    ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildActionButton(BuildContext context, {required IconData icon, required String label, required Color color, required VoidCallback onTap}) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, size: 32, color: color),
-          ),
-          const SizedBox(height: 8),
-          Text(label, style: const TextStyle(fontWeight: FontWeight.w500)),
-        ],
-      ),
+  Widget _metric(String label,String value,IconData icon)=>Container(
+    padding:const EdgeInsets.all(14),
+    decoration:BoxDecoration(color:Theme.of(context).colorScheme.surfaceContainerLow,
+      borderRadius:BorderRadius.circular(14)),
+    child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+      Icon(icon,color:Theme.of(context).colorScheme.primary),
+      const SizedBox(height:10),
+      Text(value,maxLines:2,overflow:TextOverflow.ellipsis,
+        style:Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight:FontWeight.bold)),
+      const SizedBox(height:5),Text(label,style:Theme.of(context).textTheme.labelMedium),
+    ]));
+  Widget _link(String title,IconData icon,int page)=>Card(child:ListTile(
+    leading:Icon(icon,color:Theme.of(context).colorScheme.primary),
+    title:Text(title),trailing:const Icon(Icons.chevron_right),
+    onTap:()=>widget.onNavigate?.call(page)));
+  @override Widget build(BuildContext context){
+    final f=NumberFormat.currency(name:_currency,symbol:_currency+' ');
+    final docs=DataService().invoices.where((v)=>!v.archived).length;
+    return RefreshIndicator(onRefresh:_load,child:_loading?
+      const Center(child:CircularProgressIndicator()):
+      ListView(padding:const EdgeInsets.fromLTRB(16,16,16,50),children:[
+        Text('Welcome to ARODesk',style:Theme.of(context).textTheme.headlineSmall),
+        Text(DataService().currentProfile?.name??'My Business',
+          style:Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height:12),
+        if(_error!=null)Card(child:Padding(padding:const EdgeInsets.all(14),child:Text(_error!))),
+        Wrap(spacing:8,runSpacing:8,children:[
+          Chip(label:Text('Role: '+(_role??'Not assigned'))),
+          Chip(label:Text('Currency: '+_currency)),
+        ]),
+        const SizedBox(height:12),
+        LayoutBuilder(builder:(ctx,c){
+          final cols=c.maxWidth>=600?3:2;
+          final w=(c.maxWidth-10*(cols-1))/cols;
+          return Wrap(spacing:10,runSpacing:10,children:[
+            SizedBox(width:w,child:_metric('Net sales · recent 100',f.format(_salesTotal),Icons.point_of_sale)),
+            SizedBox(width:w,child:_metric('Outstanding · recent 100',f.format(_owed),Icons.payments_outlined)),
+            SizedBox(width:w,child:_metric('Sales · recent 100',_salesCount.toString(),Icons.receipt_long_outlined)),
+            SizedBox(width:w,child:_metric('Catalog items',_products.toString(),Icons.inventory_2_outlined)),
+            SizedBox(width:w,child:_metric('Low stock',_lowStock.toString(),Icons.warning_amber_outlined)),
+            SizedBox(width:w,child:_metric('Standalone documents',docs.toString(),Icons.description_outlined)),
+          ]);
+        }),
+        const SizedBox(height:20),
+        Text('Quick access',style:Theme.of(context).textTheme.titleLarge),
+        _link('Products & Inventory',Icons.inventory_2_outlined,2),
+        _link('Sales & POS',Icons.point_of_sale_outlined,3),
+        _link('Standalone Documents',Icons.description_outlined,1),
+        if(_role=='owner'||_role=='admin')
+          Card(child:ListTile(
+            leading:const Icon(Icons.groups_outlined),
+            title:const Text('Manage team & permissions'),
+            trailing:const Icon(Icons.chevron_right),
+            onTap:()=>Navigator.push(context,MaterialPageRoute(
+              builder:(_)=>const TeamScreen())),
+          )),
+        const SizedBox(height:14),
+        const Text('Sales figures are from the latest 100 catalog transactions in the business accounting currency. Standalone documents are not treated as sales.'),
+      ]),
     );
   }
 }
