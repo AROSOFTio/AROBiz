@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:printing/printing.dart';
 import 'package:pdf/pdf.dart';
@@ -18,6 +19,10 @@ class InvoicePreviewScreen extends StatefulWidget {
 
 class _InvoicePreviewScreenState extends State<InvoicePreviewScreen> {
   InvoiceSize _selectedSize = InvoiceSize.a4;
+  final Map<InvoiceSize,Future<Uint8List>> _cachedPdf={};
+
+  Future<Uint8List> _preview(InvoiceSize size) =>
+    _cachedPdf.putIfAbsent(size,()=>PdfInvoiceApi.generate(widget.invoice,size));
 
   @override
   Widget build(BuildContext context) {
@@ -54,8 +59,9 @@ class _InvoicePreviewScreenState extends State<InvoicePreviewScreen> {
           Expanded(child: PdfPreview(
 
         key: ValueKey(_selectedSize),
-        build: (format) => PdfInvoiceApi.generate(widget.invoice, _selectedSize),
+        build: (format) => _preview(_selectedSize),
         canDebug: false,
+        maxPageWidth: 720,
         allowPrinting: true,
         allowSharing: true,
         initialPageFormat: _selectedSize == InvoiceSize.a4
