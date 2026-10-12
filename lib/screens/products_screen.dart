@@ -115,6 +115,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
     final low=_products.where((p)=>p['track_stock']==true&&
       (_balances[p['id'].toString()]??0)<=(p['reorder_level'] as num).toDouble()).length;
     return Scaffold(
+      resizeToAvoidBottomInset:true,
       floatingActionButton:_businessId==null||widget.readOnly?null:FloatingActionButton.extended(
         onPressed:()=>_edit(),icon:const Icon(Icons.add),label:const Text('New item')),
       body:RefreshIndicator(onRefresh:_load,child:_loading?
@@ -219,6 +220,7 @@ class _ProductWizardState extends State<_ProductWizard>{
   void dispose(){for(final c in [_name,_sku,_category,_unit,_sale,_cost,_reorder,_opening]){c.dispose();}super.dispose();}
   Widget _field(TextEditingController c,String label,{bool number=false})=>
     Padding(padding:const EdgeInsets.only(bottom:14),child:TextField(
+      scrollPadding:const EdgeInsets.only(bottom:135),
       controller:c,keyboardType:number?const TextInputType.numberWithOptions(decimal:true):TextInputType.text,
       decoration:InputDecoration(labelText:label,border:const OutlineInputBorder())));
   void _next(){
@@ -248,6 +250,7 @@ class _ProductWizardState extends State<_ProductWizard>{
   }
   @override
   Widget build(BuildContext context)=>Scaffold(
+    resizeToAvoidBottomInset:true,
     appBar:AppBar(title:Text(widget.original==null?'New item':'Edit item')),
     body:SafeArea(child:Center(child:ConstrainedBox(
       constraints:const BoxConstraints(maxWidth:520),
@@ -262,7 +265,9 @@ class _ProductWizardState extends State<_ProductWizard>{
         ])),
         if(_error!=null)Card(color:Theme.of(context).colorScheme.errorContainer,
           child:Padding(padding:const EdgeInsets.all(12),child:Text(_error!))),
-        Expanded(child:SingleChildScrollView(padding:const EdgeInsets.symmetric(horizontal:20),
+        Expanded(child:SingleChildScrollView(
+          keyboardDismissBehavior:ScrollViewKeyboardDismissBehavior.onDrag,
+          padding:EdgeInsets.fromLTRB(20,8,20,MediaQuery.viewInsetsOf(context).bottom>0?120:20),
           child:_step==0?Column(children:[
             _field(_name,'Product / service name'),
             DropdownButtonFormField<String>(value:_type,
