@@ -3,6 +3,7 @@ import '../models/invoice.dart';
 import '../services/data_service.dart';
 import '../services/inventory_service.dart';
 import '../services/sales_service.dart';
+import '../services/offline_sales_service.dart';
 import 'invoice_preview_screen.dart';
 import 'products_screen.dart';
 
@@ -31,28 +32,62 @@ class _SalesScreenState extends State<SalesScreen> {
   }
   Future<void> _refresh()async{
     setState((){_loading=true;_error=null;});
+    final offline=OfflineSalesService.instance;
     try{
       final profile=DataService().currentProfile;
-      final business=await InventoryService.instance.ensureBusiness(
-        name:profile?.name??'My Business',category:profile?.category??'Other');
-      final productRequest=InventoryService.instance.products(business);
-      final stockRequest=InventoryService.instance.balances(business);
-      final currencyRequest=InventoryService.instance.businessCurrency(business);
-      final salesRequest=SalesService.instance.list(business);
-      final products=await productRequest;
-      final balances=await stockRequest;
-      final currency=await currencyRequest;
-      final transactions=await salesRequest;
+      // A known business is stored on the device at the last successful sign-in.
+      final business=await InventoryService.instance.preferredBusinessId()
+        ??await InventoryService.instance.ensureBusiness(
+          name:profile?.name??'My Business',category:profile?.category??'Other');
+      final previous=await offline.snapshot(business);
+      if(previous!=null && mounted){
+        final products=List<Map<String,dynamic>>.from(
+          (previous['products'] as List).map((r)=>Map<String,dynamic>.from(r as Map)));
+        final balances={for(final entry in Map<String,dynamic>.from(previous['balances'] as Map).entries)
+          entry.key:(entry.value as num).toDouble()};
+        final transactions=List<Map<String,dynamic>>.from(
+          (previous['transactions'] as List).map((r)=>Map<String,dynamic>.from(r as Map)));
+        setState((){
+          _businessId=business;_products=products;
+          _balances=balances;_baseCurrency=(previous['currency']??'USD').toString();
+          _transactions=transactions;
+        });
+      }
+      // Download a full snapshot only when the connection is available.
+      try{
+        final products=await InventoryService.instance.products(business)
+          .timeout(const Duration(seconds:7));
+        final balances=await InventoryService.instance.balances(business)
+          .timeout(const Duration(seconds:7));
+        final currency=await InventoryService.instance.businessCurrency(business)
+          .timeout(const Duration(seconds:7));
+        final transactions=await SalesService.instance.list(business)
+          .timeout(const Duration(seconds:7));
+        await offline.cacheCatalog(business,products:products,balances:balances,
+          currency:currency,transactions:transactions);
+        if(mounted)setState((){
+          _businessId=business;_products=products;_balances=balances;
+          _transactions=transactions;_baseCurrency=currency;
+        });
+        await offline.sync(business);
+      }catch(_){
+        if(previous==null)rethrow;
+      }
+      final adjusted=await offline.effectiveBalances(business,_balances);
+      final local=await offline.localTransactions(business);
       if(mounted){
-        setState((){_businessId=business;_products=products;_balances=balances;
-          _transactions=transactions;_baseCurrency=currency;});
+        setState((){
+          _balances=adjusted;_transactions=[...local,..._transactions];
+        });
         if(widget.newSaleOnOpen&&!_launchedNewSale){
           _launchedNewSale=true;
           WidgetsBinding.instance.addPostFrameCallback((_){if(mounted)_new('sale');});
         }
       }
-    }catch(e){if(mounted)setState(()=>_error=_message(e));}
-    finally{if(mounted)setState(()=>_loading=false);}
+    }catch(e){
+      if(mounted)setState(()=>_error=
+        'Connect once to load your business catalog. Offline sales work after the first sync.');
+    }finally{if(mounted)setState(()=>_loading=false);}
   }
   Invoice _toInvoice(Map<String,dynamic> sale) {
     final rows=List<Map<String,dynamic>>.from(
@@ -86,6 +121,11 @@ class _SalesScreenState extends State<SalesScreen> {
   }
   Future<void> _preview(String id)async{
     if(_businessId==null)return;
+    if(id.startsWith('offline:')){
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content:Text('Sale saved on this device. Receipt available after sync.')));
+      return;
+    }
     try{
       final row=await SalesService.instance.byId(_businessId!,id);
       if(mounted)await Navigator.of(context).push(MaterialPageRoute(
@@ -279,8 +319,12 @@ class _SalesScreenState extends State<SalesScreen> {
       builder:(_)=>_SalesWizard(
         businessId:_businessId!,kind:kind,products:_products,balances:_balances,currency:_baseCurrency)));
     if(id!=null&&mounted){
+      if(id.startsWith('offline:')){
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content:Text('Sale saved. It will sync when internet returns.')));
+      }
       await _refresh();
-      if(mounted)await _preview(id);
+      if(mounted&&!id.startsWith('offline:'))await _preview(id);
     }
   }
   @override
@@ -327,7 +371,9 @@ class _SalesScreenState extends State<SalesScreen> {
                     ' / '+((item['total'] as num).toDouble()-((item['returned_total']??0) as num).toDouble()).toStringAsFixed(2)+
                     ' · '+item['payment_status'].toString()
                   : 'Quotation · '+item['total'].toString())),
-              trailing:item['kind']=='sale' &&
+              trailing:item['id'].toString().startsWith('offline:')
+                ?const Icon(Icons.cloud_upload_outlined)
+                :item['kind']=='sale' &&
                 (item['payment_status']=='partial'||item['payment_status']=='unpaid')
                 ?IconButton(
                     tooltip:'Receive payment',icon:const Icon(Icons.add_card),
@@ -336,7 +382,7 @@ class _SalesScreenState extends State<SalesScreen> {
                 :const Icon(Icons.chevron_right),
               onTap:()=>_preview(item['id'].toString()),
               ),
-              if(item['kind']=='sale')
+              if(item['kind']=='sale'&&!item['id'].toString().startsWith('offline:'))
                 Align(alignment:Alignment.centerRight,child:TextButton.icon(
                   onPressed:()=>_returnSale(item),
                   icon:const Icon(Icons.assignment_return_outlined,size:18),
