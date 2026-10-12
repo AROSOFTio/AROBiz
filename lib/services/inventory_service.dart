@@ -120,6 +120,38 @@ class InventoryService {
     return (row['currency']??'USD').toString();
   }
 
+
+  Future<bool> canManageCatalog(String businessId) async {
+    final uid=_client.auth.currentUser?.id;
+    if(uid==null)return false;
+    final rows=await _client.from('business_memberships')
+      .select('role').eq('business_id',businessId).eq('user_id',uid).limit(1);
+    return rows.isNotEmpty && ['owner','admin'].contains(rows.first['role']);
+  }
+
+  Future<List<String>> productCategories(String businessId) async {
+    final result=await _client.from('arodesk_product_categories')
+      .select('name').eq('business_id',businessId).eq('active',true).order('name');
+    final stored=result.map((r)=>r['name'].toString()).toList();
+    final products=await _client.from('arodesk_products')
+      .select('category').eq('business_id',businessId);
+    for(final p in products){
+      final name=(p['category']??'').toString().trim();
+      if(name.isNotEmpty && !stored.any((v)=>v.toLowerCase()==name.toLowerCase())){
+        stored.add(name);
+      }
+    }
+    stored.sort((a,b)=>a.toLowerCase().compareTo(b.toLowerCase()));
+    return stored;
+  }
+
+  Future<void> addProductCategory(String businessId,String name) async {
+    final value=name.trim();
+    if(value.length<2 || value.length>100)throw ArgumentError('Enter a valid category name.');
+    await _client.from('arodesk_product_categories')
+      .insert({'business_id':businessId,'name':value});
+  }
+
   Future<List<Map<String, dynamic>>> products(String businessId) async {
     final result = await _client.from('arodesk_products')
         .select('id,name,sku,barcode,category,item_type,unit,sale_price,cost_price,reorder_level,track_stock,active,image_path')
