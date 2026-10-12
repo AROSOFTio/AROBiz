@@ -91,7 +91,7 @@ class DataService {
         email: isEmail ? identifier.trim().toLowerCase() : null,
         phone: isEmail ? null : identifier.trim(),
         password: password,
-        emailRedirectTo: 'https://arosoftlabs.com/',
+        emailRedirectTo: 'io.supabase.arodesk://auth-callback/',
         data: {'businessName': businessName, 'businessCategory': category, 'location': location, 'countryCode': countryCode, 'currencyCode': CountryCurrency.currency(countryCode),
           'first_name':firstName.trim(),'middle_name':middleName.trim(),
           'last_name':lastName.trim(),
@@ -130,7 +130,7 @@ class DataService {
     await Supabase.instance.client.auth.resend(
       type: OtpType.signup,
       email: address,
-      emailRedirectTo: 'https://arosoftlabs.com/',
+      emailRedirectTo: 'io.supabase.arodesk://auth-callback/',
     );
   }
 
