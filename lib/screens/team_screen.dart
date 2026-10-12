@@ -60,10 +60,16 @@ class _TeamScreenState extends State<TeamScreen>{
     String role=member?['role']?.toString()??'staff';
     bool saving=false;
     final done=await showModalBottomSheet<bool>(
-      context:context,isScrollControlled:true,
+      context:context,isScrollControlled:true,useSafeArea:true,
       builder:(ctx)=>StatefulBuilder(builder:(ctx,update)=>Padding(
-        padding:EdgeInsets.fromLTRB(18,18,18,MediaQuery.viewInsetsOf(ctx).bottom+18),
-        child:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,children:[
+        padding:EdgeInsets.fromLTRB(18,18,18,
+          MediaQuery.viewInsetsOf(ctx).bottom+
+          MediaQuery.viewPaddingOf(ctx).bottom+48),
+        child:ConstrainedBox(
+          constraints:BoxConstraints(maxHeight:MediaQuery.sizeOf(ctx).height*0.74),
+          child:SingleChildScrollView(
+            keyboardDismissBehavior:ScrollViewKeyboardDismissBehavior.onDrag,
+            child:Column(mainAxisSize:MainAxisSize.min,children:[
           Text(member==null?'Add team member':'Edit team member',
             style:Theme.of(ctx).textTheme.titleLarge),
           const SizedBox(height:14),
@@ -110,7 +116,7 @@ class _TeamScreenState extends State<TeamScreen>{
               }
             },child:Text(saving?'Saving...':'Save member'),
           )),
-        ])))),
+        ]))))),
     );
     email.dispose();title.dispose();
     if(done==true)await _load();
