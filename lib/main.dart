@@ -319,11 +319,29 @@ class AppShellState extends State<AppShell> {
                     isSelected: _currentIndex == 0,
                     onTap: () => _onItemTapped(0),
                   ),
-                  _NavItem(
-                    icon: Icons.description_rounded,
-                    label: 'Documents (standalone)',
-                    isSelected: _currentIndex == 1,
-                    onTap: () => _onItemTapped(1),
+                  ExpansionTile(
+                    leading:Icon(Icons.description_rounded,
+                      color:Theme.of(context).colorScheme.primary),
+                    title:const Text('Documents'),
+                    initiallyExpanded:_currentIndex==1,
+                    childrenPadding:const EdgeInsets.only(left:20),
+                    children:[
+                      ListTile(
+                        leading:const Icon(Icons.folder_open_outlined),
+                        title:const Text('View documents'),
+                        onTap:()=>_onItemTapped(1),
+                      ),
+                      if(_canWrite) ListTile(
+                        leading:const Icon(Icons.note_add_outlined),
+                        title:const Text('Create document'),
+                        onTap:(){
+                          Navigator.pop(context);
+                          Navigator.push(context,MaterialPageRoute(
+                            builder:(_)=>const CreateInvoiceScreen()))
+                            .then((_)=>setState(()=>_currentIndex=1));
+                        },
+                      ),
+                    ],
                   ),
                   _NavItem(
                     icon: Icons.inventory_2_outlined,
