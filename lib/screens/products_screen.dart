@@ -197,6 +197,7 @@ class _ProductWizardState extends State<_ProductWizard>{
     _category=TextEditingController(),_unit=TextEditingController(),
     _sale=TextEditingController(),_cost=TextEditingController(),
     _reorder=TextEditingController();
+  final _opening=TextEditingController(text:'0');
   int _step=0;
   String _type='product';
   String? _error;
