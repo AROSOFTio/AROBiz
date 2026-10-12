@@ -3,7 +3,8 @@ import '../services/data_service.dart';
 import '../services/inventory_service.dart';
 
 class ProductsScreen extends StatefulWidget {
-  const ProductsScreen({super.key});
+  final bool readOnly;
+  const ProductsScreen({super.key,this.readOnly=false});
   @override
   State<ProductsScreen> createState() => _ProductsScreenState();
 }
@@ -114,7 +115,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
     final low=_products.where((p)=>p['track_stock']==true&&
       (_balances[p['id'].toString()]??0)<=(p['reorder_level'] as num).toDouble()).length;
     return Scaffold(
-      floatingActionButton:_businessId==null?null:FloatingActionButton.extended(
+      floatingActionButton:_businessId==null||widget.readOnly?null:FloatingActionButton.extended(
         onPressed:()=>_edit(),icon:const Icon(Icons.add),label:const Text('New item')),
       body:RefreshIndicator(onRefresh:_load,child:_loading?
         const Center(child:CircularProgressIndicator()):
@@ -167,13 +168,13 @@ class _ProductsScreenState extends State<ProductsScreen> {
                     child:Padding(padding:EdgeInsets.only(left:16),child:Text('Low stock',
                       style:TextStyle(color:Colors.orange)))),
                 Wrap(spacing:8,runSpacing:8,children:[
-                  TextButton.icon(onPressed:()=>_edit(p),icon:const Icon(Icons.edit_outlined,size:18),
+                  if(!widget.readOnly) TextButton.icon(onPressed:()=>_edit(p),icon:const Icon(Icons.edit_outlined,size:18),
                     label:const Text('Edit')),
                   if(track)TextButton.icon(onPressed:()=>_history(p),
                     icon:const Icon(Icons.history,size:18),label:const Text('History')),
-                  if(track)FilledButton.icon(onPressed:()=>_move(p),
+                  if(track&&!widget.readOnly)FilledButton.icon(onPressed:()=>_move(p),
                     icon:const Icon(Icons.add,size:18),label:const Text('Add Stock')),
-                  if(track)OutlinedButton.icon(onPressed:()=>_move(p,receive:false),
+                  if(track&&!widget.readOnly)OutlinedButton.icon(onPressed:()=>_move(p,receive:false),
                     icon:const Icon(Icons.remove,size:18),label:const Text('Issue')),
                 ]),
               ])));
