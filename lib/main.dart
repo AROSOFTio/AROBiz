@@ -204,6 +204,9 @@ class AppShellState extends State<AppShell> {
       if(id==null)return;
       final items=await OfflinePaymentService.instance.pending(id);
       if(items.isNotEmpty)await OfflinePaymentService.instance.sync(id);
+      if((await OfflineSalesService.instance.pendingStock(id)).isNotEmpty){
+        await OfflineSalesService.instance.syncStock(id);
+      }
       if((await OfflineSalesService.instance.pendingCount(id))>0){
         await OfflineSalesService.instance.sync(id);
       }
