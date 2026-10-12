@@ -134,6 +134,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     key: _accountForm,
     child: Column(children: [
       TextFormField(
+        scrollPadding:const EdgeInsets.only(bottom:110),
         controller:_firstName,textCapitalization:TextCapitalization.words,
         decoration:_decoration('First name *',Icons.person_outline),
         validator:(v)=>(v?.trim().isEmpty??true)?'Enter your first name':null,
@@ -256,14 +257,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final typing=MediaQuery.viewInsetsOf(context).bottom>0;
     const headings = ['Your login', 'Your business', 'Review details'];
     return Scaffold(
+      resizeToAvoidBottomInset:true,
       appBar: AppBar(title: const Text('Register on ARODesk')),
       body: SafeArea(child: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 520),
           child: Column(children: [
-            Padding(
+            if(!typing)Padding(
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 6),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Center(child: Image.asset('assets/logo.png',width:74,height:74,fit:BoxFit.contain)),
@@ -314,15 +317,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
               ),
             Expanded(child: SingleChildScrollView(
               keyboardDismissBehavior:ScrollViewKeyboardDismissBehavior.onDrag,
-              padding:EdgeInsets.fromLTRB(20,14,20,
-                MediaQuery.viewInsetsOf(context).bottom>0?90:24),
+              padding:EdgeInsets.fromLTRB(20,typing?8:14,20,typing?115:24),
               child: _registrationComplete
                   ? const Center(child: Icon(Icons.mark_email_read_outlined, size: 72, color: Colors.green))
                   : (_step == 0 ? _account() : _step == 1 ? _businessDetails() : _review()),
             )),
-            Padding(
+            if(!typing)Padding(
               padding: EdgeInsets.fromLTRB(20,12,20,
-                MediaQuery.viewPaddingOf(context).bottom+28),
+                MediaQuery.viewPaddingOf(context).bottom+20),
               child: _registrationComplete ? const SizedBox.shrink() : Row(children: [
                 if (_step > 0) ...[
                   OutlinedButton(
