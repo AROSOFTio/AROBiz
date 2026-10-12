@@ -63,6 +63,7 @@ jobs:
             "$BUILD_TOOLS/apksigner" verify --verbose "$apk"
             "$BUILD_TOOLS/aapt" dump badging "$apk" > /tmp/arodesk-badging.txt
             grep -q "package: name='com.arosoft.arodesk'" /tmp/arodesk-badging.txt
+            grep -Eq "targetSdkVersion:'(36|3[7-9]|[4-9][0-9])'" /tmp/arodesk-badging.txt || { echo '::error::Google Play requires target SDK >= 36'; exit 1; }
             grep -q "application-label:'ARODesk'" /tmp/arodesk-badging.txt
             echo "Verified $(basename "$apk"): $(stat -c%s "$apk") bytes"
           done
