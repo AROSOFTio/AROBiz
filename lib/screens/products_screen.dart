@@ -41,17 +41,17 @@ class _ProductsScreenState extends State<ProductsScreen> {
       builder:(_)=>_ProductWizard(businessId:_businessId!,original:product,currency:_baseCurrency)));
     if(ok==true)await _load();
   }
-  Future<void> _move(Map<String,dynamic> product)async{
+  Future<void> _move(Map<String,dynamic> product,{bool receive=true})async{
     if(_businessId==null)return;
     final qty=TextEditingController(),note=TextEditingController();
-    bool incoming=true,busy=false;
+    bool incoming=receive,busy=false;
     final saved=await showModalBottomSheet<bool>(context:context,isScrollControlled:true,
       builder:(ctx)=>StatefulBuilder(builder:(ctx,update)=>Padding(
         padding:EdgeInsets.only(left:20,right:20,top:20,bottom:MediaQuery.viewInsetsOf(ctx).bottom+20),
         child:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,children:[
-          Text('Record stock movement',style:Theme.of(ctx).textTheme.titleLarge),
+          Text(incoming?'Add / receive stock':'Issue stock',style:Theme.of(ctx).textTheme.titleLarge),
           const SizedBox(height:12),
-          Text(product['name'].toString(),maxLines:2),
+          Text(product['name'].toString()+' · Available: '+(_balances[product['id'].toString()]??0).toString()+' '+product['unit'].toString(),maxLines:3),
           const SizedBox(height:12),
           SegmentedButton<bool>(segments:const [
             ButtonSegment(value:true,label:Text('Receive')),
@@ -66,8 +66,8 @@ class _ProductsScreenState extends State<ProductsScreen> {
           SizedBox(width:double.infinity,child:FilledButton(
             onPressed:busy?null:()async{
               final n=double.tryParse(qty.text.trim());
-              if(n==null||!n.isFinite||n<=0){
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Enter a positive quantity.')));
+              if(n==null||!n.isFinite||n<=0||n>999999999||(n*1000).roundToDouble()!=n*1000){
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Enter a positive quantity with up to 3 decimal places.')));
                 return;
               }
               update(()=>busy=true);
@@ -79,7 +79,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
                 if(ctx.mounted){update(()=>busy=false);
                   ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(_message(e))));}
               }
-            },child:Text(busy?'Saving...':'Save movement'),
+            },child:Text(busy?'Saving...':incoming?'Add stock':'Issue stock'),
           )),
         ]))),
       ));
@@ -128,10 +128,22 @@ class _ProductsScreenState extends State<ProductsScreen> {
               child:Padding(padding:const EdgeInsets.all(16),child:Text(_error!))),
             TextButton(onPressed:_load,child:const Text('Retry')),
           ]else...[
-            Wrap(spacing:8,children:[
+            Wrap(spacing:8,runSpacing:8,children:[
               Chip(label:Text(_products.length.toString()+' items')),
               Chip(label:Text(low.toString()+' low-stock')),
             ]),
+            const SizedBox(height:12),
+            Card(
+              child:Padding(padding:const EdgeInsets.all(12),
+                child:Row(children:[
+                  const Icon(Icons.add_box_outlined,size:26),
+                  const SizedBox(width:12),
+                  const Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+                    Text('Stock receiving',style:TextStyle(fontWeight:FontWeight.bold)),
+                    Text('Add stock to any tracked product using Add Stock below.',style:TextStyle(fontSize:12)),
+                  ])),
+                ])),
+            ),
             const SizedBox(height:12),
             TextField(onChanged:(v)=>setState(()=>_query=v),
               decoration:const InputDecoration(labelText:'Search products or SKU',
@@ -154,13 +166,15 @@ class _ProductsScreenState extends State<ProductsScreen> {
                   const Align(alignment:Alignment.centerLeft,
                     child:Padding(padding:EdgeInsets.only(left:16),child:Text('Low stock',
                       style:TextStyle(color:Colors.orange)))),
-                Wrap(spacing:8,children:[
+                Wrap(spacing:8,runSpacing:8,children:[
                   TextButton.icon(onPressed:()=>_edit(p),icon:const Icon(Icons.edit_outlined,size:18),
                     label:const Text('Edit')),
                   if(track)TextButton.icon(onPressed:()=>_history(p),
                     icon:const Icon(Icons.history,size:18),label:const Text('History')),
-                  if(track)FilledButton.tonalIcon(onPressed:()=>_move(p),
-                    icon:const Icon(Icons.swap_vert,size:18),label:const Text('Stock')),
+                  if(track)FilledButton.icon(onPressed:()=>_move(p),
+                    icon:const Icon(Icons.add,size:18),label:const Text('Add Stock')),
+                  if(track)OutlinedButton.icon(onPressed:()=>_move(p,receive:false),
+                    icon:const Icon(Icons.remove,size:18),label:const Text('Issue')),
                 ]),
               ])));
             }),
@@ -200,16 +214,18 @@ class _ProductWizardState extends State<_ProductWizard>{
     }else{_unit.text='pcs';_sale.text='0';_cost.text='0';_reorder.text='0';}
   }
   @override
-  void dispose(){for(final c in [_name,_sku,_category,_unit,_sale,_cost,_reorder]){c.dispose();}super.dispose();}
+  void dispose(){for(final c in [_name,_sku,_category,_unit,_sale,_cost,_reorder,_opening]){c.dispose();}super.dispose();}
   Widget _field(TextEditingController c,String label,{bool number=false})=>
     Padding(padding:const EdgeInsets.only(bottom:14),child:TextField(
       controller:c,keyboardType:number?const TextInputType.numberWithOptions(decimal:true):TextInputType.text,
       decoration:InputDecoration(labelText:label,border:const OutlineInputBorder())));
   void _next(){
     if(_step==0&&_name.text.trim().length<2){setState(()=>_error='Enter an item name.');return;}
-    if(_step==1&&[_sale,_cost,_reorder].any((c){
+    if(_step==1&&[_sale,_cost,_reorder,if(widget.original==null)_opening].any((c){
       final n=double.tryParse(c.text.trim());return n==null||!n.isFinite||n<0;
-    })){setState(()=>_error='Prices and reorder levels must be valid non-negative numbers.');return;}
+    })){setState(()=>_error='Enter non-negative amounts and opening stock.');return;}
+    final open=double.tryParse(_opening.text.trim())??0;
+    if(_step==1&&(open*1000).roundToDouble()!=open*1000){setState(()=>_error='Stock supports up to three decimal places.');return;}
     setState((){_error=null;_step++;});
   }
   Future<void> _save()async{
@@ -221,6 +237,15 @@ class _ProductWizardState extends State<_ProductWizard>{
         category:_category.text,type:_type,unit:_unit.text,
         salePrice:double.parse(_sale.text),costPrice:double.parse(_cost.text),
         reorderLevel:double.parse(_reorder.text),trackStock:_track);
+      if(widget.original==null&&_track&&_type!='service'){
+        final opening=double.tryParse(_opening.text.trim())??0;
+        if(opening>0){
+          // Persist the opening stock after creating the catalog item.
+          // If it fails, the product remains saved and stock can be received safely later.
+          await InventoryService.instance.postOpeningStockForSku(widget.businessId,
+            sku:_sku.text,name:_name.text,quantity:opening);
+        }
+      }
       if(mounted)Navigator.pop(context,true);
     }catch(e){if(mounted)setState(()=>_error=e.toString().toLowerCase().contains('unique')
       ? 'This SKU is already in use.':'Cannot save this item. Check the details and retry.');}
@@ -270,6 +295,7 @@ class _ProductWizardState extends State<_ProductWizard>{
             ListTile(title:const Text('SKU'),trailing:Text(_sku.text.isEmpty?'None':_sku.text)),
             ListTile(title:const Text('Selling price'),trailing:Text(_sale.text)),
             ListTile(title:const Text('Cost price'),trailing:Text(_cost.text)),
+            if(widget.original==null&&_track&&_type!='service')ListTile(title:const Text('Opening stock'),trailing:Text(_opening.text)),
           ]),
         )),
         Padding(padding:const EdgeInsets.all(16),child:Row(children:[
