@@ -86,6 +86,7 @@ class AppShell extends StatefulWidget {
 class AppShellState extends State<AppShell> {
   int _currentIndex = 0;
   String? _role;
+  String? _activeBusinessName;
   @override
   void initState(){super.initState();_loadRole();}
   Future<void> _loadRole()async{
@@ -97,7 +98,14 @@ class AppShellState extends State<AppShell> {
           name:profile?.name??'My Business',category:profile?.category??'Other');
         memberships=await TeamService.instance.businesses();
       }
-      if(mounted)setState(()=>_role=memberships.isEmpty?null:memberships.first['role'].toString());
+      final profile=DataService().currentProfile;
+      final activeId=await InventoryService.instance.ensureBusiness(
+        name:profile?.name??'My Business',category:profile?.category??'Other');
+      final active=memberships.where((b)=>b['business_id'].toString()==activeId).toList();
+      if(mounted)setState((){
+        _role=active.isEmpty?null:active.first['role'].toString();
+        _activeBusinessName=active.isEmpty?null:active.first['business_name'].toString();
+      });
     }catch(_){if(mounted)setState(()=>_role=null);}
   }
   bool get _canManage => _role=='owner'||_role=='admin';
@@ -141,7 +149,7 @@ class AppShellState extends State<AppShell> {
   @override
   Widget build(BuildContext context) {
     final profile = DataService().currentProfile;
-    final businessName = profile?.name ?? 'My Business';
+    final businessName = _activeBusinessName ?? profile?.name ?? 'My Business';
     final businessCategory = profile?.category ?? '';
     final email = profile?.email ?? profile?.phone ?? '';
     final logoPath = profile?.logoPath;
@@ -274,6 +282,35 @@ class AppShellState extends State<AppShell> {
               child: ListView(
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 children: [
+                  FutureBuilder<List<Map<String,dynamic>>>(
+                    future: TeamService.instance.businesses(),
+                    builder: (ctx,snapshot) {
+                      final businesses=snapshot.data??[];
+                      if(businesses.length<=1)return const SizedBox.shrink();
+                      return PopupMenuButton<String>(
+                        tooltip:'Switch business',
+                        onSelected:(id) async {
+                          try {
+                            await InventoryService.instance.selectBusiness(id);
+                            await _loadRole();
+                            if(mounted)setState(()=>_currentIndex=0);
+                            if(context.mounted)Navigator.pop(context);
+                          } catch (_) {
+                            if(mounted)ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content:Text('Could not switch business.')));
+                          }
+                        },
+                        itemBuilder:(ctx)=>businesses.map((b)=>PopupMenuItem<String>(
+                          value:b['business_id'].toString(),
+                          child:Text(b['business_name'].toString()+' · '+b['role'].toString()),
+                        )).toList(),
+                        child:const ListTile(
+                          leading:Icon(Icons.swap_horiz_outlined),
+                          title:Text('Switch business'),
+                          trailing:Icon(Icons.arrow_drop_down)),
+                      );
+                    },
+                  ),
                   const SizedBox(height: 8),
 
                   _NavItem(
