@@ -7,7 +7,8 @@ import 'invoice_preview_screen.dart';
 import 'products_screen.dart';
 
 class SalesScreen extends StatefulWidget {
-  const SalesScreen({super.key});
+  final bool newSaleOnOpen;
+  const SalesScreen({super.key,this.newSaleOnOpen=false});
   @override
   State<SalesScreen> createState() => _SalesScreenState();
 }
@@ -17,6 +18,7 @@ class _SalesScreenState extends State<SalesScreen> {
   List<Map<String,dynamic>> _products=[], _transactions=[];
   Map<String,double> _balances={};
   bool _loading=true;
+  bool _launchedNewSale=false;
   String _baseCurrency='USD';
   @override
   void initState(){super.initState();_refresh();}
@@ -41,9 +43,14 @@ class _SalesScreenState extends State<SalesScreen> {
       final balances=await stockRequest;
       final currency=await currencyRequest;
       final transactions=await salesRequest;
-      if(mounted)setState((){
-        _businessId=business;_products=products;_balances=balances;_transactions=transactions;_baseCurrency=currency;
-      });
+      if(mounted){
+        setState((){_businessId=business;_products=products;_balances=balances;
+          _transactions=transactions;_baseCurrency=currency;});
+        if(widget.newSaleOnOpen&&!_launchedNewSale){
+          _launchedNewSale=true;
+          WidgetsBinding.instance.addPostFrameCallback((_){if(mounted)_new('sale');});
+        }
+      }
     }catch(e){if(mounted)setState(()=>_error=_message(e));}
     finally{if(mounted)setState(()=>_loading=false);}
   }
