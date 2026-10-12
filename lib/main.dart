@@ -635,7 +635,8 @@ class AppShellState extends State<AppShell> {
         switchOutCurve:Curves.easeIn,
         child:KeyedSubtree(key:ValueKey(_currentIndex),
           child:_screens[_currentIndex])),
-      bottomNavigationBar:SafeArea(
+      bottomNavigationBar:MediaQuery.viewInsetsOf(context).bottom>0
+        ?null:SafeArea(
         top:false,
         child:NavigationBar(
           height:68,
