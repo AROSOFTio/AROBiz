@@ -36,7 +36,7 @@ class OfflinePaymentService {
     required String business,required String sale,
     required double amount,required String method,String reference='',
   })async{
-    if(!amount.isFinite||amount<=0||(amount*100).roundToDouble()!=amount*100)
+    if(!amount.isFinite||amount<=0||((amount*100).round()-(amount*100)).abs()>0.001)
       throw ArgumentError('Enter a valid amount with two decimal places.');
     if(!['Cash','Mobile Money','Bank Transfer','Card'].contains(method))
       throw ArgumentError('Invalid payment method.');
@@ -66,7 +66,7 @@ class OfflinePaymentService {
             'p_business':business,'p_sale':item['sale'],'p_amount':item['amount'],
             'p_method':item['method'],'p_reference':item['reference'],
             'p_request':item['id'],
-          });
+          }).timeout(const Duration(seconds:7));
           rows=await pending(business);
           rows.removeWhere((e)=>e['id']==item['id']);
           await _write(business,rows);
