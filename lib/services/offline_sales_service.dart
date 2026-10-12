@@ -82,7 +82,13 @@ class OfflineSalesService {
     queue.add({
       'id':id,'business':business,'kind':'quotation','quantities':quantities,
       'customer':customer,'phone':phone,'currency':snapshotData['currency'],
-      'total':total,'created_at':DateTime.now().toUtc().toIso8601String(),
+      'total':total,
+      'print_lines':[
+        for(final e in quantities.entries)
+          {'description':catalog[e.key]!['name'].toString(),
+           'quantity':e.value,'unit_price':(catalog[e.key]!['sale_price'] as num).toDouble()},
+      ],
+      'created_at':DateTime.now().toUtc().toIso8601String(),
     });
     await _write(business,'quote_queue',queue);
     await _archivePrint(business,queue.last);
@@ -206,6 +212,11 @@ class OfflineSalesService {
       'address':address,'payments':payments,'due_date':dueDate,
       'quantities':quantities,'currency':snap['currency']??'USD',
       'total':total,'paid_total':paid,
+      'print_lines':[
+        for(final e in quantities.entries)
+          {'description':byId[e.key]!['name'].toString(),
+           'quantity':e.value,'unit_price':(byId[e.key]!['sale_price'] as num).toDouble()},
+      ],
       'created_at':DateTime.now().toUtc().toIso8601String(),
     };
     queue.add(row);
