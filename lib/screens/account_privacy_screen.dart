@@ -9,8 +9,8 @@ class AccountPrivacyScreen extends StatefulWidget{
 }
 class _AccountPrivacyScreenState extends State<AccountPrivacyScreen>{
   bool _submitting=false;
-  static const _privacy='https://arosoftio.github.io/AROBiz/#privacy';
-  static const _delete='https://arosoftio.github.io/AROBiz/#delete';
+  static const _privacy='https://github.com/AROSOFTio/AROBiz/blob/main/play-compliance/README.md#privacy-policy';
+  static const _delete='https://github.com/AROSOFTio/AROBiz/blob/main/play-compliance/README.md#request-account-deletion';
   Future<void> _open(String url)async{
     try{
       if(!await launchUrl(Uri.parse(url),mode:LaunchMode.externalApplication)){
