@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import '../services/offline_payment_service.dart';
 import 'package:intl/intl.dart';
 import '../services/data_service.dart';
 import '../services/inventory_service.dart';
@@ -13,21 +15,55 @@ class _DebtorsScreenState extends State<DebtorsScreen> {
   bool _loading=true;
   List<Map<String,dynamic>> _rows=[];
   String _search='';
-  @override void initState(){super.initState();_load();}
+  bool _offline=false;
+  int _pendingCount=0;
+  Map<String,double> _pendingAmounts={};
+  Timer? _retry;
+  @override void initState(){super.initState();_load();
+    _retry=Timer.periodic(const Duration(seconds:45),(_){if(mounted&&!_loading)_load();});
+  }
+  @override void dispose(){_retry?.cancel();super.dispose();}
   Future<void> _load()async{
     setState((){_loading=true;_error=null;});
     try{
       final profile=DataService().currentProfile;
       final b=await InventoryService.instance.ensureBusiness(name:profile?.name??'My Business',
         category:profile?.category??'Other');
+      _business=b;
+      await OfflinePaymentService.instance.sync(b);
       final rows=await SalesService.instance.debtors(b);
-      if(mounted)setState((){_business=b;_rows=rows;});
-    }catch(e){if(mounted)setState(()=>_error='Could not load outstanding credit accounts. Check your connection.');}
-    finally{if(mounted)setState(()=>_loading=false);}
+      await OfflinePaymentService.instance.cacheDebtors(b,rows);
+      final queued=await OfflinePaymentService.instance.pending(b);
+      final amounts=<String,double>{};
+      for(final q in queued){
+        final sale=q['sale'].toString();
+        amounts[sale]=(amounts[sale]??0)+(q['amount'] as num).toDouble();
+      }
+      if(mounted)setState((){
+        _rows=rows;_offline=false;_pendingCount=queued.length;_pendingAmounts=amounts;
+      });
+    }catch(e){
+      try{
+        final b=_business??await InventoryService.instance.preferredBusinessId();
+        if(b==null)rethrow;
+        final rows=await OfflinePaymentService.instance.cachedDebtors(b);
+        final queued=await OfflinePaymentService.instance.pending(b);
+        final amounts=<String,double>{};
+        for(final q in queued){
+          final sale=q['sale'].toString();
+          amounts[sale]=(amounts[sale]??0)+(q['amount'] as num).toDouble();
+        }
+        if(mounted)setState((){
+          _business=b;_rows=rows;_offline=true;_pendingCount=queued.length;
+          _pendingAmounts=amounts;
+        });
+      }catch(_){if(mounted)setState(()=>_error='No saved debtor data. Connect to load accounts.');}
+    }finally{if(mounted)setState(()=>_loading=false);}
   }
   Future<void> _receive(Map<String,dynamic> row)async{
     if(_business==null)return;
-    final outstanding=(row['balance'] as num).toDouble();
+    final outstanding=((row['balance'] as num).toDouble()-
+      (_pendingAmounts[row['id'].toString()]??0)).clamp(0,double.infinity).toDouble();
     final amount=TextEditingController(text:outstanding.toStringAsFixed(2));
     final reference=TextEditingController();
     String method='Cash';bool saving=false;
@@ -63,15 +99,15 @@ class _DebtorsScreenState extends State<DebtorsScreen> {
               }
               update(()=>saving=true);
               try{
-                await SalesService.instance.addPayment(businessId:_business!,
-                  saleId:row['id'].toString(),amount:value,method:method,
+                await OfflinePaymentService.instance.record(business:_business!,
+                  sale:row['id'].toString(),amount:value,method:method,
                   reference:reference.text.trim());
                 if(ctx.mounted)Navigator.pop(ctx,true);
               }catch(_){
                 if(ctx.mounted){
                   update(()=>saving=false);
                   ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(
-                    content:Text('Payment was not saved. Refresh balance and retry.')));
+                    content:Text('Could not save payment locally. Please retry.')));
                 }
               }
             },child:Text(saving?'Recording...':'Record payment')),
@@ -95,7 +131,11 @@ class _DebtorsScreenState extends State<DebtorsScreen> {
         ListView(padding:const EdgeInsets.fromLTRB(16,16,16,56),children:[
           Text('Outstanding customer balances',style:Theme.of(context).textTheme.titleLarge),
           const SizedBox(height:8),
-          Text('${_rows.length} open accounts • $overdue overdue'),
+          Row(children:[
+            Expanded(child:Text('${_rows.length} open · $overdue overdue')),
+            if(_offline)const Chip(label:Text('Offline')),
+            if(_pendingCount>0)Chip(label:Text('$_pendingCount to sync')),
+          ]),
           const SizedBox(height:14),
           TextField(onChanged:(v)=>setState(()=>_search=v),
             decoration:const InputDecoration(prefixIcon:Icon(Icons.search),
@@ -117,7 +157,13 @@ class _DebtorsScreenState extends State<DebtorsScreen> {
                     style:Theme.of(context).textTheme.titleMedium)),
                   if(past)const Chip(label:Text('Overdue')),
                 ]),
-                Text(r['document_number'].toString()+' · '+format.format(r['balance'])),
+                Text(r['document_number'].toString()+' · '+format.format(
+                  ((r['balance'] as num).toDouble()-
+                    (_pendingAmounts[r['id'].toString()]??0))
+                    .clamp(0,double.infinity))),
+                if((_pendingAmounts[r['id'].toString()]??0)>0)
+                  Text('Pending sync: '+format.format(_pendingAmounts[r['id'].toString()]),
+                    style:TextStyle(color:Theme.of(context).colorScheme.tertiary)),
                 if(r['customer_phone'].toString().isNotEmpty)
                   Text('Phone: '+r['customer_phone'].toString()),
                 if(r['customer_address'].toString().isNotEmpty)
@@ -125,7 +171,9 @@ class _DebtorsScreenState extends State<DebtorsScreen> {
                 Text('Due: '+(due??'Not set')),
                 const SizedBox(height:8),
                 Align(alignment:Alignment.centerRight,child:FilledButton.tonalIcon(
-                  onPressed:()=>_receive(r),
+                  onPressed:((r['balance'] as num).toDouble()-
+                    (_pendingAmounts[r['id'].toString()]??0))<=0.005?
+                    null:()=>_receive(r),
                   icon:const Icon(Icons.payments_outlined),
                   label:const Text('Receive payment'))),
               ])));
