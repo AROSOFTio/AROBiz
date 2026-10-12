@@ -1,8 +1,28 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:image_picker/image_picker.dart';
+import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
+import 'package:image/image.dart' as img;
 import 'data_service.dart';
 import 'country_currency.dart';
+
+Uint8List _compressProductPhoto(Uint8List source) {
+  final decoded=img.decodeImage(source);
+  if(decoded==null)throw const FormatException('Unsupported image. Select a JPG or PNG.');
+  var photo=decoded;
+  if(photo.width>640||photo.height>640){
+    final ratio=640/photo.width.clamp(photo.height,double.infinity);
+    final width=(photo.width*ratio).round().clamp(1,640);
+    final height=(photo.height*ratio).round().clamp(1,640);
+    photo=img.copyResize(photo,width:width,height:height);
+  }
+  for(final quality in [76,60,48,36]){
+    final bytes=Uint8List.fromList(img.encodeJpg(photo,quality:quality));
+    if(bytes.lengthInBytes<1024*1024)return bytes;
+  }
+  throw StateError('Photo remains too large after compression.');
+}
 
 /// Products, services, raw materials and finished goods share one business catalog.
 class InventoryService {
@@ -162,8 +182,8 @@ class InventoryService {
   }
 
   Future<void> uploadProductImage(String businessId,String productId,XFile file)async{
-    final bytes=await file.readAsBytes();
-    if(bytes.length>1024*1024)throw ArgumentError('Image exceeds 1 MB. Choose a smaller image.');
+    final original=await file.readAsBytes();
+    final bytes=await compute(_compressProductPhoto,original);
     final path='$businessId/$productId.jpg';
     await _client.storage.from('arodesk-product-images').uploadBinary(
       path,bytes,fileOptions:const FileOptions(upsert:true,contentType:'image/jpeg'));
