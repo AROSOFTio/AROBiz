@@ -157,6 +157,7 @@ class _SettingsScreenState extends State<SettingsScreen>{
     const Text('Products and services are managed in Products & Inventory, not in Settings.'),
   ]);
   @override Widget build(BuildContext context)=>Scaffold(
+    resizeToAvoidBottomInset:true,
     body:SafeArea(child:Center(child:ConstrainedBox(
       constraints:const BoxConstraints(maxWidth:650),
       child:Column(children:[
@@ -173,7 +174,9 @@ class _SettingsScreenState extends State<SettingsScreen>{
                 ButtonSegment(value:2,label:Text('Security'),icon:Icon(Icons.security_outlined)),
               ],selected:{_section},onSelectionChanged:(v)=>setState(()=>_section=v.first)),
           ])),
-        Expanded(child:ListView(padding:const EdgeInsets.fromLTRB(16,12,16,16),children:[
+        Expanded(child:ListView(
+          keyboardDismissBehavior:ScrollViewKeyboardDismissBehavior.onDrag,
+          padding:EdgeInsets.fromLTRB(16,12,16,MediaQuery.viewInsetsOf(context).bottom>0?130:20),children:[
           if(_section==0)_business(),
           if(_section==1)_payments(),
           if(_section==2)_security(),
