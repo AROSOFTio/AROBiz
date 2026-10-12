@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:async';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/material.dart';
 import 'services/data_service.dart';
@@ -16,6 +17,7 @@ import 'screens/saas_admin_screen.dart';
 import 'services/saas_admin_service.dart';
 import 'services/inventory_service.dart';
 import 'services/auth_security_service.dart';
+import 'services/offline_payment_service.dart';
 import 'screens/team_screen.dart';
 
 void main() async {
@@ -105,8 +107,23 @@ class AppShellState extends State<AppShell> {
   int _currentIndex = 0;
   String? _role;
   String? _activeBusinessName;
+  Timer? _paymentSync;
   @override
-  void initState(){super.initState();_loadRole();}
+  void initState(){
+    super.initState();
+    _loadRole();
+    _paymentSync=Timer.periodic(const Duration(seconds:60),(_)=>_syncPending());
+  }
+  @override
+  void dispose(){_paymentSync?.cancel();super.dispose();}
+  Future<void> _syncPending()async{
+    try{
+      final id=await InventoryService.instance.preferredBusinessId();
+      if(id==null)return;
+      final items=await OfflinePaymentService.instance.pending(id);
+      if(items.isNotEmpty)await OfflinePaymentService.instance.sync(id);
+    }catch(_){/* Pending payments remain encrypted until connectivity returns. */}
+  }
   Future<void> _loadRole()async{
     try{
       var memberships=await TeamService.instance.businesses();
