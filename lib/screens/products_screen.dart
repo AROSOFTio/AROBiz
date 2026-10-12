@@ -8,7 +8,8 @@ import '../services/inventory_service.dart';
 class ProductsScreen extends StatefulWidget {
   final bool readOnly;
   final bool newItemOnOpen;
-  const ProductsScreen({super.key,this.readOnly=false,this.newItemOnOpen=false});
+  final VoidCallback? onBack;
+  const ProductsScreen({super.key,this.readOnly=false,this.newItemOnOpen=false,this.onBack});
   @override
   State<ProductsScreen> createState() => _ProductsScreenState();
 }
@@ -175,7 +176,12 @@ class _ProductsScreenState extends State<ProductsScreen> {
       body:RefreshIndicator(onRefresh:_load,child:_loading?
         const Center(child:CircularProgressIndicator()):
         ListView(padding:const EdgeInsets.fromLTRB(16,16,16,100),children:[
-          Text('Products & Inventory',style:Theme.of(context).textTheme.titleLarge),
+          Row(children:[
+            IconButton(tooltip:'Back',onPressed:widget.onBack??()=>Navigator.maybePop(context),
+              icon:const Icon(Icons.arrow_back)),
+            Expanded(child:Text('Products & Inventory',
+              style:Theme.of(context).textTheme.titleLarge)),
+          ]),
 
           const SizedBox(height:12),
           if(_error!=null)...[
