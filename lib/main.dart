@@ -111,9 +111,9 @@ class _InvoicingAppState extends State<InvoicingApp> {
         useMaterial3:true,
         scaffoldBackgroundColor:const Color(0xFFF7F8FA),
         colorScheme:ColorScheme.fromSeed(
-          seedColor:const Color(0xFF152C3E),
+          seedColor:const Color(0xFF006FFF),
           brightness:Brightness.light,
-          primary:const Color(0xFF152C3E),
+          primary:const Color(0xFF006FFF),
           secondary:const Color(0xFFB68C48),
           tertiary:const Color(0xFF267B84),
           surface:Colors.white,
@@ -130,10 +130,10 @@ class _InvoicingAppState extends State<InvoicingApp> {
         ),
         appBarTheme:const AppBarTheme(
           backgroundColor:Color(0xFFF7F8FA),
-          foregroundColor:Color(0xFF152C3E),
+          foregroundColor:Color(0xFF006FFF),
           scrolledUnderElevation:0,elevation:0,centerTitle:false,
           titleTextStyle:TextStyle(fontSize:19,fontWeight:FontWeight.w700,
-            color:Color(0xFF152C3E),letterSpacing:-0.4),
+            color:Color(0xFF006FFF),letterSpacing:-0.4),
         ),
         cardTheme:CardThemeData(
           color:Colors.white,elevation:0,
@@ -168,7 +168,7 @@ class _InvoicingAppState extends State<InvoicingApp> {
         ),
         dividerTheme:const DividerThemeData(color:Color(0xFFE6E9ED),thickness:1),
         floatingActionButtonTheme:const FloatingActionButtonThemeData(
-          backgroundColor:Color(0xFF152C3E),foregroundColor:Colors.white),
+          backgroundColor:Color(0xFF006FFF),foregroundColor:Colors.white),
       ),
       home: DataService().isLoggedIn
         ? FutureBuilder<bool>(
@@ -326,16 +326,7 @@ class AppShellState extends State<AppShell> {
             // ── Branded Header ─────────────────────────────────────
             Container(
               width: double.infinity,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    Theme.of(context).colorScheme.primary,
-                    Theme.of(context).colorScheme.secondary,
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-              ),
+              color: Theme.of(context).colorScheme.primary,
               child: SafeArea(
                 bottom: false,
                 child: Padding(
