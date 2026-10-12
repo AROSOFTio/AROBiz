@@ -43,6 +43,16 @@ class _SettingsScreenState extends State<SettingsScreen>{
     _country=p?.countryCode;
     _currency=p?.currencyCode??CountryCurrency.currency(_country);
     _logo=p?.logoPath;
+    _loadAccountingCurrency();
+  }
+  Future<void> _loadAccountingCurrency()async{
+    try{
+      final p=DataService().currentProfile;
+      final id=await InventoryService.instance.ensureBusiness(
+        name:p?.name??'My Business',category:p?.category??'Other');
+      final currency=await InventoryService.instance.businessCurrency(id);
+      if(mounted)setState(()=>_currency=currency);
+    }catch(_){/* Leave original locally saved value until connection returns. */}
   }
   @override void dispose(){
     _name.dispose();_location.dispose();_phone.dispose();_email.dispose();_payment.dispose();
@@ -122,13 +132,10 @@ class _SettingsScreenState extends State<SettingsScreen>{
         _currency=CountryCurrency.currency(v);
       })),
     const SizedBox(height:14),
-    DropdownButtonFormField<String>(
-      value:CountryCurrency.currencies.contains(_currency)?_currency:'USD',
-      decoration:const InputDecoration(labelText:'Preferred currency',border:OutlineInputBorder()),
-      items:CountryCurrency.currencies.map((v)=>DropdownMenuItem(value:v,child:Text(v))).toList(),
-      onChanged:(v)=>setState(()=>_currency=v??'USD')),
-    const SizedBox(height:8),
-    const Text('Changing currency preference does not convert historical transactions or product prices.'),
+    InputDecorator(
+      decoration:const InputDecoration(
+        labelText:'Business accounting currency',border:OutlineInputBorder()),
+      child:Text(_currency,style:const TextStyle(fontWeight:FontWeight.w700))),
   ]);
   Widget _payments()=>Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[
     Text('Payment information',style:Theme.of(context).textTheme.titleLarge),
@@ -137,8 +144,8 @@ class _SettingsScreenState extends State<SettingsScreen>{
     const SizedBox(height:20),
     _field(_payment,'Payment instructions / Mobile Money / bank details',lines:4),
   ]);
-  static const deletionUrl='https://bqoutfgqfaangnnclgle.supabase.co/functions/v1/arodesk-privacy-deletion?page=delete';
-  static const privacyUrl='https://bqoutfgqfaangnnclgle.supabase.co/functions/v1/arodesk-privacy-deletion?page=privacy';
+  static const deletionUrl='https://arosoftio.github.io/AROBiz/#delete';
+  static const privacyUrl='https://arosoftio.github.io/AROBiz/#privacy';
   Future<void> _openPage(String url)async{
     final ok=await launchUrl(Uri.parse(url),mode:LaunchMode.externalApplication);
     if(!ok&&mounted)ScaffoldMessenger.of(context).showSnackBar(
