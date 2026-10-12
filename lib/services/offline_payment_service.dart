@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 
@@ -7,6 +7,7 @@ class OfflinePaymentService {
   OfflinePaymentService._();
   static final instance=OfflinePaymentService._();
   bool _syncing=false;
+  static const _storage=FlutterSecureStorage();
   SupabaseClient get _client=>Supabase.instance.client;
   String _key(String business){
     final user=_client.auth.currentUser?.id;
@@ -14,14 +15,22 @@ class OfflinePaymentService {
     return 'pending_debtor_payments_'+user+'_'+business;
   }
   Future<List<Map<String,dynamic>>> pending(String business)async{
-    final prefs=await SharedPreferences.getInstance();
-    final list=prefs.getStringList(_key(business))??<String>[];
-    return list.map((s)=>Map<String,dynamic>.from(jsonDecode(s) as Map)).toList();
+    final serialized=await _storage.read(key:_key(business));
+    if(serialized==null)return [];
+    return List<Map<String,dynamic>>.from(
+      (jsonDecode(serialized) as List).map((row)=>Map<String,dynamic>.from(row as Map)));
   }
   Future<void> _write(String business,List<Map<String,dynamic>> rows)async{
-    final prefs=await SharedPreferences.getInstance();
-    await prefs.setStringList(_key(business),
-      rows.map((r)=>jsonEncode(r)).toList());
+    await _storage.write(key:_key(business),value:jsonEncode(rows));
+  }
+  Future<void> cacheDebtors(String business,List<Map<String,dynamic>> rows)async{
+    await _storage.write(key:_key(business)+'_snapshot',value:jsonEncode(rows));
+  }
+  Future<List<Map<String,dynamic>>> cachedDebtors(String business)async{
+    final data=await _storage.read(key:_key(business)+'_snapshot');
+    if(data==null)return [];
+    return List<Map<String,dynamic>>.from(
+      (jsonDecode(data) as List).map((v)=>Map<String,dynamic>.from(v as Map)));
   }
   Future<void> record({
     required String business,required String sale,
