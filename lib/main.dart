@@ -213,74 +213,75 @@ class AppShellState extends State<AppShell> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // ARODesk is the app brand. The selected company appears below.
+                      // Display the selected company's identity, not the ARODesk wordmark.
                       Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
                           Container(
-                            height: 48, width: 48,
+                            height: 70,
+                            width: 70,
+                            padding: const EdgeInsets.all(6),
                             decoration: BoxDecoration(
                               color: Colors.white,
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(16),
                             ),
-                            padding: const EdgeInsets.all(2),
-                            child: Image.asset('assets/logo.png',
-                              fit: BoxFit.contain, semanticLabel: 'ARODesk logo'),
-                          ),
-                          const SizedBox(width: 12),
-                          const Text('ARODesk',
-                            style: TextStyle(color: Colors.white,
-                              fontSize: 23, fontWeight: FontWeight.w800)),
-                        ],
-                      ),
-                      const SizedBox(height: 20),
-                      // Business avatar + info
-                      Row(
-                        children: [
-                          CircleAvatar(
-                            radius: 26,
-                            backgroundColor: Colors.white.withOpacity(0.2),
-                            backgroundImage: logoPath != null
-                                ? FileImage(File(logoPath)) as ImageProvider
-                                : null,
-                            child: logoPath == null
-                                ? Text(
-                                    businessName.isNotEmpty ? businessName[0].toUpperCase() : 'B',
-                                    style: const TextStyle(
-                                      fontSize: 22,
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
+                            child: logoPath != null
+                                ? ClipRRect(
+                                    borderRadius: BorderRadius.circular(10),
+                                    child: Image.file(File(logoPath),
+                                      fit: BoxFit.contain,
+                                      errorBuilder: (_, __, ___) => Center(
+                                        child: Text(
+                                          businessName.isNotEmpty
+                                              ? businessName[0].toUpperCase() : 'B',
+                                          style: const TextStyle(
+                                            fontSize: 28,
+                                            fontWeight: FontWeight.bold,
+                                            color: Color(0xFF006FFF),
+                                          ),
+                                        ),
+                                      ),
                                     ),
                                   )
-                                : null,
+                                : Center(
+                                    child: Text(
+                                      businessName.isNotEmpty
+                                          ? businessName[0].toUpperCase() : 'B',
+                                      style: const TextStyle(
+                                        fontSize: 28,
+                                        fontWeight: FontWeight.bold,
+                                        color: Color(0xFF006FFF),
+                                      ),
+                                    ),
+                                  ),
                           ),
                           const SizedBox(width: 12),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(
-                                  businessName,
+                                Text(businessName,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
                                   style: const TextStyle(
                                     color: Colors.white,
                                     fontWeight: FontWeight.bold,
-                                    fontSize: 15,
+                                    fontSize: 17,
                                   ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
                                 ),
                                 if (businessCategory.isNotEmpty)
-                                  Text(
-                                    businessCategory,
-                                    style: const TextStyle(color: Colors.white70, fontSize: 12),
+                                  Text(businessCategory,
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      color: Colors.white70, fontSize: 12),
                                   ),
                                 if (email.isNotEmpty)
-                                  Text(
-                                    email,
-                                    style: const TextStyle(color: Colors.white60, fontSize: 11),
+                                  Text(email,
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      color: Colors.white70, fontSize: 11),
                                   ),
                               ],
                             ),
@@ -335,29 +336,60 @@ class AppShellState extends State<AppShell> {
                     isSelected: _currentIndex == 0,
                     onTap: () => _onItemTapped(0),
                   ),
-                  ExpansionTile(
-                    leading:Icon(Icons.description_rounded,
-                      color:Theme.of(context).colorScheme.primary),
-                    title:const Text('Documents'),
-                    initiallyExpanded:_currentIndex==1,
-                    childrenPadding:const EdgeInsets.only(left:20),
-                    children:[
-                      ListTile(
-                        leading:const Icon(Icons.folder_open_outlined),
-                        title:const Text('View documents'),
-                        onTap:()=>_onItemTapped(1),
-                      ),
-                      if(_canWrite) ListTile(
-                        leading:const Icon(Icons.note_add_outlined),
-                        title:const Text('Create document'),
-                        onTap:(){
-                          Navigator.pop(context);
-                          Navigator.push(context,MaterialPageRoute(
-                            builder:(_)=>const CreateInvoiceScreen()))
-                            .then((_)=>setState(()=>_currentIndex=1));
-                        },
-                      ),
-                    ],
+                  // Top-level Documents aligns exactly with all _NavItem rows.
+                  Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: _currentIndex == 1
+                          ? Theme.of(context).colorScheme.primary.withOpacity(0.1)
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    clipBehavior: Clip.antiAlias,
+                    child: ExpansionTile(
+                      key: const PageStorageKey<String>('documents-navigation'),
+                      tilePadding: const EdgeInsets.symmetric(horizontal: 16),
+                      childrenPadding: const EdgeInsets.only(left: 24, right: 8, bottom: 6),
+                      initiallyExpanded: _currentIndex == 1,
+                      leading: Icon(Icons.description_rounded,
+                        size: 24,
+                        color: _currentIndex == 1
+                            ? Theme.of(context).colorScheme.primary
+                            : Colors.grey.shade700),
+                      title: Text('Documents',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: _currentIndex == 1
+                              ? FontWeight.bold : FontWeight.w500,
+                          color: _currentIndex == 1
+                              ? Theme.of(context).colorScheme.primary
+                              : Colors.grey.shade800,
+                        )),
+                      children: [
+                        ListTile(
+                          dense: true,
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+                          leading: const Icon(Icons.folder_open_outlined, size: 20),
+                          title: const Text('View documents'),
+                          onTap: () => _onItemTapped(1),
+                        ),
+                        if (_canWrite)
+                          ListTile(
+                            dense: true,
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+                            leading: const Icon(Icons.note_add_outlined, size: 20),
+                            title: const Text('Create document'),
+                            onTap: () {
+                              Navigator.pop(context);
+                              Navigator.push(context, MaterialPageRoute(
+                                builder: (_) => const CreateInvoiceScreen(),
+                              )).then((_) {
+                                if (mounted) setState(() => _currentIndex = 1);
+                              });
+                            },
+                          ),
+                      ],
+                    ),
                   ),
                   _NavItem(
                     icon: Icons.inventory_2_outlined,
