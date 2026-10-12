@@ -110,7 +110,7 @@ class _TeamScreenState extends State<TeamScreen>{
               }
             },child:Text(saving?'Saving...':'Save member'),
           )),
-        ]))),
+        ])))),
     );
     email.dispose();title.dispose();
     if(done==true)await _load();
@@ -156,7 +156,7 @@ class _TeamScreenState extends State<TeamScreen>{
           title:Text(member['email']?.toString()??'Member'),
           subtitle:Text(member['role'].toString()+
             (member['job_title'].toString().isEmpty?'':' · '+member['job_title'].toString())),
-          trailing:member['role']=='owner'
+          trailing:member['role']=='owner'||(member['role']=='admin'&&_role!='owner')
             ?const Icon(Icons.verified_user_outlined)
             :PopupMenuButton<String>(
               onSelected:(action)=>action=='edit'?_editor(member):_remove(member),
