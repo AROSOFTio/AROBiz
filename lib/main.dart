@@ -15,6 +15,7 @@ import 'screens/account_privacy_screen.dart';
 import 'screens/saas_admin_screen.dart';
 import 'services/saas_admin_service.dart';
 import 'services/inventory_service.dart';
+import 'services/auth_security_service.dart';
 import 'screens/team_screen.dart';
 
 void main() async {
@@ -75,8 +76,7 @@ class _InvoicingAppState extends State<InvoicingApp> {
       ),
       home: DataService().isLoggedIn
         ? FutureBuilder<bool>(
-          future:Supabase.instance.client.rpc('arodesk_password_change_required')
-            .then((v)=>v==true),
+          future:AuthSecurityService.instance.mustChangePassword(),
           builder:(context,snapshot){
             if(!snapshot.hasData && !snapshot.hasError){
               return const Scaffold(body:Center(child:CircularProgressIndicator()));
