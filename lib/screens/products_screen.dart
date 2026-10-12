@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:intl/intl.dart';
 import '../services/data_service.dart';
 import '../services/inventory_service.dart';
 
@@ -58,6 +59,8 @@ class _ProductsScreenState extends State<ProductsScreen> {
   Future<void> _move(Map<String,dynamic> product,{bool receive=true})async{
     if(_businessId==null)return;
     final qty=TextEditingController(),note=TextEditingController();
+    final location=TextEditingController(),reference=TextEditingController();
+    DateTime date=DateTime.now();
     bool incoming=receive,busy=false;
     final saved=await showModalBottomSheet<bool>(context:context,isScrollControlled:true,useSafeArea:true,
       builder:(ctx)=>StatefulBuilder(builder:(ctx,update)=>Padding(
@@ -76,7 +79,28 @@ class _ProductsScreenState extends State<ProductsScreen> {
           TextField(controller:qty,keyboardType:const TextInputType.numberWithOptions(decimal:true),
             decoration:const InputDecoration(labelText:'Quantity',border:OutlineInputBorder())),
           const SizedBox(height:12),
-          TextField(controller:note,decoration:const InputDecoration(labelText:'Reason or reference',border:OutlineInputBorder())),
+          OutlinedButton.icon(
+            icon:const Icon(Icons.event_outlined),
+            label:Text('Date: '+DateFormat.yMMMd().format(date)),
+            onPressed:()async{
+              final selected=await showDatePicker(context:ctx,
+                initialDate:date,firstDate:DateTime(2000),
+                lastDate:DateTime.now().add(const Duration(days:1)));
+              if(selected!=null)update(()=>date=selected);
+            }),
+          const SizedBox(height:12),
+          TextField(controller:location,
+            decoration:InputDecoration(
+              labelText:incoming?'Received from / location *':'Issued to / destination *',
+              prefixIcon:Icon(incoming?Icons.call_received:Icons.outbox_outlined),
+              border:const OutlineInputBorder())),
+          const SizedBox(height:12),
+          TextField(controller:reference,
+            decoration:const InputDecoration(labelText:'Reference / GRN / delivery note',
+              prefixIcon:Icon(Icons.tag),border:OutlineInputBorder())),
+          const SizedBox(height:12),
+          TextField(controller:note,
+            decoration:const InputDecoration(labelText:'Remarks (optional)',border:OutlineInputBorder())),
           const SizedBox(height:18),
           SizedBox(width:double.infinity,child:FilledButton(
             onPressed:busy?null:()async{
@@ -85,10 +109,19 @@ class _ProductsScreenState extends State<ProductsScreen> {
                 ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Enter a positive quantity with up to 3 decimal places.')));
                 return;
               }
+              if(location.text.trim().isEmpty){
+                ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(
+                  content:Text('Enter the receiving source or stock destination.')));
+                return;
+              }
               update(()=>busy=true);
               try{
                 await InventoryService.instance.postStock(_businessId!,product['id'].toString(),
-                  delta:incoming?n:-n,kind:incoming?'receive':'adjustment',note:note.text.trim());
+                  delta:incoming?n:-n,kind:incoming?'receive':'adjustment',
+                  note:note.text.trim(),movementDate:date,
+                  sourceLocation:incoming?location.text.trim():'',
+                  destinationLocation:incoming?'':location.text.trim(),
+                  documentReference:reference.text.trim());
                 if(ctx.mounted)Navigator.pop(ctx,true);
               }catch(e){
                 if(ctx.mounted){update(()=>busy=false);
@@ -98,7 +131,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
           )),
         ]))),
       ));
-    qty.dispose();note.dispose();
+    qty.dispose();note.dispose();location.dispose();reference.dispose();
     if(saved==true)await _load();
   }
   Future<void> _history(Map<String,dynamic> product)async{
@@ -115,7 +148,14 @@ class _ProductsScreenState extends State<ProductsScreen> {
               return ListTile(
                 leading:Icon(change>=0?Icons.add_circle_outline:Icons.remove_circle_outline),
                 title:Text(r['kind'].toString()+' · '+change.toString()),
-                subtitle:Text((r['note']??'').toString()),
+                subtitle:Text([
+                  if(r['movement_date']!=null)r['movement_date'].toString(),
+                  if(r['source_location']!=null)'From: '+r['source_location'].toString(),
+                  if(r['destination_location']!=null)'To: '+r['destination_location'].toString(),
+                  if(r['document_reference']!=null)'Ref: '+r['document_reference'].toString(),
+                  if((r['note']??'').toString().isNotEmpty)r['note'].toString(),
+                  'Recorded: '+r['created_at'].toString().substring(0,16),
+                ].join(' · ')),
                 trailing:Text('Balance '+r['quantity_after'].toString()),
               );
             })),
@@ -155,32 +195,59 @@ class _ProductsScreenState extends State<ProductsScreen> {
             const SizedBox(height:12),
             if(items.isEmpty)const Padding(padding:EdgeInsets.all(24),
               child:Text('No items found. Add your first product or service.',textAlign:TextAlign.center)),
-            ...items.map((p){
-              final track=p['track_stock']==true;
-              final quantity=_balances[p['id'].toString()]??0;
-              return Card(child:Padding(padding:const EdgeInsets.all(8),child:Column(children:[
-                ListTile(
-                  title:Text(p['name'].toString(),maxLines:2),
-                  subtitle:Text(p['item_type'].toString()+' · '+(p['sku']??'No SKU').toString()+
-                  ' · '+_baseCurrency+' '+p['sale_price'].toString()),
-                  trailing:Text(track?quantity.toString()+' '+p['unit'].toString():'Service',
-                    style:const TextStyle(fontWeight:FontWeight.bold)),
-                ),
-                if(track&&quantity<=(p['reorder_level'] as num).toDouble())
-                  const Align(alignment:Alignment.centerLeft,
-                    child:Padding(padding:EdgeInsets.only(left:16),child:Text('Low stock',
-                      style:TextStyle(color:Colors.orange)))),
-                Wrap(spacing:8,runSpacing:8,children:[
-                  if(!widget.readOnly) TextButton.icon(onPressed:()=>_edit(p),icon:const Icon(Icons.edit_outlined,size:18),
-                    label:const Text('Edit')),
-                  if(track)TextButton.icon(onPressed:()=>_history(p),
-                    icon:const Icon(Icons.history,size:18),label:const Text('History')),
-                  if(track&&!widget.readOnly)FilledButton.icon(onPressed:()=>_move(p),
-                    icon:const Icon(Icons.add,size:18),label:const Text('Add Stock')),
-                  if(track&&!widget.readOnly)OutlinedButton.icon(onPressed:()=>_move(p,receive:false),
-                    icon:const Icon(Icons.remove,size:18),label:const Text('Issue')),
-                ]),
-              ])));
+            LayoutBuilder(builder:(context,constraints){
+              final cols=constraints.maxWidth>=800?4:constraints.maxWidth>=540?3:2;
+              final cardWidth=(constraints.maxWidth-10*(cols-1))/cols;
+              return Wrap(spacing:10,runSpacing:10,children:items.map((p){
+                final track=p['track_stock']==true;
+                final qty=_balances[p['id'].toString()]??0;
+                final image=InventoryService.instance.publicProductImageUrl(p['image_path']);
+                return SizedBox(width:cardWidth,child:Card(
+                  margin:EdgeInsets.zero,clipBehavior:Clip.antiAlias,
+                  child:Padding(padding:const EdgeInsets.all(9),child:Column(
+                    crossAxisAlignment:CrossAxisAlignment.start,children:[
+                      SizedBox(height:105,width:double.infinity,
+                        child:ClipRRect(borderRadius:BorderRadius.circular(9),
+                          child:image==null
+                            ?ColoredBox(color:Theme.of(context).colorScheme.surfaceContainerHigh,
+                                child:const Icon(Icons.inventory_2_outlined,size:35))
+                            :Image.network(image,fit:BoxFit.cover,cacheWidth:250,
+                              errorBuilder:(_,__,___)=>const Icon(Icons.inventory_2_outlined)))),
+                      const SizedBox(height:8),
+                      Text(p['name'].toString(),maxLines:2,
+                        overflow:TextOverflow.ellipsis,
+                        style:const TextStyle(fontSize:13,fontWeight:FontWeight.w700)),
+                      const SizedBox(height:3),
+                      Text(_baseCurrency+' '+p['sale_price'].toString(),
+                        maxLines:1,overflow:TextOverflow.ellipsis,
+                        style:Theme.of(context).textTheme.labelMedium),
+                      Text(track?'Stock: $qty undefined':'Service',
+                        maxLines:1,overflow:TextOverflow.ellipsis,
+                        style:TextStyle(fontSize:11,
+                          color:track&&qty<=(p['reorder_level'] as num).toDouble()
+                            ?Colors.deepOrange:null)),
+                      const SizedBox(height:8),
+                      Wrap(spacing:3,runSpacing:2,children:[
+                        if(!widget.readOnly)IconButton(
+                          visualDensity:VisualDensity.compact,
+                          tooltip:'Edit item',onPressed:()=>_edit(p),
+                          icon:const Icon(Icons.edit_outlined,size:20)),
+                        if(track)IconButton(
+                          visualDensity:VisualDensity.compact,
+                          tooltip:'Stock history',onPressed:()=>_history(p),
+                          icon:const Icon(Icons.history,size:20)),
+                        if(track&&!widget.readOnly)IconButton.filledTonal(
+                          visualDensity:VisualDensity.compact,
+                          tooltip:'Add stock',onPressed:()=>_move(p),
+                          icon:const Icon(Icons.add,size:20)),
+                        if(track&&!widget.readOnly)IconButton(
+                          visualDensity:VisualDensity.compact,
+                          tooltip:'Issue stock',onPressed:()=>_move(p,receive:false),
+                          icon:const Icon(Icons.remove_circle_outline,size:20)),
+                      ]),
+                    ]),
+                  ))));
+              }).toList());
             }),
           ],
         ]),
