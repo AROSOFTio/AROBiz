@@ -6,6 +6,7 @@ import 'screens/home_screen.dart';
 import 'screens/invoice_list_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/login_screen.dart';
+import 'screens/password_security_screen.dart';
 import 'screens/create_invoice_screen.dart';
 import 'screens/products_screen.dart';
 import 'screens/sales_screen.dart';
@@ -23,12 +24,30 @@ void main() async {
   runApp(const InvoicingApp());
 }
 
-class InvoicingApp extends StatelessWidget {
-  const InvoicingApp({super.key});
+final GlobalKey<NavigatorState> appNavigatorKey = GlobalKey<NavigatorState>();
 
+class InvoicingApp extends StatefulWidget {
+  const InvoicingApp({super.key});
+  @override
+  State<InvoicingApp> createState()=>_InvoicingAppState();
+}
+class _InvoicingAppState extends State<InvoicingApp> {
+  @override
+  void initState(){
+    super.initState();
+    Supabase.instance.client.auth.onAuthStateChange.listen((data){
+      if(data.event==AuthChangeEvent.passwordRecovery){
+        WidgetsBinding.instance.addPostFrameCallback((_){
+          appNavigatorKey.currentState?.push(MaterialPageRoute(
+            builder:(_)=>const PasswordSecurityScreen(recovery:true)));
+        });
+      }
+    });
+  }
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey:appNavigatorKey,
       title: 'ARODesk',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
