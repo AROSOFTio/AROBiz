@@ -144,8 +144,8 @@ class _SettingsScreenState extends State<SettingsScreen>{
     const SizedBox(height:20),
     _field(_payment,'Payment instructions / Mobile Money / bank details',lines:4),
   ]);
-  static const deletionUrl='https://arosoftio.github.io/AROBiz/#delete';
-  static const privacyUrl='https://arosoftio.github.io/AROBiz/#privacy';
+  static const deletionUrl='https://github.com/AROSOFTio/AROBiz/blob/main/play-compliance/README.md#request-account-deletion';
+  static const privacyUrl='https://github.com/AROSOFTio/AROBiz/blob/main/play-compliance/README.md#privacy-policy';
   Future<void> _openPage(String url)async{
     final ok=await launchUrl(Uri.parse(url),mode:LaunchMode.externalApplication);
     if(!ok&&mounted)ScaffoldMessenger.of(context).showSnackBar(
