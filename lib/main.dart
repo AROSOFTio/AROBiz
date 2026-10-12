@@ -20,6 +20,7 @@ import 'services/saas_admin_service.dart';
 import 'services/inventory_service.dart';
 import 'services/auth_security_service.dart';
 import 'services/offline_payment_service.dart';
+import 'services/offline_sales_service.dart';
 import 'screens/team_screen.dart';
 
 void main() async {
@@ -203,6 +204,9 @@ class AppShellState extends State<AppShell> {
       if(id==null)return;
       final items=await OfflinePaymentService.instance.pending(id);
       if(items.isNotEmpty)await OfflinePaymentService.instance.sync(id);
+      if((await OfflineSalesService.instance.pendingCount(id))>0){
+        await OfflineSalesService.instance.sync(id);
+      }
     }catch(_){/* Pending payments remain encrypted until connectivity returns. */}
   }
   Future<void> _loadRole()async{
