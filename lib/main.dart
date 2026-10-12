@@ -10,6 +10,7 @@ import 'screens/password_security_screen.dart';
 import 'screens/create_invoice_screen.dart';
 import 'screens/products_screen.dart';
 import 'screens/sales_screen.dart';
+import 'screens/debtors_screen.dart';
 import 'screens/saas_admin_screen.dart';
 import 'services/saas_admin_service.dart';
 import 'services/inventory_service.dart';
@@ -391,23 +392,66 @@ class AppShellState extends State<AppShell> {
                       ],
                     ),
                   ),
-                  _NavItem(
-                    icon: Icons.inventory_2_outlined,
-                    label: 'Products & Inventory',
-                    isSelected: _currentIndex == 2,
-                    onTap: () => _onItemTapped(2),
+                  _NavGroup(
+                    icon:Icons.inventory_2_outlined,
+                    label:'Products & Inventory',
+                    selected:_currentIndex==2,
+                    children:[
+                      _SubNavItem(label:'Product catalog',icon:Icons.list_alt_outlined,
+                        onTap:()=>_onItemTapped(2)),
+                      if(_canWrite)_SubNavItem(label:'Add new product',icon:Icons.add_box_outlined,
+                        onTap:(){
+                          Navigator.pop(context);
+                          Navigator.push(context,MaterialPageRoute(
+                            builder:(_)=>const ProductsScreen(newItemOnOpen:true)))
+                            .then((_)=>setState(()=>_currentIndex=2));
+                        }),
+                    ],
                   ),
-                  if (_canWrite) _NavItem(
-                    icon: Icons.point_of_sale_outlined,
-                    label: 'Sales & POS',
-                    isSelected: _currentIndex == 3,
-                    onTap: () => _onItemTapped(3),
+                  if(_canWrite)_NavGroup(
+                    icon:Icons.point_of_sale_outlined,
+                    label:'Sales & POS',
+                    selected:_currentIndex==3,
+                    children:[
+                      _SubNavItem(label:'Transactions',icon:Icons.receipt_long_outlined,
+                        onTap:()=>_onItemTapped(3)),
+                      _SubNavItem(label:'New sale',icon:Icons.add_shopping_cart_outlined,
+                        onTap:(){
+                          Navigator.pop(context);
+                          Navigator.push(context,MaterialPageRoute(
+                            builder:(_)=>const SalesScreen(newSaleOnOpen:true)))
+                            .then((_)=>setState(()=>_currentIndex=3));
+                        }),
+                      _SubNavItem(label:'Debtors & payments',icon:Icons.people_alt_outlined,
+                        onTap:(){
+                          Navigator.pop(context);
+                          Navigator.push(context,MaterialPageRoute(
+                            builder:(_)=>const DebtorsScreen()));
+                        }),
+                    ],
                   ),
-                  if (_canManage) _NavItem(
-                    icon: Icons.settings_rounded,
-                    label: 'Settings',
-                    isSelected: _currentIndex == 4,
-                    onTap: () => _onItemTapped(4),
+                  if(_canManage)_NavGroup(
+                    icon:Icons.settings_rounded,
+                    label:'Settings',
+                    selected:_currentIndex==4,
+                    children:[
+                      _SubNavItem(label:'Business profile',icon:Icons.store_outlined,
+                        onTap:()=>_onItemTapped(4)),
+                      _SubNavItem(label:'Payment details',icon:Icons.payments_outlined,
+                        onTap:(){
+                          Navigator.pop(context);
+                          Navigator.push(context,MaterialPageRoute(
+                            builder:(_)=>const SettingsScreen(initialSection:1)))
+                            .then((_)=>setState(()=>_currentIndex=4));
+                        }),
+                      _SubNavItem(label:'Security & team',icon:Icons.security_outlined,
+                        onTap:(){
+                          Navigator.pop(context);
+                          Navigator.push(context,MaterialPageRoute(
+                            builder:(_)=>const SettingsScreen(initialSection:2)))
+                            .then((_)=>setState(()=>_currentIndex=4));
+                        }),
+                    ],
                   ),
 
                   if (_role == 'owner' || _role == 'admin')
@@ -587,3 +631,43 @@ class _NavItem extends StatelessWidget {
   }
 }
 
+
+class _SubNavItem extends StatelessWidget{
+  final String label;final IconData icon;final VoidCallback onTap;
+  const _SubNavItem({required this.label,required this.icon,required this.onTap});
+  @override Widget build(BuildContext context)=>ListTile(
+    dense:true,
+    contentPadding:const EdgeInsets.only(left:36,right:14),
+    leading:Icon(icon,size:19,color:Theme.of(context).colorScheme.onSurfaceVariant),
+    title:Text(label,style:const TextStyle(fontSize:13)),
+    onTap:onTap,
+  );
+}
+
+class _NavGroup extends StatelessWidget{
+  final IconData icon;final String label;final bool selected;
+  final List<Widget> children;
+  const _NavGroup({required this.icon,required this.label,
+    required this.selected,required this.children});
+  @override Widget build(BuildContext context){
+    final primary=Theme.of(context).colorScheme.primary;
+    return Container(
+      margin:const EdgeInsets.symmetric(horizontal:12,vertical:2),
+      decoration:BoxDecoration(
+        color:selected?primary.withOpacity(0.1):Colors.transparent,
+        borderRadius:BorderRadius.circular(12)),
+      clipBehavior:Clip.antiAlias,
+      child:ExpansionTile(
+        tilePadding:const EdgeInsets.symmetric(horizontal:16),
+        childrenPadding:const EdgeInsets.only(bottom:6),
+        initiallyExpanded:selected,
+        leading:Icon(icon,size:24,
+          color:selected?primary:Colors.grey.shade700),
+        title:Text(label,style:TextStyle(
+          color:selected?primary:Colors.grey.shade800,
+          fontWeight:selected?FontWeight.bold:FontWeight.w500,fontSize:15)),
+        children:children,
+      ),
+    );
+  }
+}
