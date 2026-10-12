@@ -489,6 +489,7 @@ class _SalesWizardState extends State<_SalesWizard> {
     final isSale=widget.kind=='sale';
     return Scaffold(
       appBar:AppBar(title:Text(isSale?'New sale':'Catalog quotation')),
+      resizeToAvoidBottomInset:true,
       body:SafeArea(child:Center(child:ConstrainedBox(
         constraints:const BoxConstraints(maxWidth:650),
         child:Column(children:[
@@ -504,7 +505,8 @@ class _SalesWizardState extends State<_SalesWizard> {
           if(_error!=null)Card(color:Theme.of(context).colorScheme.errorContainer,
             child:Padding(padding:const EdgeInsets.all(12),child:Text(_error!))),
           Expanded(child:SingleChildScrollView(
-            padding:const EdgeInsets.symmetric(horizontal:16),
+            keyboardDismissBehavior:ScrollViewKeyboardDismissBehavior.onDrag,
+            padding:EdgeInsets.fromLTRB(16,8,16,MediaQuery.viewInsetsOf(context).bottom>0?140:24),
             child:_step==0?Column(children:[
               TextField(controller:_search,
                 onChanged:(_)=>setState((){}),
