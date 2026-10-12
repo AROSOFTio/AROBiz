@@ -12,7 +12,7 @@ class HomeScreen extends StatefulWidget {
 }
 class _HomeScreenState extends State<HomeScreen>{
   bool _loading=true;
-  String? _error,_role;
+  String? _error,_role,_businessName;
   String _currency='USD';
   int _products=0,_lowStock=0,_salesCount=0;
   double _salesTotal=0,_owed=0;
@@ -40,7 +40,10 @@ class _HomeScreenState extends State<HomeScreen>{
         net+=value;owed+=(value-paid).clamp(0,double.infinity);
       }
       if(mounted)setState((){
-        _role=role;_currency=currency;_products=items.length;
+        _role=role;_currency=currency;
+        final chosen=memberships.where((m)=>m['business_id'].toString()==business).toList();
+        _businessName=chosen.isEmpty?null:chosen.first['business_name'].toString();
+        _products=items.length;
         _lowStock=items.where((x)=>x['track_stock']==true&&
           (balances[x['id'].toString()]??0)<=(x['reorder_level'] as num).toDouble()).length;
         _salesCount=transactions.where((x)=>x['kind']=='sale').length;
@@ -71,7 +74,7 @@ class _HomeScreenState extends State<HomeScreen>{
       const Center(child:CircularProgressIndicator()):
       ListView(padding:const EdgeInsets.fromLTRB(16,16,16,50),children:[
         Text('Welcome to ARODesk',style:Theme.of(context).textTheme.headlineSmall),
-        Text(DataService().currentProfile?.name??'My Business',
+        Text(_businessName??DataService().currentProfile?.name??'My Business',
           style:Theme.of(context).textTheme.titleMedium),
         const SizedBox(height:12),
         if(_error!=null)Card(child:Padding(padding:const EdgeInsets.all(14),child:Text(_error!))),
