@@ -6,7 +6,8 @@ import '../services/inventory_service.dart';
 
 class ProductsScreen extends StatefulWidget {
   final bool readOnly;
-  const ProductsScreen({super.key,this.readOnly=false});
+  final bool newItemOnOpen;
+  const ProductsScreen({super.key,this.readOnly=false,this.newItemOnOpen=false});
   @override
   State<ProductsScreen> createState() => _ProductsScreenState();
 }
@@ -15,6 +16,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
   List<Map<String,dynamic>> _products=[];
   Map<String,double> _balances={};
   bool _loading=true;
+  bool _launchedItem=false;
   String _baseCurrency='USD';
   String _query='';
   @override
@@ -37,7 +39,13 @@ class _ProductsScreenState extends State<ProductsScreen> {
       final products=await productsRequest;
       final balances=await balancesRequest;
       final currency=await currencyRequest;
-      if(mounted)setState((){_businessId=id;_products=products;_balances=balances;_baseCurrency=currency;});
+      if(mounted){
+        setState((){_businessId=id;_products=products;_balances=balances;_baseCurrency=currency;});
+        if(widget.newItemOnOpen&&!widget.readOnly&&!_launchedItem){
+          _launchedItem=true;
+          WidgetsBinding.instance.addPostFrameCallback((_){if(mounted)_edit();});
+        }
+      }
     }catch(e){if(mounted)setState(()=>_error=_message(e));}
     finally{if(mounted)setState(()=>_loading=false);}
   }
