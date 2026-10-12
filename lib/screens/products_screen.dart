@@ -236,16 +236,9 @@ class _ProductWizardState extends State<_ProductWizard>{
         id:widget.original?['id']?.toString(),name:_name.text,sku:_sku.text,
         category:_category.text,type:_type,unit:_unit.text,
         salePrice:double.parse(_sale.text),costPrice:double.parse(_cost.text),
-        reorderLevel:double.parse(_reorder.text),trackStock:_track);
-      if(widget.original==null&&_track&&_type!='service'){
-        final opening=double.tryParse(_opening.text.trim())??0;
-        if(opening>0){
-          // Persist the opening stock after creating the catalog item.
-          // If it fails, the product remains saved and stock can be received safely later.
-          await InventoryService.instance.postOpeningStockForSku(widget.businessId,
-            sku:_sku.text,name:_name.text,quantity:opening);
-        }
-      }
+        reorderLevel:double.parse(_reorder.text),trackStock:_track,
+        openingStock:widget.original==null&&_track&&_type!='service'?
+          (double.tryParse(_opening.text.trim())??0):0);
       if(mounted)Navigator.pop(context,true);
     }catch(e){if(mounted)setState(()=>_error=e.toString().toLowerCase().contains('unique')
       ? 'This SKU is already in use.':'Cannot save this item. Check the details and retry.');}
