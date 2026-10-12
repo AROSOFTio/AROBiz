@@ -12,6 +12,7 @@ import 'screens/products_screen.dart';
 import 'screens/sales_screen.dart';
 import 'screens/saas_admin_screen.dart';
 import 'services/saas_admin_service.dart';
+import 'services/inventory_service.dart';
 import 'screens/team_screen.dart';
 
 void main() async {
@@ -89,7 +90,13 @@ class AppShellState extends State<AppShell> {
   void initState(){super.initState();_loadRole();}
   Future<void> _loadRole()async{
     try{
-      final memberships=await TeamService.instance.businesses();
+      var memberships=await TeamService.instance.businesses();
+      if(memberships.isEmpty){
+        final profile=DataService().currentProfile;
+        await InventoryService.instance.ensureBusiness(
+          name:profile?.name??'My Business',category:profile?.category??'Other');
+        memberships=await TeamService.instance.businesses();
+      }
       if(mounted)setState(()=>_role=memberships.isEmpty?null:memberships.first['role'].toString());
     }catch(_){if(mounted)setState(()=>_role=null);}
   }
