@@ -45,8 +45,9 @@ class _ProductsScreenState extends State<ProductsScreen> {
           .map((v)=>Map<String,dynamic>.from(v as Map)));
         final balances={for(final e in Map<String,dynamic>.from(local['balances'] as Map).entries)
           e.key:(e.value as num).toDouble()};
+        final remaining=await OfflineSalesService.instance.effectiveBalances(id,balances);
         setState((){
-          _businessId=id;_products=catalog;_balances=balances;
+          _businessId=id;_products=catalog;_balances=remaining;
           _baseCurrency=(local['currency']??'USD').toString();
           _canManageCatalog=false;
         });
@@ -61,8 +62,10 @@ class _ProductsScreenState extends State<ProductsScreen> {
         final canManage=await InventoryService.instance.canManageCatalog(id)
           .timeout(const Duration(seconds:7));
         if(mounted){
+          final remaining=await OfflineSalesService.instance.effectiveBalances(id,balances);
+          if(!mounted)return;
           setState((){
-            _businessId=id;_products=products;_balances=balances;
+            _businessId=id;_products=products;_balances=remaining;
             _baseCurrency=currency;_canManageCatalog=canManage;
           });
           if(widget.newItemOnOpen&&!widget.readOnly&&canManage&&!_launchedItem){
