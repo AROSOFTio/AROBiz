@@ -222,7 +222,7 @@ class AppShellState extends State<AppShell> {
   List<Widget> get _screens => [
     HomeScreen(onNavigate:_goToPage),
     InvoiceListScreen(readOnly:!_canWrite),
-    ProductsScreen(readOnly:!_canWrite),
+    ProductsScreen(readOnly:!_canWrite,onBack:()=>_goToPage(0)),
     const SalesScreen(),
     SettingsScreen(onSaved: () {
       if (mounted) setState(() => _currentIndex = 0);
