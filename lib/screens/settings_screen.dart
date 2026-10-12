@@ -109,7 +109,7 @@ class _SettingsScreenState extends State<SettingsScreen>{
       const SizedBox(height:8),
       const Text('Business logo · Tap to change'),
     ])),
-    const SizedBox(height:22),
+    const SizedBox(height:14),
     _field(_name,'Business name *'),
     DropdownButtonFormField<String>(
       value:_category,isExpanded:true,
@@ -121,6 +121,10 @@ class _SettingsScreenState extends State<SettingsScreen>{
     _field(_location,'Business address'),
     _field(_phone,'Business phone',type:TextInputType.phone),
     _field(_email,'Business contact email',type:TextInputType.emailAddress),
+  ]);
+  Widget _moneyPreferences()=>Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[
+    Text('Currency & location',style:Theme.of(context).textTheme.titleLarge),
+    const SizedBox(height:14),
     DropdownButtonFormField<String>(
       value:CountryCurrency.countries.containsKey(_country)?_country:null,
       isExpanded:true,
@@ -221,23 +225,30 @@ class _SettingsScreenState extends State<SettingsScreen>{
           child:Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[
             Text('Settings',style:Theme.of(context).textTheme.headlineSmall),
             const SizedBox(height:6),
-            const Text('Business identity, payments, and security'),
+            const Text('Manage your business and account'),
             const SizedBox(height:14),
-            SegmentedButton<int>(
-              segments:const [
-                ButtonSegment(value:0,label:Text('Business'),icon:Icon(Icons.store_outlined)),
-                ButtonSegment(value:1,label:Text('Payments'),icon:Icon(Icons.payments_outlined)),
-                ButtonSegment(value:2,label:Text('Security'),icon:Icon(Icons.security_outlined)),
-              ],selected:{_section},onSelectionChanged:(v)=>setState(()=>_section=v.first)),
+            SingleChildScrollView(scrollDirection:Axis.horizontal,child:Row(children:[
+              for(final item in const <(int,String,IconData)>[
+                (0,'Business',Icons.store_outlined),
+                (1,'Currency',Icons.currency_exchange),
+                (2,'Payments',Icons.payments_outlined),
+                (3,'Access',Icons.security_outlined),
+              ])
+                Padding(padding:const EdgeInsets.only(right:6),child:ChoiceChip(
+                  selected:_section==item.$1,label:Text(item.$2),
+                  avatar:Icon(item.$3,size:17),
+                  onSelected:(_)=>setState(()=>_section=item.$1))),
+            ])),
           ])),
         Expanded(child:ListView(
           keyboardDismissBehavior:ScrollViewKeyboardDismissBehavior.onDrag,
           padding:EdgeInsets.fromLTRB(16,12,16,MediaQuery.viewInsetsOf(context).bottom>0?130:20),children:[
           if(_section==0)_business(),
-          if(_section==1)_payments(),
-          if(_section==2)_security(),
+          if(_section==1)_moneyPreferences(),
+          if(_section==2)_payments(),
+          if(_section==3)_security(),
         ])),
-        if(_section!=2)Padding(padding:const EdgeInsets.all(16),
+        if(_section!=3)Padding(padding:const EdgeInsets.all(16),
           child:SizedBox(width:double.infinity,child:FilledButton.icon(
             onPressed:_saving?null:_save,
             icon:const Icon(Icons.save_outlined),
