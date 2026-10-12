@@ -9,7 +9,8 @@ import 'password_security_screen.dart';
 import 'team_screen.dart';
 
 class SettingsScreen extends StatefulWidget{
-  const SettingsScreen({super.key,this.onSaved});
+  const SettingsScreen({super.key,this.onSaved,this.initialSection=0});
+  final int initialSection;
   final VoidCallback? onSaved;
   @override State<SettingsScreen> createState()=>_SettingsScreenState();
 }
@@ -18,7 +19,7 @@ class _SettingsScreenState extends State<SettingsScreen>{
   String _category='Other',_currency='USD';
   String? _country,_logo;
   bool _saving=false;
-  int _section=0;
+  late int _section=widget.initialSection;
   static const categories=[
     'Retail Shop','Wholesale','Manufacturing','Restaurant & Food',
     'Hotel & Accommodation','Salon & Beauty','Pharmacy & Health',
