@@ -60,6 +60,9 @@ class _SettingsScreenState extends State<SettingsScreen>{
     try{
       await InventoryService.instance.updateBusinessSettings(
         countryCode:_country,currencyCode:_currency);
+      await InventoryService.instance.updateBusinessProfile(
+        name:_name.text,category:_category,address:_location.text,
+        phone:_phone.text,email:_email.text);
       final p=DataService().currentProfile;
       await DataService().saveProfile(BusinessProfile(
         name:_name.text.trim(),category:_category,location:_location.text.trim(),
