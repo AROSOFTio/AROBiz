@@ -290,8 +290,7 @@ class _SalesScreenState extends State<SalesScreen> {
         const Center(child:CircularProgressIndicator()):
         ListView(padding:const EdgeInsets.all(16),children:[
           Text('Sales & POS',style:Theme.of(context).textTheme.titleLarge),
-          const SizedBox(height:6),
-          const Text('Record sales and issue catalog-based quotations. Standalone documents remain separate.'),
+
           const SizedBox(height:16),
           if(_error!=null)...[
             Card(color:Theme.of(context).colorScheme.errorContainer,
@@ -678,8 +677,7 @@ class _SalesWizardState extends State<_SalesWizard> {
                       'Due: '+_dueDate!.toIso8601String().substring(0,10)),
                   ),
                 ],
-                const Padding(padding:EdgeInsets.all(12),
-                  child:Text('Only received funds count as payments. Remaining balances automatically appear under Debtors until fully paid.')),
+
               ],
             ]):Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[
               Text('Customer: '+_customer.text.trim()),
@@ -694,8 +692,7 @@ class _SalesWizardState extends State<_SalesWizard> {
               Text('Total: '+widget.currency+' '+_total.toStringAsFixed(2),
                 style:Theme.of(context).textTheme.titleLarge),
               const SizedBox(height:10),
-              Text(isSale?'Stock is deducted on checkout. A receipt is issued only when fully paid; otherwise an invoice shows the balance.':
-                'Quotation only. Stock remains unchanged.'),
+
             ]),
           )),
           Padding(padding:const EdgeInsets.all(16),child:Row(children:[
