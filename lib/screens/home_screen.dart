@@ -23,13 +23,18 @@ class _HomeScreenState extends State<HomeScreen>{
       final p=DataService().currentProfile;
       final business=await InventoryService.instance.ensureBusiness(
         name:p?.name??'My Business',category:p?.category??'Other');
-      final memberships=await TeamService.instance.businesses();
+      final teamRequest=TeamService.instance.businesses();
+      final itemRequest=InventoryService.instance.products(business);
+      final balanceRequest=InventoryService.instance.balances(business);
+      final currencyRequest=InventoryService.instance.businessCurrency(business);
+      final saleRequest=SalesService.instance.list(business);
+      final memberships=await teamRequest;
       final role=memberships.where((m)=>m['business_id']==business)
         .map((m)=>m['role'].toString()).firstOrNull;
-      final items=await InventoryService.instance.products(business);
-      final balances=await InventoryService.instance.balances(business);
-      final currency=await InventoryService.instance.businessCurrency(business);
-      final transactions=await SalesService.instance.list(business);
+      final items=await itemRequest;
+      final balances=await balanceRequest;
+      final currency=await currencyRequest;
+      final transactions=await saleRequest;
       double net=0,owed=0;
       for(final row in transactions){
         if(row['kind']!='sale'||row['currency']!=currency)continue;
