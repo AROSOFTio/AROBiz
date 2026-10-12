@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:image/image.dart' as img;
 import 'data_service.dart';
 import 'country_currency.dart';
+import 'offline_sales_service.dart';
 
 Uint8List _compressProductPhoto(Uint8List source) {
   final decoded=img.decodeImage(source);
@@ -245,14 +246,13 @@ class InventoryService {
     final y=date.year.toString().padLeft(4,'0');
     final m=date.month.toString().padLeft(2,'0');
     final d=date.day.toString().padLeft(2,'0');
-    await _client.rpc('arodesk_post_stock_detailed', params: {
-      'p_business': businessId, 'p_product': productId,
-      'p_delta': delta, 'p_kind': kind, 'p_note': note,
-      'p_movement_date':'$y-$m-$d',
-      'p_source_location':sourceLocation,
-      'p_destination_location':destinationLocation,
-      'p_reference':documentReference,
-    });
+    await OfflineSalesService.instance.queueStock(businessId,
+      product:productId,delta:delta,kind:kind,note:note,date:date,
+      source:sourceLocation,destination:destinationLocation,
+      reference:documentReference);
+    // Network failure never blocks the locally recorded movement.
+    // Periodic synchronization reconciles with the server.
+
   }
 
   Future<List<Map<String, dynamic>>> movements(String businessId, String productId) async {
