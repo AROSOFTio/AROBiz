@@ -151,6 +151,18 @@ class _SalesScreenState extends State<SalesScreen> {
         unitPrice:(product['sale_price'] as num).toDouble(),
       ));
     }
+    if(entry['print_lines'] is List){
+      items
+        ..clear()
+        ..addAll((entry['print_lines'] as List).map((raw){
+          final row=Map<String,dynamic>.from(raw as Map);
+          return InvoiceItem(
+            description:row['description'].toString(),
+            quantity:row['quantity'] as num,
+            unitPrice:(row['unit_price'] as num).toDouble(),
+          );
+        }));
+    }
     final kind=entry['kind']?.toString()??'sale';
     final total=(entry['total'] as num).toDouble();
     final paid=((entry['paid_total']??0) as num).toDouble();
