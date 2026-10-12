@@ -49,9 +49,10 @@ class _ProductsScreenState extends State<ProductsScreen> {
     if(_businessId==null)return;
     final qty=TextEditingController(),note=TextEditingController();
     bool incoming=receive,busy=false;
-    final saved=await showModalBottomSheet<bool>(context:context,isScrollControlled:true,
+    final saved=await showModalBottomSheet<bool>(context:context,isScrollControlled:true,useSafeArea:true,
       builder:(ctx)=>StatefulBuilder(builder:(ctx,update)=>Padding(
-        padding:EdgeInsets.only(left:20,right:20,top:20,bottom:MediaQuery.viewInsetsOf(ctx).bottom+20),
+        padding:EdgeInsets.only(left:20,right:20,top:20,bottom:MediaQuery.viewInsetsOf(ctx).bottom+
+          MediaQuery.viewPaddingOf(ctx).bottom+48),
         child:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,children:[
           Text(incoming?'Add / receive stock':'Issue stock',style:Theme.of(ctx).textTheme.titleLarge),
           const SizedBox(height:12),
