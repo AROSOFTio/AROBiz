@@ -4,6 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import '../services/data_service.dart';
 import '../services/inventory_service.dart';
+import '../services/offline_sales_service.dart';
 
 class ProductsScreen extends StatefulWidget {
   final bool readOnly;
@@ -35,24 +36,46 @@ class _ProductsScreenState extends State<ProductsScreen> {
     setState((){_loading=true;_error=null;});
     try{
       final p=DataService().currentProfile;
-      final id=await InventoryService.instance.ensureBusiness(name:p?.name??'My Business',category:p?.category??'Other');
-      final productsRequest=InventoryService.instance.products(id);
-      final balancesRequest=InventoryService.instance.balances(id);
-      final currencyRequest=InventoryService.instance.businessCurrency(id);
-      final manageRequest=InventoryService.instance.canManageCatalog(id);
-      final products=await productsRequest;
-      final balances=await balancesRequest;
-      final currency=await currencyRequest;
-      final canManage=await manageRequest;
-      if(mounted){
-        setState((){_businessId=id;_products=products;_balances=balances;_baseCurrency=currency;_canManageCatalog=canManage;});
-        if(widget.newItemOnOpen&&!widget.readOnly&&canManage&&!_launchedItem){
-          _launchedItem=true;
-          WidgetsBinding.instance.addPostFrameCallback((_){if(mounted)_edit();});
-        }
+      final id=await InventoryService.instance.preferredBusinessId()
+        ??await InventoryService.instance.ensureBusiness(
+          name:p?.name??'My Business',category:p?.category??'Other');
+      final local=await OfflineSalesService.instance.snapshot(id);
+      if(local!=null && mounted){
+        final catalog=List<Map<String,dynamic>>.from((local['products'] as List)
+          .map((v)=>Map<String,dynamic>.from(v as Map)));
+        final balances={for(final e in Map<String,dynamic>.from(local['balances'] as Map).entries)
+          e.key:(e.value as num).toDouble()};
+        setState((){
+          _businessId=id;_products=catalog;_balances=balances;
+          _baseCurrency=(local['currency']??'USD').toString();
+          _canManageCatalog=false;
+        });
       }
-    }catch(e){if(mounted)setState(()=>_error=_message(e));}
-    finally{if(mounted)setState(()=>_loading=false);}
+      try{
+        final products=await InventoryService.instance.products(id)
+          .timeout(const Duration(seconds:7));
+        final balances=await InventoryService.instance.balances(id)
+          .timeout(const Duration(seconds:7));
+        final currency=await InventoryService.instance.businessCurrency(id)
+          .timeout(const Duration(seconds:7));
+        final canManage=await InventoryService.instance.canManageCatalog(id)
+          .timeout(const Duration(seconds:7));
+        if(mounted){
+          setState((){
+            _businessId=id;_products=products;_balances=balances;
+            _baseCurrency=currency;_canManageCatalog=canManage;
+          });
+          if(widget.newItemOnOpen&&!widget.readOnly&&canManage&&!_launchedItem){
+            _launchedItem=true;
+            WidgetsBinding.instance.addPostFrameCallback((_){if(mounted)_edit();});
+          }
+        }
+      }catch(_){
+        if(local==null)rethrow;
+      }
+    }catch(e){
+      if(mounted)setState(()=>_error='Connect once to download products for offline viewing.');
+    }finally{if(mounted)setState(()=>_loading=false);}
   }
   Future<void> _edit([Map<String,dynamic>? product])async{
     if(_businessId==null||!_canManageCatalog)return;
