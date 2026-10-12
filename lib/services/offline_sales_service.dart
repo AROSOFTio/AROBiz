@@ -38,6 +38,55 @@ class OfflineSalesService {
     final data=await _store.read(key:_key(business,'snapshot'));
     return data==null?null:Map<String,dynamic>.from(jsonDecode(data) as Map);
   }
+  Future<List<Map<String,dynamic>>> pendingQuotes(String business)=>
+    _read(business,'quote_queue');
+  Future<String> queueQuotation({
+    required String business,required Map<String,double> quantities,
+    required String customer,required String phone,
+  })async{
+    if(quantities.isEmpty||quantities.values.any((v)=>!v.isFinite||v<=0)){
+      throw ArgumentError('Select valid quotation items.');
+    }
+    final snapshotData=await snapshot(business);
+    if(snapshotData==null)throw StateError('Connect once to download your product catalog.');
+    final catalog=<String,Map<String,dynamic>>{
+      for(final raw in snapshotData['products'] as List)
+        Map<String,dynamic>.from(raw as Map)['id'].toString():Map<String,dynamic>.from(raw),
+    };
+    var total=0.0;
+    for(final item in quantities.entries){
+      final product=catalog[item.key];
+      if(product==null)throw StateError('Quotation item is unavailable in the catalog.');
+      total+=(product['sale_price'] as num).toDouble()*item.value;
+    }
+    final id=const Uuid().v4();
+    final queue=await pendingQuotes(business);
+    queue.add({
+      'id':id,'business':business,'kind':'quotation','quantities':quantities,
+      'customer':customer,'phone':phone,'currency':snapshotData['currency'],
+      'total':total,'created_at':DateTime.now().toUtc().toIso8601String(),
+    });
+    await _write(business,'quote_queue',queue);
+    return 'offline:$id';
+  }
+  Future<int> syncQuotes(String business)async{
+    var confirmed=0;
+    for(final item in await pendingQuotes(business)){
+      try{
+        final quantities=Map<String,dynamic>.from(item['quantities'] as Map);
+        await Supabase.instance.client.rpc('arodesk_record_offline_quotation',params:{
+          'p_request':item['id'],'p_business':business,
+          'p_lines':quantities.entries.map((e)=>{'product_id':e.key,'quantity':e.value}).toList(),
+          'p_customer':item['customer'],'p_phone':item['phone'],
+        }).timeout(const Duration(seconds:10));
+        final current=await pendingQuotes(business);
+        current.removeWhere((e)=>e['id']==item['id']);
+        await _write(business,'quote_queue',current);
+        confirmed++;
+      }catch(_){break;}
+    }
+    return confirmed;
+  }
   Future<List<Map<String,dynamic>>> pendingStock(String business)=>
     _read(business,'stock_queue');
   Future<void> queueStock(String business,{
@@ -146,11 +195,12 @@ class OfflineSalesService {
     return 'offline:$id';
   }
   Future<List<Map<String,dynamic>>> localTransactions(String business)async{
-    final queue=await pending(business);
+    final queue=[...await pending(business),...await pendingQuotes(business)];
+    queue.sort((a,b)=>a['created_at'].toString().compareTo(b['created_at'].toString()));
     return queue.reversed.map((q)=><String,dynamic>{
       'id':'offline:${q['id']}','document_number':'LOCAL-${q['id'].toString().substring(0,8).toUpperCase()}',
-      'kind':'sale','customer_name':q['customer'],'currency':q['currency'],
-      'total':q['total'],'paid_total':q['paid_total'],
+      'kind':q['kind']??'sale','customer_name':q['customer'],'currency':q['currency'],
+      'total':q['total'],'paid_total':q['paid_total']??0,
       'returned_total':0,'refunded_total':0,
       'payment_status':'Pending sync','due_date':q['due_date'],
       'created_at':q['created_at'],
