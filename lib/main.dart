@@ -350,8 +350,6 @@ class AppShellState extends State<AppShell> {
             Expanded(child:Text(_titles[_currentIndex],overflow:TextOverflow.ellipsis)),
           ],
         ),
-      ),
-
         actions:[
           IconButton(
             tooltip:'Search',icon:const Icon(Icons.search_rounded),
@@ -372,6 +370,7 @@ class AppShellState extends State<AppShell> {
             }),
           const SizedBox(width:6),
         ],
+      ),
       drawer: Drawer(
         width: 290,
         child: Column(
