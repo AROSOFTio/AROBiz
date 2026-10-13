@@ -24,6 +24,23 @@ class _AccountingScreenState extends State<AccountingScreen>{
     }finally{if(mounted)setState(()=>_busy=false);}
   }
   @override void initState(){super.initState();_load();}
+  Widget _summary(String title,double amount,IconData icon,Color color){
+    return Expanded(child:Container(
+      padding:const EdgeInsets.all(14),
+      decoration:BoxDecoration(color:Colors.white,
+        borderRadius:BorderRadius.circular(17),
+        border:Border.all(color:const Color(0xFFE8EDF4))),
+      child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+        Container(width:42,height:42,
+          decoration:BoxDecoration(color:color,borderRadius:BorderRadius.circular(12)),
+          child:Icon(icon,color:Colors.white,size:22)),
+        const SizedBox(height:10),
+        Text(title,style:const TextStyle(fontSize:12,color:Color(0xFF63748F))),
+        const SizedBox(height:5),
+        Text(amount.toStringAsFixed(2),maxLines:1,
+          style:const TextStyle(fontSize:17,fontWeight:FontWeight.w800,color:Color(0xFF142235))),
+      ])));
+  }
   Widget _section(String label,List<Map<String,dynamic>> lines){
     final entries=AccountingService.instance.trialBalance(lines).entries.toList()
       ..sort((a,b)=>a.key.compareTo(b.key));
@@ -70,6 +87,24 @@ class _AccountingScreenState extends State<AccountingScreen>{
       ?const Center(child:CircularProgressIndicator())
       :ListView(padding:const EdgeInsets.all(12),children:[
         if(_error!=null)Text(_error!),
+        Row(children:[
+          _summary('Posted debits',
+            _posted.fold<double>(0,(sum,e)=>sum+(e['debit'] as num).toDouble()),
+            Icons.account_balance_wallet_outlined,const Color(0xFF006FFF)),
+          const SizedBox(width:10),
+          _summary('Posted credits',
+            _posted.fold<double>(0,(sum,e)=>sum+(e['credit'] as num).toDouble()),
+            Icons.payments_outlined,const Color(0xFF0AB867)),
+        ]),
+        const SizedBox(height:10),
+        Row(children:[
+          _summary('Pending entries',_pending.length.toDouble(),
+            Icons.cloud_upload_outlined,const Color(0xFFFF881A)),
+          const SizedBox(width:10),
+          _summary('Journal records',_posted.length.toDouble(),
+            Icons.receipt_long_outlined,const Color(0xFF6254DC)),
+        ]),
+        const SizedBox(height:12),
         _section('Posted journal',_posted),
         _section('Pending offline',_pending),
         const SizedBox(height:6),
