@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../main.dart';
 import '../services/data_service.dart';
 import '../services/country_currency.dart';
@@ -48,6 +49,28 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _business.dispose();
     _location.dispose();
     super.dispose();
+  }
+
+  Future<void> _continueWithGoogle() async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    try {
+      final opened = await Supabase.instance.client.auth.signInWithOAuth(
+        OAuthProvider.google,
+        redirectTo: 'io.supabase.arodesk://auth-callback/',
+        authScreenLaunchMode: LaunchMode.externalApplication,
+      );
+      if (!opened && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not open Google sign-in.')));
+      }
+      // Supabase completes authentication on the registered app callback.
+    } catch (_) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Google sign-in unavailable. Try email registration.')));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 
   void _next() {
@@ -314,6 +337,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ]),
                   ),
                 ),
+              ),
+            if(_step==0&&!_registrationComplete&&!typing)
+              Padding(
+                padding:const EdgeInsets.symmetric(horizontal:20,vertical:6),
+                child:SizedBox(width:double.infinity,height:44,
+                  child:OutlinedButton.icon(
+                    onPressed:_busy?null:_continueWithGoogle,
+                    icon:const Icon(Icons.account_circle_outlined,size:20),
+                    label:const Text('Sign up with Google'),
+                  )),
               ),
             Expanded(child: SingleChildScrollView(
               keyboardDismissBehavior:ScrollViewKeyboardDismissBehavior.onDrag,
