@@ -140,23 +140,44 @@ class _InvoicingAppState extends State<InvoicingApp> {
       title: 'ARODesk',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF006FFF), // Deep Professional Blue
-          secondary: const Color(0xFF009CFF),
-          tertiary: const Color(0xFFDCEEFF),
-          background: const Color(0xFFF9F9F9),
+        useMaterial3:true,
+        scaffoldBackgroundColor:const Color(0xFFF7F9FC),
+        colorScheme:ColorScheme.fromSeed(
+          seedColor:const Color(0xFF006FFF),
+          primary:const Color(0xFF006FFF),
+          secondary:const Color(0xFF009CFF),
+          surface:Colors.white,
+          error:const Color(0xFFD92D38),
         ),
-        useMaterial3: true,
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Color(0xFF0F4C75),
-          foregroundColor: Colors.white,
-          elevation: 0,
-          centerTitle: true,
+        textTheme:const TextTheme(
+          headlineSmall:TextStyle(fontSize:23,fontWeight:FontWeight.w800,color:Color(0xFF142235),letterSpacing:-0.5),
+          titleLarge:TextStyle(fontSize:20,fontWeight:FontWeight.w700,color:Color(0xFF142235)),
+          titleMedium:TextStyle(fontSize:16,fontWeight:FontWeight.w700,color:Color(0xFF142235)),
+          bodyMedium:TextStyle(fontSize:14,color:Color(0xFF263957)),
+          labelMedium:TextStyle(fontSize:12,fontWeight:FontWeight.w500),
         ),
-        floatingActionButtonTheme: const FloatingActionButtonThemeData(
-          backgroundColor: Color(0xFF3282B8),
-          foregroundColor: Colors.white,
-        ),
+        appBarTheme:const AppBarTheme(
+          backgroundColor:Colors.white,foregroundColor:Color(0xFF142235),
+          elevation:0,scrolledUnderElevation:0,centerTitle:false),
+        cardTheme:CardThemeData(
+          color:Colors.white,elevation:0,margin:const EdgeInsets.symmetric(vertical:5),
+          shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(18),
+            side:const BorderSide(color:Color(0xFFE8EDF4)))),
+        inputDecorationTheme:InputDecorationTheme(
+          filled:true,fillColor:Colors.white,isDense:true,
+          contentPadding:const EdgeInsets.symmetric(horizontal:14,vertical:14),
+          border:OutlineInputBorder(borderRadius:BorderRadius.circular(13),
+            borderSide:const BorderSide(color:Color(0xFFDCE4F0))),
+          enabledBorder:OutlineInputBorder(borderRadius:BorderRadius.circular(13),
+            borderSide:const BorderSide(color:Color(0xFFDCE4F0)))),
+        filledButtonTheme:FilledButtonThemeData(style:FilledButton.styleFrom(
+          minimumSize:const Size(0,48),
+          shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(12)))),
+        navigationBarTheme:NavigationBarThemeData(
+          height:69,backgroundColor:Colors.white,elevation:0,
+          indicatorColor:const Color(0xFFE6F1FF),
+          labelTextStyle:WidgetStateProperty.all(
+            const TextStyle(fontSize:11.5,fontWeight:FontWeight.w600))),
       ),
       home: DataService().isLoggedIn
         ? FutureBuilder<bool>(
@@ -326,11 +347,31 @@ class AppShellState extends State<AppShell> {
                   : null,
             ),
             const SizedBox(width: 10),
-            Text(_titles[_currentIndex]),
+            Expanded(child:Text(_titles[_currentIndex],overflow:TextOverflow.ellipsis)),
           ],
         ),
       ),
 
+        actions:[
+          IconButton(
+            tooltip:'Search',icon:const Icon(Icons.search_rounded),
+            onPressed:()=>_goToPage(2)),
+          IconButton(
+            tooltip:'Pending synchronization',
+            icon:const Icon(Icons.notifications_none_rounded),
+            onPressed:()async{
+              final id=await InventoryService.instance.preferredBusinessId();
+              if(id==null||!mounted)return;
+              final pending=(await OfflineSalesService.instance.pendingCount(id))+
+                (await OfflineSalesService.instance.pendingQuotes(id)).length+
+                (await OfflineSalesService.instance.pendingStock(id)).length;
+              if(!mounted)return;
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:
+                Text(pending==0?'All local transactions synchronized':
+                  '$pending local transactions awaiting sync')));
+            }),
+          const SizedBox(width:6),
+        ],
       drawer: Drawer(
         width: 290,
         child: Column(
@@ -720,13 +761,13 @@ class AppShellState extends State<AppShell> {
           },
           destinations:[
             const NavigationDestination(icon:Icon(Icons.dashboard_outlined),
-              selectedIcon:Icon(Icons.dashboard_rounded),label:'Home'),
+              selectedIcon:Icon(Icons.dashboard_rounded),label:'Dashboard'),
             const NavigationDestination(icon:Icon(Icons.inventory_2_outlined),
-              selectedIcon:Icon(Icons.inventory_2),label:'Products'),
+              selectedIcon:Icon(Icons.inventory_2),label:'Inventory'),
             if(_canWrite)const NavigationDestination(icon:Icon(Icons.point_of_sale_outlined),
-              selectedIcon:Icon(Icons.point_of_sale),label:'Sales'),
+              selectedIcon:Icon(Icons.point_of_sale),label:'POS'),
             const NavigationDestination(icon:Icon(Icons.description_outlined),
-              selectedIcon:Icon(Icons.description),label:'Docs'),
+              selectedIcon:Icon(Icons.description),label:'Documents'),
             if(_canManage)const NavigationDestination(icon:Icon(Icons.settings_outlined),
               selectedIcon:Icon(Icons.settings),label:'Settings'),
           ],
