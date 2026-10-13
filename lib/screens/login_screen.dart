@@ -73,6 +73,28 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  Future<void> _googleSignIn() async {
+    if (_isLoading) return;
+    setState(() => _isLoading = true);
+    try {
+      final launched = await Supabase.instance.client.auth.signInWithOAuth(
+        OAuthProvider.google,
+        redirectTo: 'io.supabase.arodesk://auth-callback/',
+        authScreenLaunchMode: LaunchMode.externalApplication,
+      );
+      if (!launched && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not open Google sign-in.')));
+      }
+      // The app's auth callback completes the sign-in after Google redirects back.
+    } catch (error) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(_friendlyAuthError(error))));
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
   Future<void> _resendConfirmation() async {
     if (_identifierCtrl.text.trim().isEmpty ||
         !_identifierCtrl.text.contains('@')) {
@@ -182,6 +204,20 @@ class _LoginScreenState extends State<LoginScreen> {
                         ?const SizedBox(width:20,height:20,
                           child:CircularProgressIndicator(strokeWidth:2))
                         :const Text('Sign in'))),
+                  const SizedBox(height:12),
+                  Row(children:[
+                    const Expanded(child:Divider()),
+                    Padding(padding:const EdgeInsets.symmetric(horizontal:12),
+                      child:Text('or',style:theme.textTheme.bodySmall)),
+                    const Expanded(child:Divider()),
+                  ]),
+                  const SizedBox(height:12),
+                  SizedBox(width:double.infinity,height:48,
+                    child:OutlinedButton.icon(
+                      onPressed:_isLoading?null:_googleSignIn,
+                      icon:const Icon(Icons.account_circle_outlined,size:20),
+                      label:const Text('Continue with Google'),
+                    )),
                   const SizedBox(height:10),
                   Row(mainAxisAlignment:MainAxisAlignment.center,children:[
                     const Flexible(child:Text('New to ARODesk?',
