@@ -145,7 +145,7 @@ class _LoginScreenState extends State<LoginScreen> {
     return Scaffold(
       resizeToAvoidBottomInset:true,
       body:DecoratedBox(
-        decoration:const BoxDecoration(color:Color(0xFFF7F8FA)),
+        decoration:const BoxDecoration(color:Color(0xFFF7F9FC)),
         child:SafeArea(child:Center(child:SingleChildScrollView(
           keyboardDismissBehavior:ScrollViewKeyboardDismissBehavior.onDrag,
           padding:EdgeInsets.fromLTRB(18,16,18,
@@ -154,8 +154,8 @@ class _LoginScreenState extends State<LoginScreen> {
             constraints:const BoxConstraints(maxWidth:430),
             child:Card(
               margin:EdgeInsets.zero,
-              elevation:5,
-              shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(22)),
+              elevation:0,
+              shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(22),side:const BorderSide(color:Color(0xFFE8EDF4))),
               child:Padding(
                 padding:const EdgeInsets.fromLTRB(24,22,24,22),
                 child:Column(mainAxisSize:MainAxisSize.min,children:[
@@ -163,7 +163,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     fit:BoxFit.contain,semanticLabel:'ARODesk'),
                   const SizedBox(height:6),
                   const Text('ARODesk',style:TextStyle(
-                    fontSize:24,fontWeight:FontWeight.w800,color:Color(0xFF142235))),
+                    fontSize:26,fontWeight:FontWeight.w800,color:Color(0xFF142235))),
                   const SizedBox(height:2),
                   Text('Sign in to your workspace',style:theme.textTheme.bodySmall),
                   const SizedBox(height:21),
