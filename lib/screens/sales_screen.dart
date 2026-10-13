@@ -404,7 +404,18 @@ class _SalesScreenState extends State<SalesScreen> {
       body:RefreshIndicator(onRefresh:_refresh,child:_loading?
         const Center(child:CircularProgressIndicator()):
         ListView(padding:const EdgeInsets.all(16),children:[
-          Text('Sales & POS',style:Theme.of(context).textTheme.titleLarge),
+          Row(children:[
+            Container(width:43,height:43,
+              decoration:BoxDecoration(color:const Color(0xFF006FFF),
+                borderRadius:BorderRadius.circular(13)),
+              child:const Icon(Icons.point_of_sale_rounded,color:Colors.white,size:24)),
+            const SizedBox(width:12),
+            Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+              Text('Point of Sale',style:Theme.of(context).textTheme.titleLarge),
+              const Text('Sales, receipts and quotations',
+                style:TextStyle(fontSize:12,color:Color(0xFF63748F))),
+            ])),
+          ]),
 
           const SizedBox(height:16),
           if(_error!=null)...[
@@ -447,8 +458,16 @@ class _SalesScreenState extends State<SalesScreen> {
               padding:EdgeInsets.all(25),child:Text('No sales or quotations yet.',textAlign:TextAlign.center)),
             ..._transactions.map((item)=>Card(child:Column(children:[
               ListTile(
-              leading:Icon(item['kind']=='sale'?Icons.receipt_long:Icons.request_quote),
-              title:Text(item['document_number'].toString()),
+              leading:Container(width:44,height:44,
+                decoration:BoxDecoration(
+                  color:item['kind']=='sale'
+                    ?const Color(0xFFE6F1FF):const Color(0xFFFFEBD4),
+                  borderRadius:BorderRadius.circular(12)),
+                child:Icon(item['kind']=='sale'
+                  ?Icons.receipt_long_rounded:Icons.request_quote_rounded,
+                  color:item['kind']=='sale'
+                    ?const Color(0xFF006FFF):const Color(0xFFF28A14))),
+              title:Text(item['document_number'].toString(),style:const TextStyle(fontWeight:FontWeight.w700,fontSize:13)),
               subtitle:Text(item['customer_name'].toString()+' · '+
                 (item['kind']=='sale'
                   ? (item['currency']??_baseCurrency).toString()+' · Net paid: '+(((item['paid_total']??0) as num).toDouble()-((item['refunded_total']??0) as num).toDouble()).toStringAsFixed(2)+
