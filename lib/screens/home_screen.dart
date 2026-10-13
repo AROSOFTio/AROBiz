@@ -69,16 +69,23 @@ class _HomeScreenState extends State<HomeScreen>{
     }catch(_){if(mounted)setState(()=>_error='Business statistics could not load. Pull down to retry.');}
     finally{if(mounted)setState(()=>_loading=false);}
   }
-  Widget _metric(String label,String value,IconData icon){
-    final scheme=Theme.of(context).colorScheme;
-    return Container(padding:const EdgeInsets.all(14),
-      decoration:BoxDecoration(borderRadius:BorderRadius.circular(14),
-        color:scheme.surfaceContainerLow,border:Border.all(color:scheme.outlineVariant)),
+  Widget _metric(String label,String value,IconData icon,Color color){
+    return Container(
+      padding:const EdgeInsets.all(14),
+      decoration:BoxDecoration(color:Colors.white,
+        borderRadius:BorderRadius.circular(18),
+        border:Border.all(color:const Color(0xFFE8EDF4))),
       child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-        Icon(icon,color:scheme.primary,size:22),const SizedBox(height:10),
+        Container(width:43,height:43,
+          decoration:BoxDecoration(color:color,borderRadius:BorderRadius.circular(12)),
+          child:Icon(icon,color:Colors.white,size:23)),
+        const SizedBox(height:13),
+        Text(label,maxLines:2,overflow:TextOverflow.ellipsis,
+          style:const TextStyle(fontSize:12,color:Color(0xFF61708B))),
+        const SizedBox(height:5),
         Text(value,maxLines:2,overflow:TextOverflow.ellipsis,
-          style:Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight:FontWeight.bold)),
-        const SizedBox(height:4),Text(label,style:Theme.of(context).textTheme.labelMedium),
+          style:const TextStyle(fontSize:17,fontWeight:FontWeight.w800,
+            color:Color(0xFF142235),letterSpacing:-0.35)),
       ]));
   }
   Widget _salesChart(NumberFormat money){
@@ -86,7 +93,7 @@ class _HomeScreenState extends State<HomeScreen>{
     final first=DateTime.now().subtract(const Duration(days:6));
     return Card(child:Padding(padding:const EdgeInsets.all(16),
       child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-        Text('Sales trend',style:Theme.of(context).textTheme.titleMedium),
+        Text('Sales overview',style:Theme.of(context).textTheme.titleMedium),
         Text('Past seven days · '+_currency,style:Theme.of(context).textTheme.bodySmall),
         const SizedBox(height:14),
         SizedBox(height:170,child:Row(crossAxisAlignment:CrossAxisAlignment.end,
@@ -136,13 +143,13 @@ class _HomeScreenState extends State<HomeScreen>{
           final columns=c.maxWidth>=600?3:2;
           final w=(c.maxWidth-10*(columns-1))/columns;
           return Wrap(spacing:10,runSpacing:10,children:[
-            SizedBox(width:w,child:_metric('Recent net sales',money.format(_sales),Icons.trending_up)),
-            SizedBox(width:w,child:_metric('Recent collections',money.format(_collected),Icons.account_balance_wallet_outlined)),
-            SizedBox(width:w,child:_metric('Outstanding',money.format(_outstanding),Icons.receipt_long)),
-            SizedBox(width:w,child:_metric('Sales',_saleCount.toString(),Icons.point_of_sale)),
-            SizedBox(width:w,child:_metric('Open debtors',_debtorCount.toString(),Icons.people_outline)),
+            SizedBox(width:w,child:_metric('Total revenue',money.format(_sales),Icons.shopping_cart_rounded,const Color(0xFF006FFF))),
+            SizedBox(width:w,child:_metric('Total payments',money.format(_collected),Icons.payments_rounded,const Color(0xFF0AB867))),
+            SizedBox(width:w,child:_metric('Outstanding',money.format(_outstanding),Icons.receipt_long_rounded,const Color(0xFFFF881A))),
+            SizedBox(width:w,child:_metric('Sales',_saleCount.toString(),Icons.point_of_sale_rounded,const Color(0xFF6254DC))),
+            SizedBox(width:w,child:_metric('Open debtors',_debtorCount.toString(),Icons.people_rounded,const Color(0xFF277EE8))),
             SizedBox(width:w,child:_metric('Low stock / products',
-              _lowCount.toString()+' / '+_productCount.toString(),Icons.inventory_2_outlined)),
+              _lowCount.toString()+' / '+_productCount.toString(),Icons.inventory_2_rounded,const Color(0xFFEA574B))),
           ]);
         }),
         const SizedBox(height:16),_salesChart(money),
@@ -158,7 +165,7 @@ class _HomeScreenState extends State<HomeScreen>{
               '% · Outstanding '+((1-ratio)*100).toStringAsFixed(0)+'%'),
           ]))),
         const SizedBox(height:12),
-        Text('Recent sales',style:Theme.of(context).textTheme.titleMedium),
+        Text('Recent transactions',style:Theme.of(context).textTheme.titleMedium),
         if(_recent.isEmpty)const Padding(padding:EdgeInsets.all(20),
           child:Text('No recent transactions.')),
         ..._recent.map((sale)=>ListTile(
