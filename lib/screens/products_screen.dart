@@ -233,7 +233,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
           Row(children:[
             IconButton(tooltip:'Back',onPressed:widget.onBack??()=>Navigator.maybePop(context),
               icon:const Icon(Icons.arrow_back)),
-            Expanded(child:Text('Products & Inventory',
+            Expanded(child:Text('Inventory',
               style:Theme.of(context).textTheme.titleLarge)),
           ]),
 
@@ -244,13 +244,13 @@ class _ProductsScreenState extends State<ProductsScreen> {
             TextButton(onPressed:_load,child:const Text('Retry')),
           ]else...[
             Wrap(spacing:8,runSpacing:8,children:[
-              Chip(label:Text(_products.length.toString()+' items')),
-              Chip(label:Text(low.toString()+' low-stock')),
+              Chip(avatar:const Icon(Icons.inventory_2_outlined,size:17),label:Text(_products.length.toString()+' products')),
+              Chip(avatar:const Icon(Icons.warning_amber_rounded,size:17,color:Color(0xFFEB8500)),label:Text(low.toString()+' low stock')),
             ]),
             const SizedBox(height:12),
 
             TextField(onChanged:(v)=>setState(()=>_query=v),
-              decoration:const InputDecoration(labelText:'Search items',
+              decoration:const InputDecoration(hintText:'Search products...',
                 prefixIcon:Icon(Icons.search),border:OutlineInputBorder())),
             const SizedBox(height:12),
             if(items.isEmpty)const Padding(padding:EdgeInsets.all(24),
@@ -281,11 +281,30 @@ class _ProductsScreenState extends State<ProductsScreen> {
                       Text(_baseCurrency+' '+p['sale_price'].toString(),
                         maxLines:1,overflow:TextOverflow.ellipsis,
                         style:Theme.of(context).textTheme.labelMedium),
+                      const SizedBox(height:5),
+                      Text((p['sku']??'').toString().isEmpty
+                        ?(p['category']??'').toString()
+                        :'SKU: '+p['sku'].toString(),
+                        maxLines:1,overflow:TextOverflow.ellipsis,
+                        style:const TextStyle(fontSize:11,color:Color(0xFF7E8A9D))),
+                      const SizedBox(height:4),
                       Text(track?'Stock: $qty ${p['unit']}':'Service',
                         maxLines:1,overflow:TextOverflow.ellipsis,
                         style:TextStyle(fontSize:11,
                           color:track&&qty<=(p['reorder_level'] as num).toDouble()
                             ?Colors.deepOrange:null)),
+                      const SizedBox(height:6),
+                      Container(
+                        padding:const EdgeInsets.symmetric(horizontal:9,vertical:5),
+                        decoration:BoxDecoration(
+                          color:track&&qty<=(p['reorder_level'] as num).toDouble()
+                            ?const Color(0xFFFFEDD3):const Color(0xFFDFF9E9),
+                          borderRadius:BorderRadius.circular(20)),
+                        child:Text(track&&qty<=(p['reorder_level'] as num).toDouble()
+                          ?'Low stock':track?'In stock':'Service',
+                          style:TextStyle(fontSize:11,fontWeight:FontWeight.w700,
+                            color:track&&qty<=(p['reorder_level'] as num).toDouble()
+                              ?const Color(0xFFB96100):const Color(0xFF087B3D)))),
                       const SizedBox(height:8),
                       Wrap(spacing:3,runSpacing:2,children:[
                         if(!widget.readOnly&&_canManageCatalog)IconButton(
