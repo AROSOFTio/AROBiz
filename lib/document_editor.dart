@@ -6,6 +6,7 @@ import 'package:uuid/uuid.dart';
 import 'business_document.dart';
 import 'document_store.dart';
 import 'document_pdf.dart';
+import 'design_editor.dart';
 
 class _LineFields {
   _LineFields([DocLine? line]) :
@@ -31,6 +32,7 @@ class _DocumentEditorState extends State<DocumentEditor> {
   late final String id;
   late final TextEditingController number,business,contact,address,taxId,party,partyContact,reference,terms,subject,notes,tax,discount,opening;
   late String currency;
+  late DocStyle design;
   late DateTime date;
   final lines=<_LineFields>[];
   bool busy=false;
@@ -42,6 +44,7 @@ class _DocumentEditorState extends State<DocumentEditor> {
     id=d?.id??const Uuid().v4();
     date=d?.date??DateTime.now();
     currency=d?.currency??p.currency;
+    design=p.style;
     number=TextEditingController(text:d?.number??'${kind.prefix}-${DateFormat('yyyyMMdd').format(date)}-${id.substring(0,6).toUpperCase()}');
     business=TextEditingController(text:p.name);
     contact=TextEditingController(text:p.contact);
@@ -81,7 +84,7 @@ class _DocumentEditorState extends State<DocumentEditor> {
   String? requiredText(String? text)=>text==null||text.trim().isEmpty?'Required':null;
   BusinessDocument snapshot()=>BusinessDocument(
     id:id,kind:kind,number:number.text.trim(),date:date,
-    business:BusinessInfo(name:business.text.trim(),contact:contact.text.trim(),address:address.text.trim(),taxId:taxId.text.trim(),currency:currency),
+    business:BusinessInfo(name:business.text.trim(),contact:contact.text.trim(),address:address.text.trim(),taxId:taxId.text.trim(),currency:currency,style:design),
     party:party.text.trim(),partyContact:partyContact.text.trim(),currency:currency,
     lines:lines.map((line)=>DocLine(description:line.description.text.trim(),
       quantity:kind.isStatement?1:value(line.quantity).clamp(0,1000000).toDouble(),price:kind.hasPrices||kind.isStatement?value(line.price):0,
@@ -176,7 +179,7 @@ class _DocumentEditorState extends State<DocumentEditor> {
           section('Document details'),
           field(number,'Document number',required:true,maxLength:60),
           OutlinedButton.icon(icon:const Icon(Icons.calendar_today_outlined),
-            label:Text(DateFormat('dd MMM yyyy').format(date)),
+            label:Text(DateFormat(design.dateFormat.pattern).format(date)),
             onPressed:busy?null:()async{
               final picked=await showDatePicker(context:context,initialDate:date,firstDate:DateTime(1900),lastDate:DateTime(2200));
               if(picked!=null&&mounted)setState(()=>date=picked);
@@ -186,6 +189,8 @@ class _DocumentEditorState extends State<DocumentEditor> {
             initialValue:currency,decoration:const InputDecoration(labelText:'Currency'),
             items:currencies.map((c)=>DropdownMenuItem(value:c,child:Text(c))).toList(),
             onChanged:busy?null:(v){if(v!=null)setState(()=>currency=v);}),
+          section('Document design'),
+          DesignSummary(style:design,onChanged:busy?null:(value)=>setState(()=>design=value)),
           section('Your business'),
           field(business,'Business name',required:true),
           field(contact,'Phone / email'),
@@ -207,7 +212,7 @@ class _DocumentEditorState extends State<DocumentEditor> {
             if(kind.hasTax)...[
               section('Discount & tax'),Row(children:[
                 Expanded(child:numberField(discount,'Discount amount')),const SizedBox(width:12),
-                Expanded(child:numberField(tax,'Tax %',maximum:100)),
+                Expanded(child:numberField(tax,'${design.taxLabel} %',maximum:100)),
               ]),
             ],
             if(kind.hasPrices||kind.isStatement) Padding(padding:const EdgeInsets.symmetric(vertical:18),child:Row(children:[

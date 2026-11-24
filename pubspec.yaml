@@ -1,7 +1,7 @@
 name: arosoft
 description: Free offline-first business document generator.
 publish_to: none
-version: 2.0.0+252
+version: 2.1.0+253
 environment:
   sdk: ^3.11.1
 dependencies:
@@ -12,6 +12,8 @@ dependencies:
   intl: ^0.20.2
   shared_preferences: ^2.5.5
   uuid: ^4.5.3
+  image_picker: ^1.2.1
+  image: ^4.5.4
 dev_dependencies:
   flutter_test:
     sdk: flutter

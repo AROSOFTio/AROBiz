@@ -40,9 +40,9 @@ enum DocKind {
   };
 }
 
-const currencies = ['USD','EUR','GBP','UGX','KES','TZS','NGN','ZAR','INR','CAD','AUD','JPY','RWF','GHS','AED'];
-int currencyDecimals(String currency) => ['UGX','JPY','RWF'].contains(currency) ? 0 : 2;
-int minorFactor(String currency) => currencyDecimals(currency) == 0 ? 1 : 100;
+const currencies = ['USD','EUR','GBP','UGX','KES','TZS','NGN','ZAR','INR','CAD','AUD','JPY','RWF','GHS','AED','CNY','CHF','NZD','BRL','MXN','SAR','SGD','HKD','KRW','PHP','IDR','MYR','PKR','BDT','EGP','ETB','ZMW','SEK','NOK','DKK','PLN','TRY','QAR','KWD','BHD','OMR','JOD','VND','XOF','XAF','THB','ILS','COP','CLP','PEN','MAD'];
+int currencyDecimals(String currency) => ['UGX','JPY','RWF','KRW','VND','XOF','XAF','CLP'].contains(currency) ? 0 : ['KWD','BHD','OMR','JOD'].contains(currency) ? 3 : 2;
+int minorFactor(String currency) => switch(currencyDecimals(currency)){0=>1,3=>1000,_=>100};
 int toMinor(double number, String currency) => (number * minorFactor(currency)).round();
 String money(int minor, String currency) => NumberFormat.currency(
   name: currency, symbol: '$currency ', decimalDigits: currencyDecimals(currency),
@@ -60,6 +60,104 @@ class DocLine {
     price: (json['price'] as num).toDouble(),
     credit: (json['credit'] as num? ?? 0).toDouble(),
   );
+}
+
+enum DocTemplate {
+  modern('Modern', 'Balanced header and accent rule'),
+  classic('Classic', 'Traditional ruled business form'),
+  executive('Executive', 'Full-width branded heading'),
+  minimal('Minimal', 'Light, ink-saving layout'),
+  elegant('Elegant', 'Centered letterhead and refined accents'),
+  compact('Compact', 'Dense commercial document');
+
+  const DocTemplate(this.title,this.description);
+  final String title,description;
+}
+enum DocPaper { a4, letter, a5 }
+enum DocDate {
+  dayFirst('24/11/2026','dd/MM/yyyy'),
+  monthFirst('11/24/2026','MM/dd/yyyy'),
+  iso('2026-11-24','yyyy-MM-dd'),
+  written('24 Nov 2026','dd MMM yyyy');
+  const DocDate(this.example,this.pattern);
+  final String example,pattern;
+}
+String validHex(Object? value,String fallback) {
+  final s=value?.toString().replaceAll('#','').toUpperCase()??'';
+  return RegExp(r'^[0-9A-F]{6}
+  const BusinessInfo({this.name='',this.contact='',this.address='',this.taxId='',this.currency='USD',this.style=const DocStyle()});
+  final String name, contact, address, taxId, currency;
+  final DocStyle style;
+  Map<String,dynamic> toJson() => {'name':name,'contact':contact,'address':address,'taxId':taxId,'currency':currency,'style':style.toJson()};
+  factory BusinessInfo.fromJson(Map<String,dynamic> json) => BusinessInfo(
+    name: json['name'] as String? ?? '', contact: json['contact'] as String? ?? '',
+    address: json['address'] as String? ?? '', taxId: json['taxId'] as String? ?? '',
+    currency: currencies.contains(json['currency']) ? json['currency'] as String : 'USD',
+    style:DocStyle.fromJson(Map<String,dynamic>.from(json['style'] as Map? ?? {})),
+  );
+}
+
+class BusinessDocument {
+  const BusinessDocument({required this.id,required this.kind,required this.number,
+    required this.date,required this.business,required this.party,required this.partyContact,
+    required this.currency,required this.lines,this.tax=0,this.discount=0,this.opening=0,
+    this.reference='',this.terms='',this.subject='',this.notes=''});
+  final String id, number, party, partyContact, currency, reference, terms, subject, notes;
+  final DocKind kind;
+  final DateTime date;
+  final BusinessInfo business;
+  final List<DocLine> lines;
+  final double tax, discount, opening;
+  int get subtotal => lines.fold<int>(0, (sum,line)=>sum+line.total(currency));
+  int get discountMinor => kind.hasTax ? toMinor(discount,currency) : 0;
+  int get taxMinor => kind.hasTax ? ((subtotal-discountMinor)*tax/100).round() : 0;
+  int get debitTotal => lines.fold<int>(0,(sum,line)=>sum+toMinor(line.price,currency));
+  int get creditTotal => lines.fold<int>(0,(sum,line)=>sum+toMinor(line.credit,currency));
+  int get total => kind.isStatement ? toMinor(opening,currency)+debitTotal-creditTotal :
+    subtotal-discountMinor+taxMinor;
+  Map<String,dynamic> toJson() => {
+    'id':id,'kind':kind.name,'number':number,'date':date.toIso8601String(),
+    'business':business.toJson(),'party':party,'partyContact':partyContact,
+    'currency':currency,'lines':lines.map((line)=>line.toJson()).toList(),
+    'tax':tax,'discount':discount,'opening':opening,'reference':reference,'terms':terms,
+    'subject':subject,'notes':notes,
+  };
+  factory BusinessDocument.fromJson(Map<String,dynamic> json) => BusinessDocument(
+    id:json['id'] as String,kind:DocKind.values.byName(json['kind'] as String),
+    number:json['number'] as String,date:DateTime.parse(json['date'] as String),
+    business:BusinessInfo.fromJson(Map<String,dynamic>.from(json['business'] as Map)),
+    party:json['party'] as String,partyContact:json['partyContact'] as String,
+    currency:json['currency'] as String,
+    lines:(json['lines'] as List).map((line)=>DocLine.fromJson(Map<String,dynamic>.from(line as Map))).toList(),
+    tax:(json['tax'] as num).toDouble(),discount:(json['discount'] as num).toDouble(),
+    opening:(json['opening'] as num? ?? 0).toDouble(),
+    reference:json['reference'] as String,terms:json['terms'] as String,
+    subject:json['subject'] as String? ?? '',notes:json['notes'] as String,
+  );
+}
+).hasMatch(s)?s:fallback;
+}
+class DocStyle {
+  const DocStyle({this.template=DocTemplate.modern,this.paper=DocPaper.a4,
+    this.dateFormat=DocDate.written,this.primary='196B74',this.secondary='152D45',
+    this.logo='',this.footer='',this.taxLabel='Tax'});
+  final DocTemplate template;
+  final DocPaper paper;
+  final DocDate dateFormat;
+  final String primary,secondary,logo,footer,taxLabel;
+  DocStyle copyWith({DocTemplate? template,DocPaper? paper,DocDate? dateFormat,
+    String? primary,String? secondary,String? logo,String? footer,String? taxLabel})=>DocStyle(
+      template:template??this.template,paper:paper??this.paper,dateFormat:dateFormat??this.dateFormat,
+      primary:primary??this.primary,secondary:secondary??this.secondary,logo:logo??this.logo,
+      footer:footer??this.footer,taxLabel:taxLabel??this.taxLabel);
+  Map<String,dynamic> toJson()=>{'template':template.name,'paper':paper.name,'dateFormat':dateFormat.name,
+    'primary':primary,'secondary':secondary,'logo':logo,'footer':footer,'taxLabel':taxLabel};
+  factory DocStyle.fromJson(Map<String,dynamic> j)=>DocStyle(
+    template:DocTemplate.values.firstWhere((v)=>v.name==j['template'],orElse:()=>DocTemplate.modern),
+    paper:DocPaper.values.firstWhere((v)=>v.name==j['paper'],orElse:()=>DocPaper.a4),
+    dateFormat:DocDate.values.firstWhere((v)=>v.name==j['dateFormat'],orElse:()=>DocDate.written),
+    primary:validHex(j['primary'],'196B74'),secondary:validHex(j['secondary'],'152D45'),
+    logo:j['logo'] as String? ?? '',footer:j['footer'] as String? ?? '',taxLabel:j['taxLabel'] as String? ?? 'Tax');
 }
 
 class BusinessInfo {

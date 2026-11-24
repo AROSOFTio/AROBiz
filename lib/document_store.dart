@@ -19,8 +19,18 @@ class DocumentStore {
   List<BusinessDocument> documents() {
     final raw = preferences.getString(documentsKey);
     if (raw == null) return [];
-    return (jsonDecode(raw) as List).map((entry) =>
-      BusinessDocument.fromJson(Map<String,dynamic>.from(entry as Map))).toList()
+    final decoded=jsonDecode(raw);
+    final List records=decoded is List?decoded:(decoded as Map)['records'] as List;
+    final List logos=decoded is List?[]:decoded['logos'] as List;
+    return records.map((entry){
+      final json=Map<String,dynamic>.from(entry as Map);
+      final business=Map<String,dynamic>.from(json['business'] as Map);
+      final style=Map<String,dynamic>.from(business['style'] as Map? ?? {});
+      final index=style.remove('logoIndex');
+      if(index is int && index>=0 && index<logos.length)style['logo']=logos[index];
+      business['style']=style;json['business']=business;
+      return BusinessDocument.fromJson(json);
+    }).toList()
       ..sort((a,b)=>b.date.compareTo(a.date));
   }
 
@@ -42,7 +52,16 @@ class DocumentStore {
   }
 
   Future<void> _write(List<BusinessDocument> records) async {
-    if (!await preferences.setString(documentsKey,jsonEncode(records.map((d)=>d.toJson()).toList()))) {
+    final logos=<String>[];
+    final encoded=records.map((d){
+      final json=d.toJson();
+      final business=json['business'] as Map<String,dynamic>;
+      final style=business['style'] as Map<String,dynamic>;
+      final logo=style.remove('logo') as String? ?? '';
+      if(logo.isNotEmpty){if(!logos.contains(logo))logos.add(logo);style['logoIndex']=logos.indexOf(logo);}
+      return json;
+    }).toList();
+    if (!await preferences.setString(documentsKey,jsonEncode({'records':encoded,'logos':logos}))) {
       throw StateError('Unable to save documents on this device.');
     }
   }

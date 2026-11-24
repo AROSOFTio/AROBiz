@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'document_store.dart';
 import 'business_document.dart';
 import 'document_editor.dart';
+import 'design_editor.dart';
 
 const brand = Color(0xFF196B74);
 const ink = Color(0xFF152D45);
@@ -135,15 +136,16 @@ class ProfileEditor extends StatefulWidget {
 class _ProfileEditorState extends State<ProfileEditor> {
   late final TextEditingController name,contact,address,taxId;
   late String currency;
+  late DocStyle design;
   @override
   void initState(){super.initState();final p=widget.store.profile();name=TextEditingController(text:p.name);
     contact=TextEditingController(text:p.contact);address=TextEditingController(text:p.address);
-    taxId=TextEditingController(text:p.taxId);currency=p.currency;}
+    taxId=TextEditingController(text:p.taxId);currency=p.currency;design=p.style;}
   @override
   void dispose(){for(final c in [name,contact,address,taxId]){c.dispose();}super.dispose();}
   Future<void> save() async {
     try{
-      await widget.store.saveProfile(BusinessInfo(name:name.text.trim(),contact:contact.text.trim(),address:address.text.trim(),taxId:taxId.text.trim(),currency:currency));
+      await widget.store.saveProfile(BusinessInfo(name:name.text.trim(),contact:contact.text.trim(),address:address.text.trim(),taxId:taxId.text.trim(),currency:currency,style:design));
       if(!mounted)return;widget.onSaved();
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Business defaults saved on this device.')));
     }catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('$e')));}
@@ -156,6 +158,8 @@ class _ProfileEditorState extends State<ProfileEditor> {
       Padding(padding:const EdgeInsets.only(bottom:12),child:TextField(controller:field.$1,maxLength:150,decoration:InputDecoration(labelText:field.$2,counterText:''))),
     DropdownButtonFormField<String>(initialValue:currency,decoration:const InputDecoration(labelText:'Default currency'),
       items:currencies.map((c)=>DropdownMenuItem(value:c,child:Text(c))).toList(),onChanged:(v){if(v!=null)setState(()=>currency=v);}),
+    const SizedBox(height:18),const Text('Default design',style:TextStyle(fontSize:17,fontWeight:FontWeight.bold)),const SizedBox(height:8),
+    DesignSummary(style:design,onChanged:(value)=>setState(()=>design=value)),
     const SizedBox(height:16),FilledButton(onPressed:save,child:const Text('Save settings')),
     const SizedBox(height:24),
     const Text('Privacy & storage',style:TextStyle(fontWeight:FontWeight.bold,fontSize:17)),
