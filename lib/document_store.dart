@@ -58,6 +58,11 @@ class DocumentStore {
     return result;
   }
 
+  Future<void> countActivity(String name) async {
+    final key='local_activity_'+name;
+    await preferences.setInt(key,(preferences.getInt(key)??0)+1);
+  }
+
   Future<void> saveProfile(BusinessInfo profile) async {
     if (!await preferences.setString(profileKey,jsonEncode(profile.toJson()))) {
       throw StateError('Business details could not be saved.');

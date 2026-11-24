@@ -1,5 +1,5 @@
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:printing/printing.dart';
 import 'package:uuid/uuid.dart';
@@ -8,6 +8,7 @@ import 'document_store.dart';
 import 'document_pdf.dart';
 import 'design_editor.dart';
 import 'cloud_service.dart';
+import 'zoom_pdf_pages.dart';
 
 class _LineFields {
   _LineFields([DocLine? line]) :
@@ -131,6 +132,7 @@ class _DocumentEditorState extends State<DocumentEditor> {
     try{
       if(preview){
         final bytes=await documentPdf(doc);
+        await widget.store.countActivity('generated');
         recordUsage('document_generated',kind:doc.kind);
         if(!mounted)return;
         await Navigator.push(context,MaterialPageRoute<void>(builder:(_)=>DocumentPreview(document:doc,bytes:bytes,store:widget.store)));
@@ -206,7 +208,7 @@ class _DocumentEditorState extends State<DocumentEditor> {
           Padding(padding:const EdgeInsets.fromLTRB(20,12,20,8),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
             Text('STEP ${step+1} OF 3',style:const TextStyle(fontSize:11,fontWeight:FontWeight.w700,letterSpacing:1.4,color:Colors.black54)),
             const SizedBox(height:8),
-            Row(children:List.generate(3,(i)=>Expanded(child:AnimatedContainer(duration:const Duration(milliseconds:220),height:4,margin:EdgeInsets.only(right:i==2?0:5),color:i<=step?Colors.black:const Color(0xFFE5E7EB))))),
+            Row(children:List.generate(3,(i)=>Expanded(child:AnimatedContainer(duration:const Duration(milliseconds:220),height:4,margin:EdgeInsets.only(right:i==2?0:5),color:i<=step?Theme.of(context).colorScheme.primary:const Color(0xFFE5E7EB))))),
           ])),
           Expanded(child:Form(key:form,child:ListView(controller:scroll,padding:const EdgeInsets.fromLTRB(20,12,20,24),children:[
             Text(steps[step],style:const TextStyle(fontSize:28,fontWeight:FontWeight.w800,letterSpacing:-.8)),
@@ -292,23 +294,34 @@ class _DocumentPreviewState extends State<DocumentPreview> {
   @override
   Widget build(BuildContext context)=>Scaffold(
     appBar:AppBar(title:Text(widget.document.kind.title)),
-    body:PdfPreview(build:(_)=>widget.bytes,allowPrinting:false,allowSharing:false,canChangeOrientation:false,canChangePageFormat:false,canDebug:false),
-    bottomNavigationBar:SafeArea(child:Padding(padding:const EdgeInsets.all(10),child:Row(children:[
-      Expanded(child:OutlinedButton.icon(onPressed:busy?null:()=>run(()async{
+    body:PdfPreview.builder(build:(_)=>widget.bytes,useActions:false,allowPrinting:false,allowSharing:false,canChangeOrientation:false,canChangePageFormat:false,canDebug:false,dpi:160,
+      pagesBuilder:(_,pages)=>ZoomPdfPages(pages:pages)),
+    bottomNavigationBar:SafeArea(child:Container(decoration:const BoxDecoration(border:Border(top:BorderSide(color:Color(0xFFE5E0EB)))),padding:const EdgeInsets.symmetric(horizontal:8,vertical:8),child:Row(children:[
+      action('Save',Icons.bookmark_border,()async{
         await widget.store.save(widget.document);
         recordUsage('document_saved',kind:widget.document.kind);
         if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Saved on this device.')));
-      }),icon:const Icon(Icons.save_outlined),label:const Text('Save'))),
-      const SizedBox(width:6),
-      Expanded(child:FilledButton.icon(onPressed:busy?null:()=>run(()async{
-        recordUsage('share_requested',kind:widget.document.kind);
-        await Printing.sharePdf(bytes:widget.bytes,filename:filename);
-      }),icon:const Icon(Icons.share_outlined),label:const Text('Share'))),
-      const SizedBox(width:6),
-      Expanded(child:OutlinedButton.icon(onPressed:busy?null:()=>run(()async{
+      }),
+      action('Print',Icons.print_outlined,()async{
         recordUsage('print_requested',kind:widget.document.kind);
         await Printing.layoutPdf(name:filename,onLayout:(_)=>widget.bytes);
-      }),icon:const Icon(Icons.print_outlined),label:const Text('Print'))),
+      }),
+      action('Share',Icons.share_outlined,()async{
+        await widget.store.countActivity('shared');
+        recordUsage('share_requested',kind:widget.document.kind);
+        await Printing.sharePdf(bytes:widget.bytes,filename:filename);
+      }),
+      action('Download',Icons.download_outlined,()async{
+        final saved=await const MethodChannel('crown_docs/export').invokeMethod<bool>('savePdf',{'name':filename,'bytes':widget.bytes});
+        if(saved==true&&mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('PDF saved to your selected location.')));
+      },primary:true),
     ]))),
   );
+  Widget action(String label,IconData icon,Future<void> Function() call,{bool primary=false})=>Expanded(child:Padding(
+    padding:const EdgeInsets.symmetric(horizontal:2),
+    child:Material(color:primary?Theme.of(context).colorScheme.primary:Colors.white,shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(7),side:BorderSide(color:primary?Theme.of(context).colorScheme.primary:const Color(0xFFE1DCE9))),
+      child:InkWell(borderRadius:BorderRadius.circular(7),onTap:busy?null:()=>run(call),child:Padding(padding:const EdgeInsets.symmetric(vertical:10),child:Column(mainAxisSize:MainAxisSize.min,children:[
+        Icon(icon,size:20,color:primary?Colors.white:Theme.of(context).colorScheme.primary),
+        const SizedBox(height:4),Text(label,style:TextStyle(fontSize:10,fontWeight:FontWeight.w700,color:primary?Colors.white:Colors.black87)),
+      ]))))));
 }
