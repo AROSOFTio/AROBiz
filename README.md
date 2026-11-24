@@ -1,17 +1,10 @@
-# AROSOFT Innovations Ltd
+# Crown Business Docs
 
-A new Flutter project.
+Free offline-first Android business document generator, previously ARODesk.
 
-## Getting Started
+Create invoices, receipts, quotations, proforma invoices, purchase orders, delivery notes, credit notes, debit notes, payment vouchers, account statements and business letters. Preview A4 PDFs, save editable records, share and print. No account, product catalogue, inventory, POS, Supabase or payment integration is required. All generation and record storage run on-device regardless of connectivity; sharing to an online service is a user choice. There is no automatic cloud sync.
 
-This project is a starting point for a Flutter application.
+Storage: compact JSON in local SharedPreferences using new versioned keys, with PDF regeneration on demand. This is not cloud backup. The Android package ID and existing signing configuration are preserved for upgrades. Legacy account-scoped records are not imported into the new anonymous workspace or deleted. The previous code is preserved on archive/arodesk-pos-before-docs.
 
-A few resources to get you started if this is your first Flutter project:
-
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+Development: flutter pub get; flutter analyze --no-fatal-infos; flutter test.
+Android release: the workflow tests, builds and publishes signed APK and AAB using existing repository signing secrets. No Supabase credentials are required.
