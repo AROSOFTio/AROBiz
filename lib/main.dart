@@ -7,8 +7,8 @@ import 'document_editor.dart';
 import 'design_editor.dart';
 import 'cloud_service.dart';
 
-const brand = Color(0xFF5423A8);
-const ink = Color(0xFF191528);
+const brand = Color(0xFF2563EB);
+const ink = Color(0xFF202020);
 const appName = 'Crown Business Docs';
 
 Future<void> main() async {
@@ -25,18 +25,18 @@ class CrownDocsApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) => MaterialApp(
     title:appName,debugShowCheckedModeBanner:false,
-    theme:ThemeData(useMaterial3:true,colorScheme:const ColorScheme.light(primary:brand,onPrimary:Colors.white,secondary:Color(0xFF343C9D),surface:Colors.white,onSurface:ink),
+    theme:ThemeData(useMaterial3:true,colorScheme:const ColorScheme.light(primary:brand,onPrimary:Colors.white,secondary:Color(0xFF3F3ABF),surface:Colors.white,onSurface:ink),
       scaffoldBackgroundColor:Colors.white,
       filledButtonTheme:FilledButtonThemeData(style:FilledButton.styleFrom(shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(8)),minimumSize:const Size(0,48))),
       outlinedButtonTheme:OutlinedButtonThemeData(style:OutlinedButton.styleFrom(shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(8)),minimumSize:const Size(0,48))),
       cardTheme:const CardThemeData(color:Colors.white,elevation:0,shape:RoundedRectangleBorder(side:BorderSide(color:Color(0xFFE5E7EB),width:1),borderRadius:BorderRadius.all(Radius.circular(10)))),
-      navigationBarTheme:const NavigationBarThemeData(backgroundColor:Colors.white,indicatorColor:Color(0xFFEDE5FA),elevation:0,height:65,labelTextStyle:WidgetStatePropertyAll(TextStyle(fontSize:11,fontWeight:FontWeight.w600))),
+      navigationBarTheme:const NavigationBarThemeData(backgroundColor:Colors.white,indicatorColor:Color(0xFFE9F0FF),elevation:0,height:65,labelTextStyle:WidgetStatePropertyAll(TextStyle(fontSize:11,fontWeight:FontWeight.w600))),
       inputDecorationTheme:InputDecorationTheme(
         filled:true,fillColor:const Color(0xFFFAFAFA),contentPadding:const EdgeInsets.symmetric(horizontal:14,vertical:16),
         border:OutlineInputBorder(borderRadius:BorderRadius.circular(8),borderSide:const BorderSide(color:Color(0xFFDADADA))),
         enabledBorder:OutlineInputBorder(borderRadius:BorderRadius.circular(8),borderSide:const BorderSide(color:Color(0xFFDADADA))),
         focusedBorder:OutlineInputBorder(borderRadius:BorderRadius.circular(8),borderSide:const BorderSide(color:brand,width:1.5)),
-        labelStyle:const TextStyle(fontSize:14,color:Color(0xFF555555)),
+        labelStyle:const TextStyle(fontSize:14,color:Color(0xFF4D4D4D)),
       ),
       dividerTheme:const DividerThemeData(color:Color(0xFFEAEAEA),thickness:1,space:1),
       appBarTheme:const AppBarTheme(backgroundColor:Colors.white,surfaceTintColor:Colors.transparent,foregroundColor:ink,elevation:0,scrolledUnderElevation:0,centerTitle:false,systemOverlayStyle:SystemUiOverlayStyle.dark),
@@ -73,10 +73,11 @@ class _HomeScreenState extends State<HomeScreen> {
   int index=0;
   String query='';
   bool opening=false;
-  Future<void> openEditor(DocKind kind,{BusinessDocument? document}) async {
+  DocKind templateKind=DocKind.invoice;
+  Future<void> openEditor(DocKind kind,{BusinessDocument? document,DocTemplate? template}) async {
     if(opening)return;
     if(document==null&&widget.store.profile().name.trim().isEmpty){
-      setState(()=>index=2);
+      setState(()=>index=4);
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Save your business details once, then create documents.')));
       return;
     }
@@ -84,7 +85,7 @@ class _HomeScreenState extends State<HomeScreen> {
     try{
       final number=document?.number??await widget.store.reserveNumber(kind,DateTime.now());
       if(!mounted)return;
-      await Navigator.push(context,MaterialPageRoute<void>(builder:(_)=>DocumentEditor(store:widget.store,kind:kind,existing:document,assignedNumber:number)));
+      await Navigator.push(context,MaterialPageRoute<void>(builder:(_)=>DocumentEditor(store:widget.store,kind:kind,existing:document,assignedNumber:number,initialTemplate:template)));
     }catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(e.toString())));}
     finally{if(mounted)setState(()=>opening=false);}
     if(mounted) setState((){});
@@ -108,13 +109,15 @@ class _HomeScreenState extends State<HomeScreen> {
     bottom:const PreferredSize(preferredSize:Size.fromHeight(1),child:Divider())),
 
     body:SafeArea(child:Center(child:ConstrainedBox(constraints:const BoxConstraints(maxWidth:900),
-      child:switch(index){0=>home(),1=>saved(),_=>ProfileEditor(store:widget.store,onSaved:()=>setState((){}))},
+      child:switch(index){0=>home(),1=>saved(),2=>templates(),3=>reports(),_=>ProfileEditor(store:widget.store,onSaved:()=>setState((){}))},
     ))),
     bottomNavigationBar:DecoratedBox(decoration:const BoxDecoration(border:Border(top:BorderSide(color:Color(0xFFEAEAEA)))),child:NavigationBar(selectedIndex:index,onDestinationSelected:(value)=>setState(()=>index=value),
       destinations:const [
         NavigationDestination(icon:Icon(Icons.home_outlined),selectedIcon:Icon(Icons.home),label:'Home'),
-        NavigationDestination(icon:Icon(Icons.folder_outlined),selectedIcon:Icon(Icons.folder),label:'My documents'),
-        NavigationDestination(icon:Icon(Icons.settings_outlined),selectedIcon:Icon(Icons.settings),label:'Settings'),
+        NavigationDestination(icon:Icon(Icons.folder_outlined),selectedIcon:Icon(Icons.folder),label:'Docs'),
+        NavigationDestination(icon:Icon(Icons.layers_outlined),selectedIcon:Icon(Icons.layers),label:'Templates'),
+        NavigationDestination(icon:Icon(Icons.bar_chart_outlined),selectedIcon:Icon(Icons.bar_chart),label:'Reports'),
+        NavigationDestination(icon:Icon(Icons.grid_view_outlined),selectedIcon:Icon(Icons.grid_view_rounded),label:'More'),
       ])),
   );
   Future<void> chooseDocument() async {
@@ -132,67 +135,107 @@ class _HomeScreenState extends State<HomeScreen> {
   }
   Widget home(){
     final records=widget.store.documents();
-    final profile=widget.store.profile();
-    final today=DateTime.now();
-    final month=records.where((d)=>d.date.year==today.year&&d.date.month==today.month).length;
     final prefs=widget.store.preferences;
-    return ListView(padding:const EdgeInsets.fromLTRB(16,16,16,24),children:[
-      Container(padding:const EdgeInsets.all(18),decoration:BoxDecoration(color:brand,borderRadius:BorderRadius.circular(12)),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-        Row(children:[Expanded(child:Text(profile.name.isEmpty?'Your workspace':profile.name,maxLines:2,overflow:TextOverflow.ellipsis,style:const TextStyle(color:Color(0xFFE6DBFA),fontSize:12,fontWeight:FontWeight.w600))),const Icon(Icons.description_outlined,color:Colors.white,size:25)]),
-        const SizedBox(height:10),
-        const Text('Create professional\nbusiness documents',style:TextStyle(color:Colors.white,fontSize:25,fontWeight:FontWeight.w800,height:1.15,letterSpacing:-.5)),
-        const SizedBox(height:8),
-        const Text('Invoices, receipts, quotations and more.',style:TextStyle(color:Colors.white,fontSize:13)),
-        const SizedBox(height:15),
-        FilledButton.icon(style:FilledButton.styleFrom(backgroundColor:Colors.white,foregroundColor:brand,minimumSize:const Size(0,44)),onPressed:chooseDocument,icon:const Icon(Icons.add,size:21),label:const Text('Create document')),
+    return ListView(padding:const EdgeInsets.fromLTRB(14,12,14,20),children:[
+      ClipRRect(borderRadius:BorderRadius.circular(12),child:Stack(children:[
+        Positioned.fill(child:CustomPaint(painter:const _HeroArtwork())),
+        Padding(padding:const EdgeInsets.fromLTRB(16,24,16,25),child:Row(children:[
+          Expanded(flex:7,child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+            const Text('Create business docs',style:TextStyle(color:Colors.white,fontSize:26,fontWeight:FontWeight.w800,height:1.12,letterSpacing:-.7)),
+            const SizedBox(height:15),
+            FilledButton.icon(style:FilledButton.styleFrom(backgroundColor:Colors.white,foregroundColor:brand,minimumSize:const Size(0,43),padding:const EdgeInsets.symmetric(horizontal:10),shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(8))),onPressed:chooseDocument,icon:const Icon(Icons.add,size:20),label:const Text('New document',style:TextStyle(fontSize:13,fontWeight:FontWeight.w700))),
+          ])),
+          const Expanded(flex:4,child:SizedBox(height:128,child:CustomPaint(painter:_DocumentArtwork()))),
+        ])),
       ])),
-      const SizedBox(height:20),
-      Row(children:[const Expanded(child:Text('Your activity',style:TextStyle(fontSize:19,fontWeight:FontWeight.w800))),TextButton(onPressed:()=>setState(()=>index=1),child:const Text('View documents'))]),
-      const SizedBox(height:7),
-      LayoutBuilder(builder:(context,box)=>GridView.count(shrinkWrap:true,physics:const NeverScrollableScrollPhysics(),crossAxisCount:box.maxWidth>=600?4:2,mainAxisExtent:MediaQuery.textScalerOf(context).scale(100).clamp(100,175).toDouble(),crossAxisSpacing:9,mainAxisSpacing:9,children:[
-        metric('Generated',prefs.getInt('local_activity_generated')??0,Icons.description_outlined,const Color(0xFF6534BB)),
-        metric('Saved',records.length,Icons.folder_outlined,const Color(0xFF344BB1)),
-        metric('Share requests',prefs.getInt('local_activity_shared')??0,Icons.share_outlined,const Color(0xFF087A82)),
-        metric('Dated this month',month,Icons.calendar_today_outlined,const Color(0xFF9B4B13)),
-      ])),
-      const SizedBox(height:24),
-      Row(children:[const Expanded(child:Text('Create a document',style:TextStyle(fontSize:20,fontWeight:FontWeight.w800,letterSpacing:-.4))),const Icon(Icons.offline_bolt_outlined,color:Color(0xFF087A82),size:16),const SizedBox(width:4),const Text('Offline ready',style:TextStyle(color:Color(0xFF087A82),fontSize:11,fontWeight:FontWeight.w600))]),
-      const SizedBox(height:12),
+      const SizedBox(height:14),
       LayoutBuilder(builder:(context,box)=>GridView.count(shrinkWrap:true,physics:const NeverScrollableScrollPhysics(),
-        crossAxisCount:box.maxWidth>=600?4:box.maxWidth>=330?3:2,mainAxisExtent:MediaQuery.textScalerOf(context).scale(100).clamp(100,180).toDouble(),crossAxisSpacing:9,mainAxisSpacing:9,
+        crossAxisCount:box.maxWidth>=280&&MediaQuery.textScalerOf(context).scale(12)<=15?4:2,
+        mainAxisExtent:MediaQuery.textScalerOf(context).scale(90).clamp(90,160).toDouble(),crossAxisSpacing:7,mainAxisSpacing:7,
+        children:[
+          metric('Generated',prefs.getInt('local_activity_generated')??0,Icons.description_outlined,brand),
+          metric('Downloads',prefs.getInt('local_activity_downloaded')??0,Icons.download_outlined,const Color(0xFF3F3ABF)),
+          metric('Share requests',prefs.getInt('local_activity_shared')??0,Icons.share_outlined,const Color(0xFF22723B)),
+          metric('Saved',records.length,Icons.bookmark_border,const Color(0xFF202020)),
+        ])),
+      const SizedBox(height:18),
+      Row(children:[const Expanded(child:Text('Create a document',style:TextStyle(fontSize:17,fontWeight:FontWeight.w800))),TextButton(onPressed:chooseDocument,child:const Text('View all'))]),
+      const SizedBox(height:6),
+      LayoutBuilder(builder:(context,box)=>GridView.count(shrinkWrap:true,physics:const NeverScrollableScrollPhysics(),
+        crossAxisCount:box.maxWidth>=305&&MediaQuery.textScalerOf(context).scale(12)<=15?4:box.maxWidth>=240?3:2,
+        mainAxisExtent:MediaQuery.textScalerOf(context).scale(88).clamp(88,165).toDouble(),crossAxisSpacing:7,mainAxisSpacing:7,
         children:[for(final kind in DocKind.values) Material(
           color:Color.alphaBlend(kindColor(kind).withValues(alpha:.075),Colors.white),
           shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(9)),
-          child:InkWell(key:Key('create_${kind.name}'),borderRadius:BorderRadius.circular(9),onTap:()=>openEditor(kind),
-            child:Padding(padding:const EdgeInsets.all(8),child:Column(mainAxisAlignment:MainAxisAlignment.center,children:[
-              Icon(kindIcon(kind),color:kindColor(kind),size:27),const SizedBox(height:7),
-              Text(kind.title,textAlign:TextAlign.center,maxLines:3,style:const TextStyle(fontSize:12,fontWeight:FontWeight.w700,height:1.15,color:ink)),
-            ]))),
+          clipBehavior:Clip.antiAlias,
+          child:InkWell(key:Key('create_${kind.name}'),onTap:()=>openEditor(kind),
+            child:Stack(children:[
+              Positioned(right:0,bottom:0,child:CustomPaint(size:const Size(26,12),painter:_TileCorner(kindColor(kind).withValues(alpha:.28)))),
+              Center(child:Padding(padding:const EdgeInsets.all(5),child:Column(mainAxisSize:MainAxisSize.min,children:[
+                Icon(kindIcon(kind),color:kindColor(kind),size:25),const SizedBox(height:6),
+                Text(shortTitle(kind),textAlign:TextAlign.center,maxLines:2,style:const TextStyle(fontSize:11,fontWeight:FontWeight.w700,height:1.13,color:ink)),
+              ]))),
+            ])),
         )])),
-      const SizedBox(height:22),
-      Row(children:[const Expanded(child:Text('Recent documents',style:TextStyle(fontSize:20,fontWeight:FontWeight.w800))),TextButton(onPressed:()=>setState(()=>index=1),child:const Text('View all'))]),
-      if(records.isEmpty) const Padding(padding:EdgeInsets.symmetric(vertical:18),child:Text('Your saved documents will appear here.',style:TextStyle(color:Colors.black54)))
-      else for(final doc in records.take(3)) ...[
-        ListTile(contentPadding:EdgeInsets.zero,leading:Container(width:40,height:40,decoration:BoxDecoration(color:Color.alphaBlend(kindColor(doc.kind).withValues(alpha:.09),Colors.white),borderRadius:BorderRadius.circular(8)),child:Icon(kindIcon(doc.kind),color:kindColor(doc.kind))),
-        title:Text(doc.number,style:const TextStyle(fontWeight:FontWeight.w700)),subtitle:Text(doc.party,maxLines:1,overflow:TextOverflow.ellipsis),
-        trailing:const Icon(Icons.chevron_right),onTap:()=>openEditor(doc.kind,document:doc)),const Divider(),
-      ],
+      const SizedBox(height:18),
+      Row(children:[Container(width:4,height:17,color:brand),const SizedBox(width:7),const Expanded(child:Text('Recent',style:TextStyle(fontSize:19,fontWeight:FontWeight.w800))),TextButton(onPressed:()=>setState(()=>index=1),child:const Text('View all'))]),
+      if(records.isEmpty) const Padding(padding:EdgeInsets.symmetric(vertical:12),child:Text('No saved documents yet.',style:TextStyle(color:Color(0xFF4D4D4D))))
+      else Container(decoration:BoxDecoration(border:Border.all(color:const Color(0xFFE5E7EB)),borderRadius:BorderRadius.circular(10)),child:Column(children:[
+        for(final doc in records.take(3)) ...[
+          ListTile(dense:true,contentPadding:const EdgeInsets.symmetric(horizontal:9,vertical:2),leading:Container(width:35,height:35,decoration:BoxDecoration(color:Color.alphaBlend(kindColor(doc.kind).withValues(alpha:.09),Colors.white),borderRadius:BorderRadius.circular(7)),child:Icon(kindIcon(doc.kind),color:kindColor(doc.kind),size:21)),
+            title:Text(doc.number,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(fontWeight:FontWeight.w700,fontSize:12)),
+            subtitle:Text(doc.party,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(fontSize:11)),
+            trailing:doc.kind.hasPrices||doc.kind.isStatement?ConstrainedBox(constraints:const BoxConstraints(maxWidth:110),child:Text(money(doc.total,doc.currency),maxLines:2,textAlign:TextAlign.right,style:const TextStyle(fontSize:11,fontWeight:FontWeight.w700))):const Icon(Icons.chevron_right,size:18),
+            onTap:()=>openEditor(doc.kind,document:doc)),if(doc!=records.take(3).last)const Divider(),
+        ],
+      ])),
     ]);
   }
+  String shortTitle(DocKind k)=>switch(k){
+    DocKind.proforma=>'Proforma',
+    DocKind.purchaseOrder=>'Purchase order',
+    DocKind.deliveryNote=>'Delivery note',
+    DocKind.paymentVoucher=>'Payment voucher',
+    DocKind.statement=>'Statement',
+    DocKind.letter=>'Letter',
+    _=>k.title,
+  };
   Color kindColor(DocKind k)=>switch(k){
-    DocKind.invoice||DocKind.letter=>brand,
-    DocKind.receipt||DocKind.statement=>const Color(0xFF087A82),
-    DocKind.quotation||DocKind.purchaseOrder=>const Color(0xFF344BB1),
-    DocKind.proforma||DocKind.paymentVoucher=>const Color(0xFF9B4B13),
-    DocKind.creditNote||DocKind.debitNote=>const Color(0xFFB52B59),
-    DocKind.deliveryNote=>const Color(0xFF6943B2),
+    DocKind.invoice||DocKind.purchaseOrder||DocKind.debitNote=>brand,
+    DocKind.receipt||DocKind.creditNote||DocKind.paymentVoucher=>const Color(0xFF22723B),
+    _=>const Color(0xFF3F3ABF),
   };
   Widget metric(String label,int count,IconData icon,Color color)=>Container(
-    padding:const EdgeInsets.all(11),decoration:BoxDecoration(color:color,borderRadius:BorderRadius.circular(9)),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-      Row(children:[Icon(icon,color:Colors.white,size:17),const SizedBox(width:6),Expanded(child:Text(label,maxLines:2,style:const TextStyle(color:Colors.white,fontSize:11,fontWeight:FontWeight.w600)))]),
-      const Spacer(),
-      TweenAnimationBuilder<double>(tween:Tween(begin:0,end:count.toDouble()),duration:MediaQuery.disableAnimationsOf(context)?Duration.zero:const Duration(milliseconds:380),builder:(_,v,_)=>FittedBox(fit:BoxFit.scaleDown,child:Text(v.round().toString(),style:const TextStyle(fontSize:29,fontWeight:FontWeight.w800,color:Colors.white,letterSpacing:-.7)))),
+    padding:const EdgeInsets.symmetric(horizontal:4,vertical:8),decoration:BoxDecoration(color:color,borderRadius:BorderRadius.circular(9)),child:Column(mainAxisAlignment:MainAxisAlignment.center,children:[
+      Icon(icon,color:Colors.white,size:21),
+      const SizedBox(height:3),
+      Flexible(child:TweenAnimationBuilder<double>(tween:Tween(begin:0,end:count.toDouble()),duration:MediaQuery.disableAnimationsOf(context)?Duration.zero:const Duration(milliseconds:320),builder:(_,v,_)=>FittedBox(fit:BoxFit.scaleDown,child:Text(v.round().toString(),style:const TextStyle(fontSize:23,fontWeight:FontWeight.w800,color:Colors.white,letterSpacing:-.5))))),
+      Text(label,textAlign:TextAlign.center,maxLines:2,style:const TextStyle(color:Colors.white,fontSize:9,fontWeight:FontWeight.w600,height:1.12)),
     ]));
+  Widget templates()=>ListView(padding:const EdgeInsets.all(16),children:[
+    const Text('Templates',style:TextStyle(fontSize:24,fontWeight:FontWeight.w800)),
+    const SizedBox(height:12),
+    DropdownButtonFormField<DocKind>(initialValue:templateKind,decoration:const InputDecoration(labelText:'Document type'),items:[for(final k in DocKind.values)DropdownMenuItem(value:k,child:Text(k.title))],onChanged:(v){if(v!=null)setState(()=>templateKind=v);}),
+    const SizedBox(height:14),
+    for(final t in templateKind.layouts) Padding(padding:const EdgeInsets.only(bottom:12),child:OutlinedButton(onPressed:()=>openEditor(templateKind,template:t),style:OutlinedButton.styleFrom(padding:const EdgeInsets.all(12)),child:Row(children:[
+      SizedBox(width:75,height:94,child:TemplateThumbnail(template:t,style:widget.store.profile().style,kind:templateKind)),
+      const SizedBox(width:14),Expanded(child:Text(templateKind.layoutTitle(t),style:const TextStyle(fontSize:15,fontWeight:FontWeight.w700))),const Icon(Icons.chevron_right),
+    ]))),
+  ]);
+  Widget reports(){
+    final records=widget.store.documents();
+    final prefs=widget.store.preferences;
+    return ListView(padding:const EdgeInsets.all(16),children:[
+      const Text('Reports',style:TextStyle(fontSize:24,fontWeight:FontWeight.w800)),
+      const Text('Activity on this device',style:TextStyle(color:Color(0xFF4D4D4D))),
+      const SizedBox(height:14),
+      for(final item in [('Generated',prefs.getInt('local_activity_generated')??0),('Downloads',prefs.getInt('local_activity_downloaded')??0),('Share requests',prefs.getInt('local_activity_shared')??0),('Saved documents',records.length)])
+        ListTile(contentPadding:EdgeInsets.zero,title:Text(item.$1),trailing:Text(item.$2.toString(),style:const TextStyle(fontSize:19,fontWeight:FontWeight.w800,color:brand))),
+      const Divider(),const SizedBox(height:14),
+      const Text('Saved by document type',style:TextStyle(fontSize:17,fontWeight:FontWeight.w800)),
+      for(final k in DocKind.values) ListTile(contentPadding:EdgeInsets.zero,leading:Icon(kindIcon(k),color:kindColor(k)),title:Text(k.title),trailing:Text(records.where((d)=>d.kind==k).length.toString())),
+    ]);
+  }
   Widget saved(){
     final docs=widget.store.documents().where((doc)=>'${doc.kind.title} ${doc.number} ${doc.party}'.toLowerCase().contains(query.toLowerCase())).toList();
     return ListView(padding:const EdgeInsets.all(18),children:[
@@ -281,4 +324,51 @@ class _NumberingSettingsState extends State<NumberingSettings> {
     for(final k in DocKind.values)Padding(padding:const EdgeInsets.only(bottom:12),child:TextField(controller:prefixes[k],maxLength:12,decoration:InputDecoration(labelText:k.title+' prefix',counterText:''))),
     FilledButton(onPressed:save,child:const Text('Save numbering')),
   ]));
+}
+
+class _HeroArtwork extends CustomPainter {
+  const _HeroArtwork();
+  @override
+  void paint(Canvas canvas,Size size){
+    final p=Paint()..color=brand;
+    canvas.drawRect(Offset.zero&size,p);
+    p.color=const Color(0xFF3F3ABF);
+    canvas.drawPath(Path()..moveTo(size.width*.73,0)..lineTo(size.width,0)..lineTo(size.width,size.height)..quadraticBezierTo(size.width*.73,size.height*.85,size.width*.48,size.height)..close(),p);
+    p.color=const Color(0xFF1D4ED8);
+    canvas.drawPath(Path()..moveTo(0,size.height)..quadraticBezierTo(size.width*.28,size.height*.82,size.width*.55,size.height*.97)..lineTo(size.width,size.height*.86)..lineTo(size.width,size.height)..close(),p);
+  }
+  @override
+  bool shouldRepaint(covariant _HeroArtwork oldDelegate)=>false;
+}
+class _DocumentArtwork extends CustomPainter {
+  const _DocumentArtwork();
+  @override
+  void paint(Canvas canvas,Size size){
+    canvas.save();canvas.translate(size.width/2,size.height/2);
+    final w=size.width*.65,h=size.height*.79;
+    final p=Paint();
+    canvas.save();canvas.translate(w*.24,4);canvas.rotate(.17);
+    p.color=const Color(0xFFBFD4FF);canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromCenter(center:Offset.zero,width:w,height:h),const Radius.circular(5)),p);canvas.restore();
+    canvas.rotate(-.13);
+    p.color=Colors.white;canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromCenter(center:Offset.zero,width:w,height:h),const Radius.circular(5)),p);
+    p.color=brand;canvas.drawRect(Rect.fromLTWH(-w*.36,-h*.35,w*.58,h*.075),p);
+    p.color=const Color(0xFFCBD5E1);
+    for(var i=0;i<3;i++){canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(-w*.36,-h*.18+i*h*.09,w*(i==2 ? .48 : .72),h*.035),const Radius.circular(1)),p);}
+    p.color=const Color(0xFFDFE9FF);canvas.drawRect(Rect.fromLTWH(-w*.36,h*.12,w*.72,h*.19),p);
+    p.color=brand;canvas.drawRect(Rect.fromLTWH(-w*.36,h*.12,w*.72,h*.045),p);
+    p.color=const Color(0xFF22723B);canvas.drawCircle(Offset(w*.28,h*.35),w*.16,p);
+    p.color=Colors.white;p.style=PaintingStyle.stroke;p.strokeWidth=2;p.strokeCap=StrokeCap.round;
+    canvas.drawPath(Path()..moveTo(w*.20,h*.35)..lineTo(w*.26,h*.40)..lineTo(w*.36,h*.29),p);
+    canvas.restore();
+  }
+  @override
+  bool shouldRepaint(covariant _DocumentArtwork oldDelegate)=>false;
+}
+class _TileCorner extends CustomPainter{
+  const _TileCorner(this.color);
+  final Color color;
+  @override
+  void paint(Canvas canvas,Size size)=>canvas.drawPath(Path()..moveTo(0,size.height)..quadraticBezierTo(size.width*.82,size.height*.65,size.width,0)..lineTo(size.width,size.height)..close(),Paint()..color=color);
+  @override
+  bool shouldRepaint(covariant _TileCorner oldDelegate)=>oldDelegate.color!=color;
 }

@@ -67,8 +67,6 @@ void main(){
     expect(find.text('Crown Business Docs'),findsOneWidget);
     expect(find.text('Create a document'),findsOneWidget);
     expect(find.text('Sign in'),findsNothing);
-    await tester.drag(find.byType(ListView).first,const Offset(0,-440));
-    await tester.pumpAndSettle();
     await tester.ensureVisible(find.byKey(const Key('create_invoice')));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('create_invoice')));
@@ -93,8 +91,6 @@ void main(){
       await tester.pumpWidget(CrownDocsApp(store:store));
       await tester.pumpAndSettle();
       final receipt=find.byKey(const Key('create_receipt'));
-      await tester.drag(find.byType(ListView).first,const Offset(0,-490));
-      await tester.pumpAndSettle();
       await tester.ensureVisible(receipt);
       await tester.pumpAndSettle();
       await tester.tap(receipt);

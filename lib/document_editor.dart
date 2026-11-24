@@ -21,11 +21,12 @@ class _LineFields {
 }
 
 class DocumentEditor extends StatefulWidget {
-  const DocumentEditor({super.key,required this.store,required this.kind,this.existing,this.assignedNumber});
+  const DocumentEditor({super.key,required this.store,required this.kind,this.existing,this.assignedNumber,this.initialTemplate});
   final DocumentStore store;
   final DocKind kind;
   final BusinessDocument? existing;
   final String? assignedNumber;
+  final DocTemplate? initialTemplate;
   @override
   State<DocumentEditor> createState()=>_DocumentEditorState();
 }
@@ -49,7 +50,7 @@ class _DocumentEditorState extends State<DocumentEditor> {
     id=d?.id??const Uuid().v4();
     date=d?.date??DateTime.now();
     currency=d?.currency??p.currency;
-    design=d==null?p.style.copyWith(template:kind.layouts.first):p.style;
+    design=d==null?p.style.copyWith(template:widget.initialTemplate??kind.layouts.first):p.style;
     number=TextEditingController(text:d?.number??widget.assignedNumber??'${kind.prefix}-${DateFormat('yyyyMMdd').format(date)}-${id.substring(0,6).toUpperCase()}');
     business=TextEditingController(text:p.name);
     contact=TextEditingController(text:p.contact);
@@ -313,7 +314,10 @@ class _DocumentPreviewState extends State<DocumentPreview> {
       }),
       action('Download',Icons.download_outlined,()async{
         final saved=await const MethodChannel('crown_docs/export').invokeMethod<bool>('savePdf',{'name':filename,'bytes':widget.bytes});
-        if(saved==true&&mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('PDF saved to your selected location.')));
+        if(saved==true){
+          await widget.store.countActivity('downloaded');
+          if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('PDF saved to your selected location.')));
+        }
       },primary:true),
     ]))),
   );

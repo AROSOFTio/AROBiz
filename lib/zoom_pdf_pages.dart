@@ -38,7 +38,7 @@ class _ZoomPdfPagesState extends State<ZoomPdfPages>{
         IconButton(tooltip:'Fit page',onPressed:fit,icon:const Icon(Icons.fit_screen_outlined)),
       ])),
       const Divider(),
-      Expanded(child:ColoredBox(color:const Color(0xFFF1EFF5),child:LayoutBuilder(builder:(context,box){
+      Expanded(child:ColoredBox(color:const Color(0xFFF5F6FA),child:LayoutBuilder(builder:(context,box){
         final availableWidth=(box.maxWidth-16).clamp(1.0,double.infinity).toDouble();
         final availableHeight=(box.maxHeight-16).clamp(1.0,double.infinity).toDouble();
         final width=availableWidth<availableHeight*data.aspectRatio?availableWidth:availableHeight*data.aspectRatio;
