@@ -176,7 +176,7 @@ class _ThumbnailPainter extends CustomPainter{
       if(template==DocTemplate.classic){final p=Paint()..color=secondary..style=PaintingStyle.stroke;canvas.drawRect(Rect.fromLTWH(0,0,w,h*.28),p);}
       if(template==DocTemplate.minimal||template==DocTemplate.compact)rect(0,.29,1,.01,secondary);
     }
-    final start=template==DocTemplate.elegant?.46:.36;
+    final start=template==DocTemplate.elegant ? 0.46 : 0.36;
     rect(0,start,.36,.025,secondary);
     rect(0,start+.05,.5,.018,gray);
     final table=start+.12;

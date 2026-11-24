@@ -20,7 +20,7 @@ Future<Uint8List> documentPdf(BusinessDocument doc) async {
   if(style.logo.isNotEmpty){try{logo=pw.MemoryImage(base64Decode(style.logo));}catch(_){}}
   pw.Widget logoBox()=>logo==null?pw.SizedBox():pw.Container(
     width:compact?46:66,height:compact?40:54,margin:const pw.EdgeInsets.only(bottom:8),
-    child:pw.Image(logo!,fit:pw.BoxFit.contain));
+    child:pw.Image(logo,fit:pw.BoxFit.contain));
   pw.Widget company({PdfColor? color,bool center=false})=>pw.Column(
     crossAxisAlignment:center?pw.CrossAxisAlignment.center:pw.CrossAxisAlignment.start,
     children:[
@@ -45,8 +45,8 @@ Future<Uint8List> documentPdf(BusinessDocument doc) async {
     DocTemplate.modern=>pw.Column(children:[pw.Container(height:4,color:accent),pw.SizedBox(height:16),split()]),
     DocTemplate.classic=>pw.Container(padding:const pw.EdgeInsets.all(12),decoration:pw.BoxDecoration(border:pw.Border.all(color:ink,width:1.2)),child:split()),
     DocTemplate.executive=>pw.Container(padding:const pw.EdgeInsets.all(15),color:accent,child:split(color:foreground)),
-    DocTemplate.minimal=>pw.Column(children:[split(),pw.SizedBox(height:10),pw.Divider(color:ink,width:.6)]),
-    DocTemplate.elegant=>pw.Column(children:[company(center:true),pw.SizedBox(height:10),pw.Divider(color:accent,width:1.5),pw.SizedBox(height:8),title(center:true)]),
+    DocTemplate.minimal=>pw.Column(children:[split(),pw.SizedBox(height:10),pw.Divider(color:ink,thickness:.6)]),
+    DocTemplate.elegant=>pw.Column(children:[company(center:true),pw.SizedBox(height:10),pw.Divider(color:accent,thickness:1.5),pw.SizedBox(height:8),title(center:true)]),
     DocTemplate.compact=>pw.Column(children:[split(),pw.SizedBox(height:5),pw.Container(height:2,color:accent)]),
   };
   final lightTable=style.template==DocTemplate.minimal||style.template==DocTemplate.classic;
@@ -80,7 +80,7 @@ Future<Uint8List> documentPdf(BusinessDocument doc) async {
     margin:pw.EdgeInsets.all(compact?23:36),
     maxPages:100,
     footer:(context)=>pw.Column(mainAxisSize:pw.MainAxisSize.min,crossAxisAlignment:pw.CrossAxisAlignment.stretch,children:[
-      pw.Divider(color:accent,width:style.template==DocTemplate.minimal?.5:1),
+      pw.Divider(color:accent,thickness:style.template==DocTemplate.minimal ? 0.5 : 1),
       if(style.footer.isNotEmpty)pw.Padding(padding:const pw.EdgeInsets.only(bottom:4),child:pw.Text(style.footer,textAlign:pw.TextAlign.center,style:pw.TextStyle(color:muted,fontSize:8))),
       pw.Row(mainAxisAlignment:pw.MainAxisAlignment.spaceBetween,children:[
         pw.Expanded(child:label(doc.number)),label('Page ${context.pageNumber} of ${context.pagesCount}'),
