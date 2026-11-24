@@ -101,25 +101,30 @@ class _HomeScreenState extends State<HomeScreen> {
   }
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar:AppBar(title:Row(children:[
-      Container(width:34,height:34,decoration:BoxDecoration(color:brand,borderRadius:BorderRadius.circular(8)),child:const Icon(Icons.description_outlined,color:Colors.white,size:21)),
-      const SizedBox(width:10),
-      const Flexible(child:Text(appName,style:TextStyle(fontWeight:FontWeight.w800,fontSize:18,letterSpacing:-.5))),
-    ]),actions:[IconButton(tooltip:'Account & privacy',onPressed:account,icon:const Icon(Icons.account_circle_outlined,size:27,color:brand)),const SizedBox(width:6)],
+    appBar:AppBar(titleSpacing:14,title:Row(children:[
+      Container(width:38,height:38,decoration:BoxDecoration(color:brand,borderRadius:BorderRadius.circular(9)),child:const CustomPaint(painter:_CrownMark())),
+      const SizedBox(width:8),
+      const Flexible(child:Text(appName,maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(fontWeight:FontWeight.w800,fontSize:16,letterSpacing:-.4))),
+    ]),actions:[IconButton(tooltip:'Notifications',onPressed:()=>showModalBottomSheet<void>(context:context,builder:(c)=>const SafeArea(child:Padding(padding:EdgeInsets.all(24),child:Column(mainAxisSize:MainAxisSize.min,children:[Icon(Icons.notifications_none,size:32,color:brand),SizedBox(height:12),Text('Notifications',style:TextStyle(fontSize:20,fontWeight:FontWeight.w700)),SizedBox(height:8),Text('No notifications to display.')])))),icon:const Icon(Icons.notifications_none,size:24)),Padding(padding:const EdgeInsets.only(right:10),child:IconButton(tooltip:'Account & privacy',onPressed:account,icon:const Icon(Icons.account_circle,size:32,color:brand)))],
     bottom:const PreferredSize(preferredSize:Size.fromHeight(1),child:Divider())),
-
     body:SafeArea(child:Center(child:ConstrainedBox(constraints:const BoxConstraints(maxWidth:900),
       child:switch(index){0=>home(),1=>saved(),2=>templates(),3=>reports(),_=>ProfileEditor(store:widget.store,onSaved:()=>setState((){}))},
     ))),
-    bottomNavigationBar:DecoratedBox(decoration:const BoxDecoration(border:Border(top:BorderSide(color:Color(0xFFEAEAEA)))),child:NavigationBar(selectedIndex:index,onDestinationSelected:(value)=>setState(()=>index=value),
-      destinations:const [
-        NavigationDestination(icon:Icon(Icons.home_outlined),selectedIcon:Icon(Icons.home),label:'Home'),
-        NavigationDestination(icon:Icon(Icons.folder_outlined),selectedIcon:Icon(Icons.folder),label:'Docs'),
-        NavigationDestination(icon:Icon(Icons.layers_outlined),selectedIcon:Icon(Icons.layers),label:'Templates'),
-        NavigationDestination(icon:Icon(Icons.bar_chart_outlined),selectedIcon:Icon(Icons.bar_chart),label:'Reports'),
-        NavigationDestination(icon:Icon(Icons.grid_view_outlined),selectedIcon:Icon(Icons.grid_view_rounded),label:'More'),
-      ])),
+    bottomNavigationBar:SafeArea(top:false,child:Container(padding:const EdgeInsets.fromLTRB(8,8,8,8),decoration:const BoxDecoration(color:Colors.white,border:Border(top:BorderSide(color:Color(0xFFE5E7EB)))),child:Row(children:[
+      navItem(0,'Home',Icons.home_outlined,Icons.home),
+      navItem(1,'Docs',Icons.folder_outlined,Icons.folder),
+      navItem(2,'Templates',Icons.layers_outlined,Icons.layers),
+      navItem(3,'Reports',Icons.bar_chart_outlined,Icons.bar_chart),
+      navItem(4,'More',Icons.grid_view_outlined,Icons.grid_view_rounded),
+    ]))),
   );
+  Widget navItem(int i,String label,IconData icon,IconData selected){
+    final active=index==i;
+    return Expanded(child:Semantics(button:true,selected:active,child:Material(color:active?brand:Colors.white,borderRadius:BorderRadius.circular(10),child:InkWell(borderRadius:BorderRadius.circular(10),onTap:()=>setState(()=>index=i),child:Padding(padding:const EdgeInsets.symmetric(vertical:8,horizontal:2),child:Column(mainAxisSize:MainAxisSize.min,children:[
+      Icon(active?selected:icon,size:24,color:active?Colors.white:ink),const SizedBox(height:4),
+      Text(label,maxLines:1,overflow:TextOverflow.ellipsis,style:TextStyle(fontSize:11,fontWeight:FontWeight.w600,color:active?Colors.white:ink)),
+    ]))))));
+  }
   Future<void> chooseDocument() async {
     final selected=await showModalBottomSheet<DocKind>(context:context,isScrollControlled:true,
       backgroundColor:Colors.white,shape:const RoundedRectangleBorder(borderRadius:BorderRadius.vertical(top:Radius.circular(12))),
@@ -139,13 +144,13 @@ class _HomeScreenState extends State<HomeScreen> {
     return ListView(padding:const EdgeInsets.fromLTRB(14,12,14,20),children:[
       ClipRRect(borderRadius:BorderRadius.circular(12),child:Stack(children:[
         Positioned.fill(child:CustomPaint(painter:const _HeroArtwork())),
-        Padding(padding:const EdgeInsets.fromLTRB(16,24,16,25),child:Row(children:[
-          Expanded(flex:7,child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-            const Text('Create business docs',style:TextStyle(color:Colors.white,fontSize:26,fontWeight:FontWeight.w800,height:1.12,letterSpacing:-.7)),
+        Padding(padding:const EdgeInsets.fromLTRB(16,28,16,33),child:Row(children:[
+          Expanded(flex:6,child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+            const Text('Create\nBusiness Docs',style:TextStyle(color:Colors.white,fontSize:24,fontWeight:FontWeight.w800,height:1.12,letterSpacing:-.7)),
             const SizedBox(height:15),
             FilledButton.icon(style:FilledButton.styleFrom(backgroundColor:Colors.white,foregroundColor:brand,minimumSize:const Size(0,43),padding:const EdgeInsets.symmetric(horizontal:10),shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(8))),onPressed:chooseDocument,icon:const Icon(Icons.add,size:20),label:const Text('New document',style:TextStyle(fontSize:13,fontWeight:FontWeight.w700))),
           ])),
-          const Expanded(flex:4,child:SizedBox(height:128,child:CustomPaint(painter:_DocumentArtwork()))),
+          const Expanded(flex:5,child:SizedBox(height:146,child:CustomPaint(painter:_DocumentArtwork()))),
         ])),
       ])),
       const SizedBox(height:14),
@@ -158,13 +163,11 @@ class _HomeScreenState extends State<HomeScreen> {
           metric('Share requests',prefs.getInt('local_activity_shared')??0,Icons.share_outlined,const Color(0xFF22723B)),
           metric('Saved',records.length,Icons.bookmark_border,const Color(0xFF202020)),
         ])),
-      const SizedBox(height:18),
-      Row(children:[const Expanded(child:Text('Create a document',style:TextStyle(fontSize:17,fontWeight:FontWeight.w800))),TextButton(onPressed:chooseDocument,child:const Text('View all'))]),
-      const SizedBox(height:6),
+      const SizedBox(height:17),
       LayoutBuilder(builder:(context,box)=>GridView.count(shrinkWrap:true,physics:const NeverScrollableScrollPhysics(),
-        crossAxisCount:box.maxWidth>=305&&MediaQuery.textScalerOf(context).scale(12)<=15?4:box.maxWidth>=240?3:2,
+        crossAxisCount:box.maxWidth>=280&&MediaQuery.textScalerOf(context).scale(12)<=15?4:box.maxWidth>=240?3:2,
         mainAxisExtent:MediaQuery.textScalerOf(context).scale(88).clamp(88,165).toDouble(),crossAxisSpacing:7,mainAxisSpacing:7,
-        children:[for(final kind in DocKind.values) Material(
+        children:[for(final kind in DocKind.values.take(8)) Material(
           color:Color.alphaBlend(kindColor(kind).withValues(alpha:.075),Colors.white),
           shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(9)),
           clipBehavior:Clip.antiAlias,
@@ -177,24 +180,27 @@ class _HomeScreenState extends State<HomeScreen> {
               ]))),
             ])),
         )])),
-      const SizedBox(height:18),
+      Align(alignment:Alignment.centerRight,child:TextButton(onPressed:chooseDocument,child:const Text('View all documents'))),
+      const SizedBox(height:4),
       Row(children:[Container(width:4,height:17,color:brand),const SizedBox(width:7),const Expanded(child:Text('Recent',style:TextStyle(fontSize:19,fontWeight:FontWeight.w800))),TextButton(onPressed:()=>setState(()=>index=1),child:const Text('View all'))]),
       if(records.isEmpty) const Padding(padding:EdgeInsets.symmetric(vertical:12),child:Text('No saved documents yet.',style:TextStyle(color:Color(0xFF4D4D4D))))
       else Container(decoration:BoxDecoration(border:Border.all(color:const Color(0xFFE5E7EB)),borderRadius:BorderRadius.circular(10)),child:Column(children:[
-        for(final doc in records.take(3)) ...[
+        for(final doc in records.take(2)) ...[
           ListTile(dense:true,contentPadding:const EdgeInsets.symmetric(horizontal:9,vertical:2),leading:Container(width:35,height:35,decoration:BoxDecoration(color:Color.alphaBlend(kindColor(doc.kind).withValues(alpha:.09),Colors.white),borderRadius:BorderRadius.circular(7)),child:Icon(kindIcon(doc.kind),color:kindColor(doc.kind),size:21)),
             title:Text(doc.number,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(fontWeight:FontWeight.w700,fontSize:12)),
             subtitle:Text(doc.party,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(fontSize:11)),
             trailing:doc.kind.hasPrices||doc.kind.isStatement?ConstrainedBox(constraints:const BoxConstraints(maxWidth:110),child:Text(money(doc.total,doc.currency),maxLines:2,textAlign:TextAlign.right,style:const TextStyle(fontSize:11,fontWeight:FontWeight.w700))):const Icon(Icons.chevron_right,size:18),
-            onTap:()=>openEditor(doc.kind,document:doc)),if(doc!=records.take(3).last)const Divider(),
+            onTap:()=>openEditor(doc.kind,document:doc)),if(doc!=records.take(2).last)const Divider(),
         ],
       ])),
     ]);
   }
   String shortTitle(DocKind k)=>switch(k){
     DocKind.proforma=>'Proforma',
-    DocKind.purchaseOrder=>'Purchase order',
-    DocKind.deliveryNote=>'Delivery note',
+    DocKind.purchaseOrder=>'Purchase',
+    DocKind.deliveryNote=>'Delivery',
+    DocKind.creditNote=>'Credit',
+    DocKind.debitNote=>'Debit',
     DocKind.paymentVoucher=>'Payment voucher',
     DocKind.statement=>'Statement',
     DocKind.letter=>'Letter',
@@ -331,11 +337,9 @@ class _HeroArtwork extends CustomPainter {
   @override
   void paint(Canvas canvas,Size size){
     final p=Paint()..color=brand;
-    canvas.drawRect(Offset.zero&size,p);
-    p.color=const Color(0xFF3F3ABF);
-    canvas.drawPath(Path()..moveTo(size.width*.73,0)..lineTo(size.width,0)..lineTo(size.width,size.height)..quadraticBezierTo(size.width*.73,size.height*.85,size.width*.48,size.height)..close(),p);
+    canvas.drawPath(Path()..moveTo(0,size.height*.13)..quadraticBezierTo(size.width*.22,size.height*.06,size.width*.42,size.height*.11)..cubicTo(size.width*.62,size.height*.16,size.width*.73,-size.height*.07,size.width,0)..lineTo(size.width,size.height*.84)..cubicTo(size.width*.75,size.height*1.04,size.width*.54,size.height*.97,size.width*.33,size.height*.89)..quadraticBezierTo(size.width*.1,size.height*.82,0,size.height)..close(),p);
     p.color=const Color(0xFF1D4ED8);
-    canvas.drawPath(Path()..moveTo(0,size.height)..quadraticBezierTo(size.width*.28,size.height*.82,size.width*.55,size.height*.97)..lineTo(size.width,size.height*.86)..lineTo(size.width,size.height)..close(),p);
+    canvas.drawPath(Path()..moveTo(size.width*.38,size.height*.87)..cubicTo(size.width*.67,size.height*1.02,size.width*.88,size.height*.91,size.width,size.height*.72)..lineTo(size.width,size.height*.83)..cubicTo(size.width*.73,size.height*1.04,size.width*.53,size.height*.97,size.width*.38,size.height*.87)..close(),p);
   }
   @override
   bool shouldRepaint(covariant _HeroArtwork oldDelegate)=>false;
@@ -371,4 +375,20 @@ class _TileCorner extends CustomPainter{
   void paint(Canvas canvas,Size size)=>canvas.drawPath(Path()..moveTo(0,size.height)..quadraticBezierTo(size.width*.82,size.height*.65,size.width,0)..lineTo(size.width,size.height)..close(),Paint()..color=color);
   @override
   bool shouldRepaint(covariant _TileCorner oldDelegate)=>oldDelegate.color!=color;
+}
+
+class _CrownMark extends CustomPainter{
+  const _CrownMark();
+  @override
+  void paint(Canvas canvas,Size size){
+    canvas.save();canvas.scale(size.width/38,size.height/38);
+    final p=Paint()..color=Colors.white..style=PaintingStyle.stroke..strokeWidth=1.7..strokeCap=StrokeCap.round..strokeJoin=StrokeJoin.round;
+    canvas.drawPath(Path()..moveTo(8,13)..lineTo(13,19)..lineTo(19,9)..lineTo(25,19)..lineTo(30,13)..lineTo(27,27)..lineTo(11,27)..close(),p);
+    canvas.drawLine(const Offset(12,30),const Offset(26,30),p);
+    p.style=PaintingStyle.fill;
+    for(final q in [const Offset(8,13),const Offset(19,9),const Offset(30,13)]){canvas.drawCircle(q,1.9,p);}
+    canvas.restore();
+  }
+  @override
+  bool shouldRepaint(covariant _CrownMark oldDelegate)=>false;
 }

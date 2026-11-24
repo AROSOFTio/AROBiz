@@ -65,7 +65,7 @@ void main(){
     await store.saveProfile(const BusinessInfo(name:'Sample Business'));
     await tester.pumpWidget(CrownDocsApp(store:store));
     expect(find.text('Crown Business Docs'),findsOneWidget);
-    expect(find.text('Create a document'),findsOneWidget);
+    expect(find.text('New document'),findsOneWidget);
     expect(find.text('Sign in'),findsNothing);
     await tester.ensureVisible(find.byKey(const Key('create_invoice')));
     await tester.pumpAndSettle();
