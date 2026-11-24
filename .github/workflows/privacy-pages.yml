@@ -1,4 +1,4 @@
-name: Publish ARODesk privacy and deletion website
+name: Publish Crown Business Docs privacy website
 on:
   workflow_dispatch:
   push:

@@ -84,15 +84,35 @@ class _DocumentEditorState extends State<DocumentEditor> {
     business:BusinessInfo(name:business.text.trim(),contact:contact.text.trim(),address:address.text.trim(),taxId:taxId.text.trim(),currency:currency),
     party:party.text.trim(),partyContact:partyContact.text.trim(),currency:currency,
     lines:lines.map((line)=>DocLine(description:line.description.text.trim(),
-      quantity:kind.isStatement?1:value(line.quantity),price:kind.hasPrices||kind.isStatement?value(line.price):0,
+      quantity:kind.isStatement?1:value(line.quantity).clamp(0,1000000).toDouble(),price:kind.hasPrices||kind.isStatement?value(line.price):0,
       credit:kind.isStatement?value(line.credit):0)).toList(),
-    tax:kind.hasTax?value(tax):0,discount:kind.hasTax?value(discount):0,
+    tax:kind.hasTax?value(tax).clamp(0,100).toDouble():0,discount:kind.hasTax?value(discount):0,
     opening:kind.isStatement?value(opening):0,reference:reference.text.trim(),
     terms:terms.text.trim(),subject:subject.text.trim(),notes:notes.text.trim(),
   );
   void notice(String text)=>ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(text)));
   Future<void> output({required bool preview}) async {
-    if(busy||!form.currentState!.validate())return;
+    if(busy)return;
+    final valid=form.currentState!.validate();
+    // The scrolling form may unmount fields outside the viewport. Validate
+    // every controller independently before storing or generating any PDF.
+    if(!valid||[number,business,party].any((c)=>requiredText(c.text)!=null)){
+      notice('Complete document number, business and recipient details.');return;
+    }
+    if(kind.isLetter&&(requiredText(subject.text)!=null||requiredText(notes.text)!=null)){
+      notice('Enter the letter subject and content.');return;
+    }
+    if(!kind.isLetter&&lines.any((line)=>
+      requiredText(line.description.text)!=null||
+      (!kind.isStatement&&numeric(line.quantity.text,positive:true,maximum:1000000)!=null)||
+      ((kind.hasPrices||kind.isStatement)&&numeric(line.price.text)!=null)||
+      (kind.isStatement&&numeric(line.credit.text)!=null))){
+      notice('Complete each item with a description and valid amounts.');return;
+    }
+    if((kind.hasTax&&(numeric(tax.text,maximum:100)!=null||numeric(discount.text)!=null))||
+      (kind.isStatement&&numeric(opening.text,signed:true)!=null)){
+      notice('Check the discount, tax or opening balance.');return;
+    }
     final doc=snapshot();
     if((kind==DocKind.receipt||kind==DocKind.paymentVoucher)&&doc.total<=0){notice('Enter the amount actually paid.');return;}
     if(doc.discountMinor>doc.subtotal){notice('Discount cannot exceed the subtotal.');return;}
