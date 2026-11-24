@@ -7,6 +7,7 @@ import 'business_document.dart';
 import 'document_store.dart';
 import 'document_pdf.dart';
 import 'design_editor.dart';
+import 'cloud_service.dart';
 
 class _LineFields {
   _LineFields([DocLine? line]) :
@@ -91,7 +92,7 @@ class _DocumentEditorState extends State<DocumentEditor> {
     business:BusinessInfo(name:business.text.trim(),contact:contact.text.trim(),address:address.text.trim(),taxId:taxId.text.trim(),currency:currency,style:design),
     party:party.text.trim(),partyContact:partyContact.text.trim(),currency:currency,
     lines:lines.map((line)=>DocLine(description:line.description.text.trim(),
-      quantity:kind.isStatement?1:value(line.quantity).clamp(0,1000000).toDouble(),price:kind.hasPrices||kind.isStatement?value(line.price):0,
+      quantity:kind.isStatement||kind==DocKind.receipt||kind==DocKind.paymentVoucher?1:value(line.quantity).clamp(0,1000000).toDouble(),price:kind.hasPrices||kind.isStatement?value(line.price):0,
       credit:kind.isStatement?value(line.credit):0)).toList(),
     tax:kind.hasTax?value(tax).clamp(0,100).toDouble():0,discount:kind.hasTax?value(discount):0,
     opening:kind.isStatement?value(opening):0,reference:reference.text.trim(),
@@ -130,10 +131,12 @@ class _DocumentEditorState extends State<DocumentEditor> {
     try{
       if(preview){
         final bytes=await documentPdf(doc);
+        recordUsage('document_generated',kind:doc.kind);
         if(!mounted)return;
         await Navigator.push(context,MaterialPageRoute<void>(builder:(_)=>DocumentPreview(document:doc,bytes:bytes,store:widget.store)));
       }else{
         await widget.store.save(doc);
+        recordUsage('document_saved',kind:doc.kind);
         if(mounted)notice('Document saved on this device.');
       }
     }catch(e){if(mounted)notice('Unable to finish: $e');}
@@ -161,7 +164,8 @@ class _DocumentEditorState extends State<DocumentEditor> {
         Row(children:[Text(kind.isStatement?'Transaction ${i+1}':'Item ${i+1}',style:const TextStyle(fontWeight:FontWeight.bold)),
           const Spacer(),IconButton(tooltip:'Remove item',onPressed:busy||lines.length==1?null:()=>setState(()=>lines.removeAt(i).dispose()),icon:const Icon(Icons.close))]),
         field(line.description,kind.isStatement?'Date / transaction description':kind==DocKind.receipt||kind==DocKind.paymentVoucher?'Payment for':'Description',required:true,maxLength:250),
-        if(kind.isStatement) Row(children:[
+        if(kind==DocKind.receipt||kind==DocKind.paymentVoucher) numberField(line.price,'Amount')
+        else if(kind.isStatement) Row(children:[
           Expanded(child:numberField(line.price,'Debit')),const SizedBox(width:12),Expanded(child:numberField(line.credit,'Credit')),
         ]) else Row(children:[
           Expanded(child:numberField(line.quantity,'Quantity',positive:true,maximum:1000000)),
@@ -177,7 +181,6 @@ class _DocumentEditorState extends State<DocumentEditor> {
       if(kind.isLetter&&(subject.text.trim().isEmpty||notes.text.trim().isEmpty)){notice('Complete the letter.');return;}
       if(!kind.isLetter&&lines.any((l)=>l.description.text.trim().isEmpty||(!kind.isStatement&&numeric(l.quantity.text,positive:true,maximum:1000000)!=null)||((kind.hasPrices||kind.isStatement)&&numeric(l.price.text)!=null)||(kind.isStatement&&numeric(l.credit.text)!=null))){notice('Complete each item or transaction.');return;}
     }
-    if(step==1&&kind.canLink&&reference.text.isEmpty&&linkable.length==1){reference.text=linkable.single.number;}
     setState(()=>step++);
     if(scroll.hasClients)scroll.jumpTo(0);
   }
@@ -195,6 +198,7 @@ class _DocumentEditorState extends State<DocumentEditor> {
   Widget build(BuildContext context){
     final doc=snapshot();
     final steps=[kind.partyLabel,kind.contentTitle,'Review & design'];
+    final layouts={...kind.layouts,design.template};
     return Scaffold(
       appBar:AppBar(title:Text(kind.title),leading:IconButton(onPressed:busy?null:back,icon:const Icon(Icons.arrow_back))),
       body:SafeArea(child:Center(child:ConstrainedBox(constraints:const BoxConstraints(maxWidth:720),
@@ -249,9 +253,9 @@ class _DocumentEditorState extends State<DocumentEditor> {
                   onChanged:(v)=>setState(()=>reference.text=v??'')),
               ],
               section('Choose a template'),
-              for(final t in kind.layouts) Padding(padding:const EdgeInsets.only(bottom:8),child:InkWell(onTap:()=>setState(()=>design=design.copyWith(template:t)),child:Container(
+              for(final t in layouts) Padding(padding:const EdgeInsets.only(bottom:8),child:InkWell(onTap:()=>setState(()=>design=design.copyWith(template:t)),child:Container(
                 padding:const EdgeInsets.all(10),decoration:BoxDecoration(border:Border.all(color:design.template==t?Colors.black:const Color(0xFFE5E7EB),width:design.template==t?2:1),borderRadius:BorderRadius.circular(8)),
-                child:Row(children:[SizedBox(width:66,height:82,child:TemplateThumbnail(template:t,style:design)),const SizedBox(width:14),Expanded(child:Text(t.title+' '+kind.title.toLowerCase(),style:const TextStyle(fontWeight:FontWeight.w600))),Icon(design.template==t?Icons.check_circle:Icons.radio_button_unchecked,color:Colors.black)])))),
+                child:Row(children:[SizedBox(width:66,height:82,child:TemplateThumbnail(template:t,style:design,kind:kind)),const SizedBox(width:14),Expanded(child:Text(kind.layoutTitle(t),style:const TextStyle(fontWeight:FontWeight.w600))),Icon(design.template==t?Icons.check_circle:Icons.radio_button_unchecked,color:Colors.black)])))),
               if(busy)const LinearProgressIndicator(),
             ],
           ]))),
@@ -292,14 +296,17 @@ class _DocumentPreviewState extends State<DocumentPreview> {
     bottomNavigationBar:SafeArea(child:Padding(padding:const EdgeInsets.all(10),child:Row(children:[
       Expanded(child:OutlinedButton.icon(onPressed:busy?null:()=>run(()async{
         await widget.store.save(widget.document);
+        recordUsage('document_saved',kind:widget.document.kind);
         if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Saved on this device.')));
       }),icon:const Icon(Icons.save_outlined),label:const Text('Save'))),
       const SizedBox(width:6),
       Expanded(child:FilledButton.icon(onPressed:busy?null:()=>run(()async{
+        recordUsage('share_requested',kind:widget.document.kind);
         await Printing.sharePdf(bytes:widget.bytes,filename:filename);
       }),icon:const Icon(Icons.share_outlined),label:const Text('Share'))),
       const SizedBox(width:6),
       Expanded(child:OutlinedButton.icon(onPressed:busy?null:()=>run(()async{
+        recordUsage('print_requested',kind:widget.document.kind);
         await Printing.layoutPdf(name:filename,onLayout:(_)=>widget.bytes);
       }),icon:const Icon(Icons.print_outlined),label:const Text('Print'))),
     ]))),

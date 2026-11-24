@@ -78,4 +78,33 @@ void main(){
     expect(find.text('STEP 2 OF 3'),findsOneWidget);
     expect(tester.takeException(),isNull);
   });
+  for(final width in [320.0,360.0,412.0]){
+    testWidgets('clean home and receipt wizard fit phone width '+width.toString(),(tester)async{
+      tester.view.devicePixelRatio=1;
+      tester.view.physicalSize=Size(width,760);
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      SharedPreferences.setMockInitialValues({});
+      final store=DocumentStore(await SharedPreferences.getInstance());
+      await store.saveProfile(const BusinessInfo(name:'Sample Business'));
+      await tester.pumpWidget(CrownDocsApp(store:store));
+      await tester.pumpAndSettle();
+      final receipt=find.byKey(const Key('create_receipt'));
+      await tester.drag(find.byType(ListView).first,const Offset(0,-240));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(receipt);
+      await tester.pumpAndSettle();
+      await tester.tap(receipt);
+      await tester.pumpAndSettle();
+      expect(find.text('Received from'),findsOneWidget);
+      expect(find.text('Business name'),findsNothing);
+      await tester.enterText(find.byType(TextFormField).first,'Client A');
+      await tester.tap(find.text('Next'));
+      await tester.pumpAndSettle();
+      expect(find.text('Payment details'),findsOneWidget);
+      expect(find.text('Amount'),findsOneWidget);
+      expect(find.text('Quantity'),findsNothing);
+      expect(tester.takeException(),isNull);
+    });
+  }
 }

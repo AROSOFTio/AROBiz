@@ -40,6 +40,13 @@ enum DocKind {
     creditNote=>'Reason for credit',debitNote=>'Reason for debit',statement=>'Statement period',letter=>'',
   };
   bool get canLink => this==receipt||this==creditNote||this==debitNote||this==deliveryNote||this==paymentVoucher||this==invoice;
+  String layoutTitle(DocTemplate t) => switch(this) {
+    receipt => switch(t){DocTemplate.compact=>'Payment slip',DocTemplate.elegant=>'Formal receipt',_=>'Simple receipt'},
+    deliveryNote => switch(t){DocTemplate.minimal=>'Packing list',DocTemplate.classic=>'Delivery record',_=>'Compact dispatch'},
+    letter => switch(t){DocTemplate.elegant=>'Centered letterhead',DocTemplate.minimal=>'Block letter',_=>'Formal letterhead'},
+    statement => switch(t){DocTemplate.minimal=>'Ledger',DocTemplate.modern=>'Account summary',_=>'Classic statement'},
+    _ => t.title+' '+title.toLowerCase(),
+  };
   bool get isLetter => this == letter;
   bool get isStatement => this == statement;
   bool get hasPrices => this != deliveryNote && !isLetter && !isStatement;

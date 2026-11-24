@@ -150,19 +150,20 @@ class _DesignEditorState extends State<DesignEditor>{
 }
 
 class TemplateThumbnail extends StatelessWidget {
-  const TemplateThumbnail({super.key,required this.template,required this.style});
+  const TemplateThumbnail({super.key,required this.template,required this.style,this.kind=DocKind.invoice});
   final DocTemplate template;
   final DocStyle style;
+  final DocKind kind;
   @override
   Widget build(BuildContext context)=>Container(
     decoration:BoxDecoration(color:Colors.white,border:Border.all(color:Colors.grey.shade300)),
     padding:const EdgeInsets.all(7),
-    child:CustomPaint(painter:_ThumbnailPainter(template,brandColor(style.primary),brandColor(style.secondary)),child:const SizedBox.expand()),
+    child:CustomPaint(painter:_ThumbnailPainter(template,brandColor(style.primary),brandColor(style.secondary),kind),child:const SizedBox.expand()),
   );
 }
 class _ThumbnailPainter extends CustomPainter{
-  const _ThumbnailPainter(this.template,this.primary,this.secondary);
-  final DocTemplate template;final Color primary,secondary;
+  const _ThumbnailPainter(this.template,this.primary,this.secondary,this.kind);
+  final DocTemplate template;final Color primary,secondary;final DocKind kind;
   @override
   void paint(Canvas canvas,Size size){
     final w=size.width,h=size.height;
@@ -179,11 +180,24 @@ class _ThumbnailPainter extends CustomPainter{
     final start=template==DocTemplate.elegant ? 0.46 : 0.36;
     rect(0,start,.36,.025,secondary);
     rect(0,start+.05,.5,.018,gray);
-    final table=start+.12;
+    if(kind.isLetter){
+      for(var i=0;i<6;i++){rect(.02,start+.12+i*.048,i==5 ? 0.43 : 0.92,.012,gray);}
+      rect(.02,.82,.3,.024,secondary);
+      rect(0,.93,1,.012,primary);return;
+    }
+    if(kind==DocKind.receipt||kind==DocKind.paymentVoucher||kind==DocKind.creditNote||kind==DocKind.debitNote){
+      rect(.04,start+.10,.92,.09,primary);
+    }
+    final table=start+((kind==DocKind.receipt||kind==DocKind.paymentVoucher||kind==DocKind.creditNote||kind==DocKind.debitNote) ? 0.23 : 0.12);
     rect(0,table,1,.055,template==DocTemplate.minimal||template==DocTemplate.classic?gray:secondary);
-    for(var i=0;i<(template==DocTemplate.compact?5:3);i++){final y=table+.07+i*.045;rect(.02,y,.55,.014,gray);rect(.76,y,.22,.014,gray);}
-    rect(.56,.82,.44,.055,primary);rect(0,.93,1,.012,primary);rect(.02,.96,.38,.013,gray);
+    for(var i=0;i<(template==DocTemplate.compact?4:3);i++){final y=table+.07+i*.038;if(y>.84)break;rect(.02,y,.48,.014,gray);
+      if(kind.isStatement){rect(.53,y,.1,.014,gray);rect(.69,y,.1,.014,gray);}
+      rect(.84,y,.14,.014,gray);}
+
+    if(kind==DocKind.deliveryNote||kind==DocKind.purchaseOrder){rect(.02,.87,.36,.009,gray);rect(.6,.87,.36,.009,gray);}
+    else{rect(.56,.85,.44,.04,primary);}
+    rect(0,.93,1,.012,primary);rect(.02,.96,.38,.013,gray);
   }
   @override
-  bool shouldRepaint(covariant _ThumbnailPainter old)=>old.template!=template||old.primary!=primary||old.secondary!=secondary;
+  bool shouldRepaint(covariant _ThumbnailPainter old)=>old.template!=template||old.primary!=primary||old.secondary!=secondary||old.kind!=kind;
 }

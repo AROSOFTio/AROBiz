@@ -1,0 +1,6 @@
+# Optional cloud services
+The app is offline-first. The API provides optional accounts, manually requested encrypted backups, and separate opt-in usage reporting. Analytics excludes document content, client details, prices and PDF files. Reports are retained for 90 days. Share and print counts are requests, not confirmations. GitHub APK downloads are not unique installations. Play Store installs are available separately through Play Console.
+
+Deploy the service with a dedicated unprivileged account behind HTTPS. Set CROWN_DOCS_DB, CROWN_DOCS_SESSION_KEY and CROWN_DOCS_BACKUP_KEY in a protected server environment file. Never commit these values or the database. Maintain a protected recovery copy of the encryption key. Backups are encrypted at rest, not end-to-end encrypted. Run server.py maintenance daily. Owner account setup uses the interactive server.py create-admin owner command under the configured service environment. The deployment helper on the VPS is crown-docs-create-owner. No owner password is embedded in the app. Email verification, password recovery, AI and billing are not implemented in this initial version.
+
+Tests: python -m unittest -v test_server, from the server directory after installing requirements. Tests use an isolated temporary database.

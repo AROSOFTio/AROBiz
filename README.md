@@ -8,3 +8,7 @@ Storage: compact JSON in local SharedPreferences using new versioned keys, with 
 
 Development: flutter pub get; flutter analyze --no-fatal-infos; flutter test.
 Android release: the workflow tests, builds and publishes signed APK and AAB using existing repository signing secrets. No Supabase credentials are required.
+
+## Optional online services
+
+Offline document creation remains available without signing in. See server/README.md for optional account backup and consent-based owner analytics.

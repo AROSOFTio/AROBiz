@@ -70,6 +70,16 @@ class DocumentStore {
     await _write(records);
   }
 
+  Future<int> mergeBackup(List<BusinessDocument> incoming,BusinessInfo backupProfile) async {
+    final local=documents();
+    final ids=local.map((d)=>d.id).toSet();
+    final added=incoming.where((d)=>ids.add(d.id)).toList();
+    final numbers=local.map((d)=>d.number).toSet();
+    if(added.any((d)=>!numbers.add(d.number)))throw StateError('A backup document number conflicts with a local record. Local data has not changed.');
+    await _write([...local,...added]);
+    if(profile().name.trim().isEmpty&&backupProfile.name.trim().isNotEmpty){await saveProfile(backupProfile);}
+    return added.length;
+  }
   Future<void> delete(String id) async {
     final records = documents()..removeWhere((d)=>d.id==id);
     await _write(records);
