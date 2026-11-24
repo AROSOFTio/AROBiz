@@ -65,7 +65,7 @@ void main(){
     await store.saveProfile(const BusinessInfo(name:'Sample Business'));
     await tester.pumpWidget(CrownDocsApp(store:store));
     expect(find.text('Crown Business Docs'),findsOneWidget);
-    expect(find.text('New document'),findsOneWidget);
+    expect(find.text('New Document'),findsOneWidget);
     expect(find.text('Sign in'),findsNothing);
     await tester.ensureVisible(find.byKey(const Key('create_invoice')));
     await tester.pumpAndSettle();
@@ -106,4 +106,27 @@ void main(){
       expect(tester.takeException(),isNull);
     });
   }
+  testWidgets('reference dashboard shows actual metrics, eight tools and all eleven in chooser',(tester)async{
+    tester.view.devicePixelRatio=1;
+    tester.view.physicalSize=const Size(390,844);
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    SharedPreferences.setMockInitialValues({'local_activity_generated':12,'local_activity_downloaded':7,'local_activity_shared':3});
+    final store=DocumentStore(await SharedPreferences.getInstance());
+    await store.saveProfile(const BusinessInfo(name:'Sample Business'));
+    await store.save(sample(DocKind.invoice));
+    await tester.pumpWidget(CrownDocsApp(store:store));await tester.pumpAndSettle();
+    expect(find.byTooltip('Generated: 12'),findsOneWidget);
+    expect(find.byTooltip('Downloads: 7'),findsOneWidget);
+    expect(find.byTooltip('Share requests: 3'),findsOneWidget);
+    expect(find.byTooltip('Recipients: 1'),findsOneWidget);
+    for(final k in DocKind.values.take(8)){expect(find.byKey(Key('create_'+k.name)),findsOneWidget);}
+    expect(find.byKey(const Key('create_letter')),findsNothing);
+    expect(find.text('TEST-001'),findsOneWidget);
+    await tester.tap(find.text('New Document'));await tester.pumpAndSettle();
+    expect(find.text('Choose a document'),findsOneWidget);
+    await tester.scrollUntilVisible(find.text('Business Letter'),150,scrollable:find.byType(Scrollable).last);
+    expect(find.text('Business Letter'),findsOneWidget);
+    expect(tester.takeException(),isNull);
+  });
 }
