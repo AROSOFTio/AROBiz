@@ -46,17 +46,36 @@ void main(){
     expect(store.documents(),isEmpty);
     expect(prefs.getString('legacy'),'keep');
   });
+  test('numbering reserves sequential unique numbers and supports custom prefixes',()async{
+    SharedPreferences.setMockInitialValues({});
+    final store=DocumentStore(await SharedPreferences.getInstance());
+    final date=DateTime(2026,11,24);
+    expect(await store.reserveNumber(DocKind.invoice,date),'INV-2026-00001');
+    expect(await store.reserveNumber(DocKind.invoice,date),'INV-2026-00002');
+    await store.setNumbering({DocKind.invoice:'BILL',DocKind.receipt:'BILL'},false);
+    expect(await store.reserveNumber(DocKind.invoice,date),'BILL-00003');
+    expect(await store.reserveNumber(DocKind.receipt,date),'BILL-00001');
+    expect(await store.reserveNumber(DocKind.receipt,date),'BILL-00002');
+    expect(await store.reserveNumber(DocKind.receipt,date),'BILL-00004');
+  });
   testWidgets('home opens document editor directly without a sign-in or POS', (tester)async{
     SharedPreferences.setMockInitialValues({});
     final prefs=await SharedPreferences.getInstance();
-    await tester.pumpWidget(CrownDocsApp(store:DocumentStore(prefs)));
+    final store=DocumentStore(prefs);
+    await store.saveProfile(const BusinessInfo(name:'Sample Business'));
+    await tester.pumpWidget(CrownDocsApp(store:store));
     expect(find.text('Crown Business Docs'),findsOneWidget);
     expect(find.text('Create a document'),findsOneWidget);
     expect(find.text('Sign in'),findsNothing);
+    await tester.ensureVisible(find.byKey(const Key('create_invoice')));
     await tester.tap(find.byKey(const Key('create_invoice')));
     await tester.pumpAndSettle();
-    expect(find.text('Document details'),findsOneWidget);
-    expect(find.text('Your business'),findsOneWidget);
+    expect(find.text('STEP 1 OF 3'),findsOneWidget);
+    expect(find.text('Business name'),findsNothing);
+    await tester.enterText(find.byType(TextFormField).first,'Client A');
+    await tester.tap(find.text('Next'));
+    await tester.pumpAndSettle();
+    expect(find.text('STEP 2 OF 3'),findsOneWidget);
     expect(tester.takeException(),isNull);
   });
 }

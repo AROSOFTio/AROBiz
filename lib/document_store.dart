@@ -34,6 +34,30 @@ class DocumentStore {
       ..sort((a,b)=>b.date.compareTo(a.date));
   }
 
+  String prefix(DocKind kind) => preferences.getString('prefix_'+kind.name) ?? kind.prefix;
+  bool get includeYear => preferences.getBool('number_year') ?? true;
+  Future<void> setNumbering(Map<DocKind,String> values,bool year) async {
+    for(final entry in values.entries){
+      final v=entry.value.trim().toUpperCase();
+      if(!RegExp(r'^[A-Z0-9]{1,12}$').hasMatch(v))throw ArgumentError('Prefixes must contain 1 to 12 letters or digits.');
+    }
+    for(final entry in values.entries){await preferences.setString('prefix_'+entry.key.name,entry.value.trim().toUpperCase());}
+    await preferences.setBool('number_year',year);
+  }
+  Future<String> reserveNumber(DocKind kind,DateTime date) async {
+    final key='sequence_'+kind.name;
+    var n=preferences.getInt(key)??0;
+    final used={...documents().map((d)=>d.number),...(preferences.getStringList('reserved_numbers')??<String>[])};
+    String result;
+    do {
+      n++;
+      result=[prefix(kind),if(includeYear)date.year.toString(),n.toString().padLeft(5,'0')].join('-');
+    } while(used.contains(result));
+    if(!await preferences.setStringList('reserved_numbers',[...used,result]))throw StateError('Unable to reserve document number.');
+    if(!await preferences.setInt(key,n))throw StateError('Unable to reserve document number.');
+    return result;
+  }
+
   Future<void> saveProfile(BusinessInfo profile) async {
     if (!await preferences.setString(profileKey,jsonEncode(profile.toJson()))) {
       throw StateError('Business details could not be saved.');

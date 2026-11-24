@@ -19,10 +19,11 @@ class _LineFields {
 }
 
 class DocumentEditor extends StatefulWidget {
-  const DocumentEditor({super.key,required this.store,required this.kind,this.existing});
+  const DocumentEditor({super.key,required this.store,required this.kind,this.existing,this.assignedNumber});
   final DocumentStore store;
   final DocKind kind;
   final BusinessDocument? existing;
+  final String? assignedNumber;
   @override
   State<DocumentEditor> createState()=>_DocumentEditorState();
 }
@@ -36,6 +37,8 @@ class _DocumentEditorState extends State<DocumentEditor> {
   late DateTime date;
   final lines=<_LineFields>[];
   bool busy=false;
+  int step=0;
+  final scroll=ScrollController();
   DocKind get kind=>widget.kind;
   @override
   void initState(){
@@ -44,8 +47,8 @@ class _DocumentEditorState extends State<DocumentEditor> {
     id=d?.id??const Uuid().v4();
     date=d?.date??DateTime.now();
     currency=d?.currency??p.currency;
-    design=p.style;
-    number=TextEditingController(text:d?.number??'${kind.prefix}-${DateFormat('yyyyMMdd').format(date)}-${id.substring(0,6).toUpperCase()}');
+    design=d==null?p.style.copyWith(template:kind.layouts.first):p.style;
+    number=TextEditingController(text:d?.number??widget.assignedNumber??'${kind.prefix}-${DateFormat('yyyyMMdd').format(date)}-${id.substring(0,6).toUpperCase()}');
     business=TextEditingController(text:p.name);
     contact=TextEditingController(text:p.contact);
     address=TextEditingController(text:p.address);
@@ -68,6 +71,7 @@ class _DocumentEditorState extends State<DocumentEditor> {
   void dispose(){
     for(final c in [number,business,contact,address,taxId,party,partyContact,reference,terms,subject,notes,tax,discount,opening]){c.dispose();}
     for(final line in lines){line.dispose();}
+    scroll.dispose();
     super.dispose();
   }
   double value(TextEditingController c){
@@ -156,7 +160,7 @@ class _DocumentEditorState extends State<DocumentEditor> {
       padding:const EdgeInsets.all(12),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
         Row(children:[Text(kind.isStatement?'Transaction ${i+1}':'Item ${i+1}',style:const TextStyle(fontWeight:FontWeight.bold)),
           const Spacer(),IconButton(tooltip:'Remove item',onPressed:busy||lines.length==1?null:()=>setState(()=>lines.removeAt(i).dispose()),icon:const Icon(Icons.close))]),
-        field(line.description,kind.isStatement?'Date / transaction description':'Description',required:true,maxLength:250),
+        field(line.description,kind.isStatement?'Date / transaction description':kind==DocKind.receipt||kind==DocKind.paymentVoucher?'Payment for':'Description',required:true,maxLength:250),
         if(kind.isStatement) Row(children:[
           Expanded(child:numberField(line.price,'Debit')),const SizedBox(width:12),Expanded(child:numberField(line.credit,'Credit')),
         ]) else Row(children:[
@@ -166,70 +170,101 @@ class _DocumentEditorState extends State<DocumentEditor> {
       ]),
     ));
   }
+  void advance(){
+    if(!(form.currentState?.validate()??true))return;
+    if(step==0&&party.text.trim().isEmpty){notice('Enter the recipient name.');return;}
+    if(step==1){
+      if(kind.isLetter&&(subject.text.trim().isEmpty||notes.text.trim().isEmpty)){notice('Complete the letter.');return;}
+      if(!kind.isLetter&&lines.any((l)=>l.description.text.trim().isEmpty||(!kind.isStatement&&numeric(l.quantity.text,positive:true,maximum:1000000)!=null)||((kind.hasPrices||kind.isStatement)&&numeric(l.price.text)!=null)||(kind.isStatement&&numeric(l.credit.text)!=null))){notice('Complete each item or transaction.');return;}
+    }
+    if(step==1&&kind.canLink&&reference.text.isEmpty&&linkable.length==1){reference.text=linkable.single.number;}
+    setState(()=>step++);
+    if(scroll.hasClients)scroll.jumpTo(0);
+  }
+  void back(){
+    if(step==0){Navigator.maybePop(context);return;}
+    setState(()=>step--);
+    if(scroll.hasClients)scroll.jumpTo(0);
+  }
+  List<BusinessDocument> get linkable => widget.store.documents().where((d)=>
+    d.id!=id&&d.party.trim().toLowerCase()==party.text.trim().toLowerCase()&&
+    (kind==DocKind.invoice?d.kind==DocKind.quotation||d.kind==DocKind.purchaseOrder:
+     kind==DocKind.deliveryNote?d.kind==DocKind.purchaseOrder||d.kind==DocKind.invoice:
+     d.kind==DocKind.invoice||d.kind==DocKind.purchaseOrder)).toList();
   @override
   Widget build(BuildContext context){
-    final total=snapshot().total;
+    final doc=snapshot();
+    final steps=[kind.partyLabel,kind.contentTitle,'Review & design'];
     return Scaffold(
-      appBar:AppBar(title:Text(kind.title),actions:[
-        IconButton(tooltip:'Save document',onPressed:busy?null:()=>output(preview:false),icon:const Icon(Icons.save_outlined)),
-      ]),
+      appBar:AppBar(title:Text(kind.title),leading:IconButton(onPressed:busy?null:back,icon:const Icon(Icons.arrow_back))),
       body:SafeArea(child:Center(child:ConstrainedBox(constraints:const BoxConstraints(maxWidth:720),
-        child:Form(key:form,child:ListView(padding:const EdgeInsets.fromLTRB(18,12,18,24),children:[
-          if(busy)const LinearProgressIndicator(),
-          section('Document details'),
-          field(number,'Document number',required:true,maxLength:60),
-          OutlinedButton.icon(icon:const Icon(Icons.calendar_today_outlined),
-            label:Text(DateFormat(design.dateFormat.pattern).format(date)),
-            onPressed:busy?null:()async{
-              final picked=await showDatePicker(context:context,initialDate:date,firstDate:DateTime(1900),lastDate:DateTime(2200));
-              if(picked!=null&&mounted)setState(()=>date=picked);
-            }),
-          const SizedBox(height:12),
-          if(!kind.isLetter&&kind!=DocKind.deliveryNote) DropdownButtonFormField<String>(
-            initialValue:currency,decoration:const InputDecoration(labelText:'Currency'),
-            items:currencies.map((c)=>DropdownMenuItem(value:c,child:Text(c))).toList(),
-            onChanged:busy?null:(v){if(v!=null)setState(()=>currency=v);}),
-          section('Document design'),
-          DesignSummary(style:design,onChanged:busy?null:(value)=>setState(()=>design=value)),
-          section('Your business'),
-          field(business,'Business name',required:true),
-          field(contact,'Phone / email'),
-          field(address,'Address'),
-          field(taxId,'Tax ID (optional)'),
-          section(kind.partyLabel),
-          field(party,'Name',required:true),
-          field(partyContact,'Contact / address'),
-          field(reference,'Related document / reference'),
-          if(kind.isLetter)...[
-            field(subject,'Subject',required:true),
-            field(notes,'Letter content',required:true,maxLength:4000,maxLines:9),
-          ]else...[
-            if(kind.isStatement)...[section('Opening balance'),numberField(opening,'Opening balance',signed:true)],
-            section(kind.isStatement?'Transactions':'Items / services'),
-            for(var i=0;i<lines.length;i++)lineCard(i),
-            OutlinedButton.icon(onPressed:busy||lines.length>=100?null:()=>setState(()=>lines.add(_LineFields())),
-              icon:const Icon(Icons.add),label:Text(kind.isStatement?'Add transaction':'Add item')),
-            if(kind.hasTax)...[
-              section('Discount & tax'),Row(children:[
-                Expanded(child:numberField(discount,'Discount amount')),const SizedBox(width:12),
-                Expanded(child:numberField(tax,'${design.taxLabel} %',maximum:100)),
-              ]),
+        child:Column(children:[
+          Padding(padding:const EdgeInsets.fromLTRB(20,12,20,8),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+            Text('STEP ${step+1} OF 3',style:const TextStyle(fontSize:11,fontWeight:FontWeight.w700,letterSpacing:1.4,color:Colors.black54)),
+            const SizedBox(height:8),
+            Row(children:List.generate(3,(i)=>Expanded(child:AnimatedContainer(duration:const Duration(milliseconds:220),height:4,margin:EdgeInsets.only(right:i==2?0:5),color:i<=step?Colors.black:const Color(0xFFE5E7EB))))),
+          ])),
+          Expanded(child:Form(key:form,child:ListView(controller:scroll,padding:const EdgeInsets.fromLTRB(20,12,20,24),children:[
+            Text(steps[step],style:const TextStyle(fontSize:28,fontWeight:FontWeight.w800,letterSpacing:-.8)),
+            const SizedBox(height:6),
+            Text(step==0?'Who is this document for?':step==1?'Enter the information needed for this document.':'Check the details and select a layout.',style:const TextStyle(color:Colors.black54)),
+            const SizedBox(height:22),
+            if(step==0)...[
+              field(party,'Name',required:true),field(partyContact,'Contact / address (optional)'),
+              OutlinedButton.icon(icon:const Icon(Icons.calendar_today_outlined),label:Text(DateFormat(design.dateFormat.pattern).format(date)),onPressed:busy?null:()async{
+                final picked=await showDatePicker(context:context,initialDate:date,firstDate:DateTime(1900),lastDate:DateTime(2200));
+                if(picked!=null&&mounted)setState(()=>date=picked);
+              }),
             ],
-            if(kind.hasPrices||kind.isStatement) Padding(padding:const EdgeInsets.symmetric(vertical:18),child:Row(children:[
-              Expanded(child:Text(kind.totalLabel,style:const TextStyle(fontWeight:FontWeight.w700))),
-              Text(money(total,currency),style:TextStyle(fontSize:19,fontWeight:FontWeight.bold,color:Theme.of(context).colorScheme.primary)),
-            ])),
-            field(terms,kind==DocKind.receipt||kind==DocKind.paymentVoucher?'Payment method / transaction reference':'Terms / due date / validity'),
-            field(notes,'Notes (optional)',maxLength:1000,maxLines:3),
-          ],
-          const SizedBox(height:8),
-          FilledButton.icon(onPressed:busy?null:()=>output(preview:true),icon:const Icon(Icons.picture_as_pdf_outlined),label:const Text('Generate & preview PDF')),
-          const SizedBox(height:8),
-          OutlinedButton.icon(onPressed:busy?null:()=>output(preview:false),icon:const Icon(Icons.save_outlined),label:const Text('Save document locally')),
-        ])),
+            if(step==1)...[
+              if(!kind.isLetter&&kind!=DocKind.deliveryNote) ...[
+                DropdownButtonFormField<String>(initialValue:currency,decoration:const InputDecoration(labelText:'Currency'),
+                  items:currencies.map((c)=>DropdownMenuItem(value:c,child:Text(c))).toList(),
+                  onChanged:busy?null:(v){if(v!=null)setState(()=>currency=v);}),const SizedBox(height:14),
+              ],
+              if(kind.isLetter)...[field(subject,'Subject',required:true),field(notes,'Letter content',required:true,maxLength:4000,maxLines:9)]
+              else ...[
+                if(kind.isStatement)...[numberField(opening,'Opening balance',signed:true),const SizedBox(height:12)],
+                for(var i=0;i<lines.length;i++)lineCard(i),
+                OutlinedButton.icon(onPressed:busy||lines.length>=100?null:()=>setState(()=>lines.add(_LineFields())),icon:const Icon(Icons.add),label:Text(kind.isStatement?'Add transaction':'Add item')),
+                if(kind.hasTax)...[section('Discount & tax'),Row(children:[
+                  Expanded(child:numberField(discount,'Discount amount')),const SizedBox(width:12),
+                  Expanded(child:numberField(tax,'${design.taxLabel} %',maximum:100)),
+                ])],
+                const SizedBox(height:16),
+                field(terms,kind.termsLabel),field(notes,'Notes (optional)',maxLength:1000,maxLines:3),
+              ],
+            ],
+            if(step==2)...[
+              Card(child:Padding(padding:const EdgeInsets.all(16),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+                Text(doc.number,style:const TextStyle(fontWeight:FontWeight.bold,fontSize:17)),
+                const SizedBox(height:8),Text(doc.party),
+                if(kind.hasPrices||kind.isStatement)...[const SizedBox(height:12),Text(kind.totalLabel,style:const TextStyle(color:Colors.black54)),Text(money(doc.total,currency),style:const TextStyle(fontSize:27,fontWeight:FontWeight.w800))],
+              ]))),
+              if(kind.canLink&&linkable.isNotEmpty)...[
+                const SizedBox(height:14),
+                DropdownButtonFormField<String>(key:ValueKey('link_${reference.text}'),initialValue:linkable.any((d)=>d.number==reference.text)?reference.text:'',
+                  decoration:const InputDecoration(labelText:'Link an existing document (optional)'),
+                  items:[const DropdownMenuItem(value:'',child:Text('No linked document')),for(final d in linkable)DropdownMenuItem(value:d.number,child:Text(d.number))],
+                  onChanged:(v)=>setState(()=>reference.text=v??'')),
+              ],
+              section('Choose a template'),
+              for(final t in kind.layouts) Padding(padding:const EdgeInsets.only(bottom:8),child:InkWell(onTap:()=>setState(()=>design=design.copyWith(template:t)),child:Container(
+                padding:const EdgeInsets.all(10),decoration:BoxDecoration(border:Border.all(color:design.template==t?Colors.black:const Color(0xFFE5E7EB),width:design.template==t?2:1),borderRadius:BorderRadius.circular(8)),
+                child:Row(children:[SizedBox(width:66,height:82,child:TemplateThumbnail(template:t,style:design)),const SizedBox(width:14),Expanded(child:Text(t.title+' '+kind.title.toLowerCase(),style:const TextStyle(fontWeight:FontWeight.w600))),Icon(design.template==t?Icons.check_circle:Icons.radio_button_unchecked,color:Colors.black)])))),
+              if(busy)const LinearProgressIndicator(),
+            ],
+          ]))),
+          Container(padding:const EdgeInsets.fromLTRB(20,12,20,16),decoration:const BoxDecoration(color:Colors.white,border:Border(top:BorderSide(color:Color(0xFFE5E7EB)))),child:Row(children:[
+            if(step>0)...[OutlinedButton(onPressed:busy?null:back,child:const Text('Back')),const SizedBox(width:10)],
+            Expanded(child:FilledButton(onPressed:busy?null:step<2?advance:()=>output(preview:true),child:Text(step<2?'Next':'Generate PDF'))),
+            if(step==2)...[const SizedBox(width:8),IconButton(tooltip:'Save locally',onPressed:busy?null:()=>output(preview:false),icon:const Icon(Icons.save_outlined))],
+          ])),
+        ]),
       ))),
     );
   }
+
 }
 
 class DocumentPreview extends StatefulWidget {

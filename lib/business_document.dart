@@ -15,6 +15,31 @@ enum DocKind {
 
   const DocKind(this.title, this.prefix, this.description);
   final String title, prefix, description;
+  List<DocTemplate> get layouts => switch(this) {
+    invoice => [DocTemplate.modern,DocTemplate.executive,DocTemplate.minimal],
+    receipt => [DocTemplate.compact,DocTemplate.elegant,DocTemplate.minimal],
+    quotation => [DocTemplate.elegant,DocTemplate.modern,DocTemplate.executive],
+    proforma => [DocTemplate.classic,DocTemplate.executive,DocTemplate.modern],
+    purchaseOrder => [DocTemplate.classic,DocTemplate.compact,DocTemplate.executive],
+    deliveryNote => [DocTemplate.minimal,DocTemplate.classic,DocTemplate.compact],
+    creditNote => [DocTemplate.classic,DocTemplate.modern,DocTemplate.minimal],
+    debitNote => [DocTemplate.executive,DocTemplate.classic,DocTemplate.modern],
+    paymentVoucher => [DocTemplate.compact,DocTemplate.classic,DocTemplate.executive],
+    statement => [DocTemplate.minimal,DocTemplate.modern,DocTemplate.classic],
+    letter => [DocTemplate.elegant,DocTemplate.minimal,DocTemplate.classic],
+  };
+  String get contentTitle => switch(this){
+    receipt||paymentVoucher=>'Payment details',letter=>'Letter content',
+    statement=>'Transactions',deliveryNote=>'Goods delivered',purchaseOrder=>'Items to order',
+    creditNote=>'Credit items',debitNote=>'Debit items',_=>'Items and services',
+  };
+  String get termsLabel => switch(this){
+    invoice=>'Payment terms / due date',receipt||paymentVoucher=>'Payment method',
+    quotation=>'Quotation validity',proforma=>'Payment and delivery terms',
+    purchaseOrder=>'Requested delivery date / terms',deliveryNote=>'Delivery address / instructions',
+    creditNote=>'Reason for credit',debitNote=>'Reason for debit',statement=>'Statement period',letter=>'',
+  };
+  bool get canLink => this==receipt||this==creditNote||this==debitNote||this==deliveryNote||this==paymentVoucher||this==invoice;
   bool get isLetter => this == letter;
   bool get isStatement => this == statement;
   bool get hasPrices => this != deliveryNote && !isLetter && !isStatement;

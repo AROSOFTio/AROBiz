@@ -61,7 +61,9 @@ Future<Uint8List> documentPdf(BusinessDocument doc) async {
       pw.Text(value,style:pw.TextStyle(fontSize:emphasis?15:11,fontWeight:pw.FontWeight.bold,color:ink)),
     ]),
   );
-  final headers = doc.kind.isStatement ? ['Transaction / reference','Debit','Credit','Balance'] :
+  final payment=doc.kind==DocKind.receipt||doc.kind==DocKind.paymentVoucher;
+  final adjustment=doc.kind==DocKind.creditNote||doc.kind==DocKind.debitNote;
+  final headers = payment ? ['Payment for','Amount'] : doc.kind.isStatement ? ['Transaction / reference','Debit','Credit','Balance'] :
     doc.kind.hasPrices ? ['Description','Qty','Unit price','Amount'] : ['Description','Quantity'];
   var running = toMinor(doc.opening,doc.currency);
   final rows = <List<String>>[];
@@ -70,6 +72,8 @@ Future<Uint8List> documentPdf(BusinessDocument doc) async {
       final debit=toMinor(line.price,doc.currency),credit=toMinor(line.credit,doc.currency);
       running += debit-credit;
       rows.add([line.description,amount(debit),amount(credit),amount(running)]);
+    } else if(payment){
+      rows.add([line.description,amount(line.total(doc.currency))]);
     } else {
       rows.add([line.description,NumberFormat('0.###').format(line.quantity),
         if(doc.kind.hasPrices) ...[amount(toMinor(line.price,doc.currency)),amount(line.total(doc.currency))]]);
@@ -94,15 +98,26 @@ Future<Uint8List> documentPdf(BusinessDocument doc) async {
       label(doc.kind.partyLabel),
       pw.Text(doc.party,style:pw.TextStyle(fontSize:13,fontWeight:pw.FontWeight.bold,color:ink)),
       if(doc.partyContact.isNotEmpty) label(doc.partyContact),
-      if(doc.reference.isNotEmpty) label('Reference: ${doc.reference}'),
-      if(doc.terms.isNotEmpty) label(doc.terms),
+      if(doc.reference.isNotEmpty) label('Linked document: '+doc.reference),
+      if(doc.terms.isNotEmpty) label(doc.kind.termsLabel+': '+doc.terms),
+      if(doc.kind==DocKind.proforma) pw.Padding(padding:const pw.EdgeInsets.only(top:8),child:label('Preliminary document. Not a payment receipt.')),
+      if(doc.kind==DocKind.quotation) pw.Padding(padding:const pw.EdgeInsets.only(top:8),child:label('Proposed prices and services')),
+      if(payment||adjustment) pw.Container(margin:const pw.EdgeInsets.only(top:14),padding:const pw.EdgeInsets.all(13),
+        decoration:pw.BoxDecoration(border:pw.Border.all(color:accent),borderRadius:pw.BorderRadius.circular(4)),
+        child:pw.Column(crossAxisAlignment:pw.CrossAxisAlignment.start,children:[
+          label(doc.kind.totalLabel),pw.Text(amount(doc.total),style:pw.TextStyle(fontSize:23,color:ink,fontWeight:pw.FontWeight.bold)),
+        ])),
+      if(doc.kind==DocKind.statement) pw.Container(margin:const pw.EdgeInsets.only(top:12),padding:const pw.EdgeInsets.all(10),color:PdfColors.grey100,
+        child:pw.Row(children:[pw.Expanded(child:pw.Column(crossAxisAlignment:pw.CrossAxisAlignment.start,children:[label('Opening balance'),pw.Text(amount(toMinor(doc.opening,doc.currency)))])),
+          pw.Expanded(child:pw.Column(crossAxisAlignment:pw.CrossAxisAlignment.start,children:[label('Closing balance'),pw.Text(amount(doc.total),style:pw.TextStyle(fontWeight:pw.FontWeight.bold))]))])),
+
       pw.SizedBox(height:20),
       if(doc.kind.isLetter) ...[
         pw.Text(doc.subject,style:pw.TextStyle(fontSize:14,fontWeight:pw.FontWeight.bold,color:ink)),
         pw.SizedBox(height:14),
         ...doc.notes.split('\n').map((paragraph)=>pw.Padding(padding:const pw.EdgeInsets.only(bottom:7),child:pw.Text(paragraph,style:const pw.TextStyle(fontSize:11,lineSpacing:3)))),
       ] else ...[
-        if(doc.kind.isStatement) totalRow('Opening balance',amount(toMinor(doc.opening,doc.currency))),
+        if(doc.kind==DocKind.deliveryNote) label('Check quantities on receipt. No prices are shown.'),
         pw.TableHelper.fromTextArray(headers:headers,data:rows,
           headerDecoration:pw.BoxDecoration(color:lightTable?PdfColors.grey200:headerColor),
           headerStyle:pw.TextStyle(color:headerText,fontSize:fontSize,fontWeight:pw.FontWeight.bold),
@@ -127,8 +142,15 @@ Future<Uint8List> documentPdf(BusinessDocument doc) async {
         if(doc.notes.isNotEmpty) ...[pw.SizedBox(height:18),label('Notes'),pw.Text(doc.notes,style:const pw.TextStyle(fontSize:10))],
       ],
       pw.SizedBox(height:30),
-      if(doc.kind==DocKind.deliveryNote || doc.kind==DocKind.paymentVoucher) ...[
-        pw.Text('Authorized by: ____________________    Received by: ____________________',style:const pw.TextStyle(fontSize:10)),
+      if(doc.kind.isLetter) ...[
+        pw.Text('Yours faithfully,',style:const pw.TextStyle(fontSize:11)),pw.SizedBox(height:24),pw.Text(doc.business.name),
+      ],
+      if(doc.kind==DocKind.deliveryNote||doc.kind==DocKind.paymentVoucher||doc.kind==DocKind.purchaseOrder||doc.kind==DocKind.quotation||doc.kind==DocKind.receipt) ...[
+        pw.Row(children:[
+          pw.Expanded(child:pw.Column(crossAxisAlignment:pw.CrossAxisAlignment.start,children:[pw.Divider(color:ink),label(doc.kind==DocKind.deliveryNote?'Dispatched by':doc.kind==DocKind.quotation?'Prepared by':'Authorized by')])),
+          pw.SizedBox(width:24),
+          pw.Expanded(child:pw.Column(crossAxisAlignment:pw.CrossAxisAlignment.start,children:[pw.Divider(color:ink),label(doc.kind==DocKind.quotation?'Accepted by':doc.kind==DocKind.purchaseOrder?'Approved by':'Received by')])),
+        ]),
       ],
     ],
   ));
