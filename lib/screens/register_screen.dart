@@ -86,7 +86,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         message.contains('socketexception') || message.contains('host lookup') ||
         message.contains('clientexception') || message.contains('network') ||
         message.contains('failed to fetch') || message.contains('connection')) {
-      return 'ARODesk could not connect to the server. Please check Wi-Fi or mobile data, then try again.';
+      return 'AroPOS could not connect to the server. Please check Wi-Fi or mobile data, then try again.';
     }
     if (message.contains('already registered') || message.contains('already exists') ||
         message.contains('already have an account') || message.contains('user already registered') ||
@@ -284,7 +284,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     const headings = ['Your login', 'Your business', 'Review details'];
     return Scaffold(
       resizeToAvoidBottomInset:true,
-      appBar: AppBar(title: const Text('Register on ARODesk')),
+      appBar: AppBar(title: const Text('Register on AroPOS')),
       body: SafeArea(child: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 520),

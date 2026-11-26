@@ -143,7 +143,7 @@ class _HomeScreenState extends State<HomeScreen>{
           final columns=c.maxWidth>=600?3:2;
           final w=(c.maxWidth-10*(columns-1))/columns;
           return Wrap(spacing:10,runSpacing:10,children:[
-            SizedBox(width:w,child:_metric('Total revenue',money.format(_sales),Icons.shopping_cart_rounded,const Color(0xFF006FFF))),
+            SizedBox(width:w,child:_metric('Total revenue',money.format(_sales),Icons.shopping_cart_rounded,const Color(0xFF2563EB))),
             SizedBox(width:w,child:_metric('Total payments',money.format(_collected),Icons.payments_rounded,const Color(0xFF0AB867))),
             SizedBox(width:w,child:_metric('Outstanding',money.format(_outstanding),Icons.receipt_long_rounded,const Color(0xFFFF881A))),
             SizedBox(width:w,child:_metric('Sales',_saleCount.toString(),Icons.point_of_sale_rounded,const Color(0xFF6254DC))),

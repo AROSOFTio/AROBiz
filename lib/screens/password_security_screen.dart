@@ -66,7 +66,7 @@ class _PasswordSecurityScreenState extends State<PasswordSecurityScreen> {
       child:ListView(padding:const EdgeInsets.all(22),children:[
         const Center(child:Image(image:AssetImage('assets/logo.png'),height:82,width:82)),
         const SizedBox(height:16),
-        Text(widget.recovery?'Choose your new password':'Secure your ARODesk account',
+        Text(widget.recovery?'Choose your new password':'Secure your AroPOS account',
           textAlign:TextAlign.center,style:Theme.of(context).textTheme.titleLarge),
         const SizedBox(height:20),
         if(widget.forced)const Padding(padding:EdgeInsets.only(bottom:16),

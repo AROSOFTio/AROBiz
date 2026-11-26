@@ -34,7 +34,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>{
       child:ListView(padding:const EdgeInsets.all(24),children:[
         Image.asset('assets/logo.png',height:100,width:100),
         const SizedBox(height:20),
-        Text('Recover your ARODesk account',textAlign:TextAlign.center,
+        Text('Recover your AroPOS account',textAlign:TextAlign.center,
           style:Theme.of(context).textTheme.titleLarge),
         const SizedBox(height:10),
         const Text('Enter the email used to create your account. We will send a secure reset link.',

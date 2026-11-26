@@ -37,7 +37,7 @@ class _LoginScreenState extends State<LoginScreen> {
     if (message.contains('socketexception') || message.contains('host lookup') ||
         message.contains('clientexception') || message.contains('network') ||
         message.contains('connection') || message.contains('timed out')) {
-      return 'Cannot connect to ARODesk. Check your internet and try again.';
+      return 'Cannot connect to AroPOS. Check your internet and try again.';
     }
     return 'Unable to sign in right now. Please try again.';
   }
@@ -112,7 +112,7 @@ class _LoginScreenState extends State<LoginScreen> {
         builder: (dialogContext) => AlertDialog(
           title: const Text('Check your email'),
           content: const Text(
-            'If this account is awaiting confirmation, a new ARODesk verification email has been requested. Check Inbox and Spam, then try logging in.'),
+            'If this account is awaiting confirmation, a new AroPOS verification email has been requested. Check Inbox and Spam, then try logging in.'),
           actions: [
             FilledButton(
               onPressed: () => Navigator.of(dialogContext).pop(),
@@ -160,9 +160,9 @@ class _LoginScreenState extends State<LoginScreen> {
                 padding:const EdgeInsets.fromLTRB(24,22,24,22),
                 child:Column(mainAxisSize:MainAxisSize.min,children:[
                   Image.asset('assets/logo.png',height:77,width:77,
-                    fit:BoxFit.contain,semanticLabel:'ARODesk'),
+                    fit:BoxFit.contain,semanticLabel:'AroPOS'),
                   const SizedBox(height:6),
-                  const Text('ARODesk',style:TextStyle(
+                  const Text('AroPOS',style:TextStyle(
                     fontSize:26,fontWeight:FontWeight.w800,color:Color(0xFF142235))),
                   const SizedBox(height:2),
                   Text('Sign in to your workspace',style:theme.textTheme.bodySmall),
@@ -220,7 +220,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     )),
                   const SizedBox(height:10),
                   Row(mainAxisAlignment:MainAxisAlignment.center,children:[
-                    const Flexible(child:Text('New to ARODesk?',
+                    const Flexible(child:Text('New to AroPOS?',
                       style:TextStyle(fontSize:12))),
                     TextButton(
                       onPressed:_isLoading?null:()=>Navigator.push(context,

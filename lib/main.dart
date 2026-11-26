@@ -137,15 +137,15 @@ class _InvoicingAppState extends State<InvoicingApp> {
   Widget build(BuildContext context) {
     return MaterialApp(
       navigatorKey:appNavigatorKey,
-      title: 'ARODesk',
+      title: 'AroPOS',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3:true,
         scaffoldBackgroundColor:const Color(0xFFF7F9FC),
         colorScheme:ColorScheme.fromSeed(
-          seedColor:const Color(0xFF006FFF),
-          primary:const Color(0xFF006FFF),
-          secondary:const Color(0xFF009CFF),
+          seedColor:const Color(0xFF2563EB),
+          primary:const Color(0xFF2563EB),
+          secondary:const Color(0xFF2563EB),
           surface:Colors.white,
           error:const Color(0xFFD92D38),
         ),
@@ -188,7 +188,7 @@ class _InvoicingAppState extends State<InvoicingApp> {
             }
             if(snapshot.hasError){
               return const Scaffold(body:Center(child:Text(
-                'Unable to verify account security. Check your connection and reopen ARODesk.')));
+                'Unable to verify account security. Check your connection and reopen AroPOS.')));
             }
             return snapshot.data == true
               ? const PasswordSecurityScreen(forced:true)
@@ -386,7 +386,7 @@ class AppShellState extends State<AppShell> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Display the selected company's identity, not the ARODesk wordmark.
+                      // Display the selected company's identity, not the AroPOS wordmark.
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
@@ -410,7 +410,7 @@ class AppShellState extends State<AppShell> {
                                           style: const TextStyle(
                                             fontSize: 28,
                                             fontWeight: FontWeight.bold,
-                                            color: Color(0xFF006FFF),
+                                            color: Color(0xFF2563EB),
                                           ),
                                         ),
                                       ),
@@ -423,7 +423,7 @@ class AppShellState extends State<AppShell> {
                                       style: const TextStyle(
                                         fontSize: 28,
                                         fontWeight: FontWeight.bold,
-                                        color: Color(0xFF006FFF),
+                                        color: Color(0xFF2563EB),
                                       ),
                                     ),
                                   ),
@@ -727,7 +727,7 @@ class AppShellState extends State<AppShell> {
             const Padding(
               padding: EdgeInsets.only(bottom: 12, top: 4),
               child: Text(
-                'Powered by ARODesk  •  AROSOFT Innovations',
+                'Powered by AroPOS  •  AROSOFT Innovations',
                 style: TextStyle(color: Colors.grey, fontSize: 10),
                 textAlign: TextAlign.center,
               ),
