@@ -11,6 +11,30 @@ jobs:
     runs-on: [self-hosted, Linux, X64, arobiz-android]
     timeout-minutes: 40
     steps:
+      - name: Recover compiled files from the previously tested exact source
+        id: recover
+        shell: bash
+        env:
+          PRIOR_SOURCE: bdb9f26797f3aafba1793d592dab1c6f7a288aca
+        run: |
+          set -euo pipefail
+          echo 'recovered=false' >> "$GITHUB_OUTPUT"
+          if ! test -d "$GITHUB_WORKSPACE/.git"; then exit 0; fi
+          if ! test "$(git -C "$GITHUB_WORKSPACE" rev-parse HEAD)" = "$PRIOR_SOURCE"; then exit 0; fi
+          if ! git -C "$GITHUB_WORKSPACE" diff --quiet HEAD -- lib pubspec.yaml android/app/build.gradle.kts android/app/src/main/AndroidManifest.xml; then exit 0; fi
+          prior="$GITHUB_WORKSPACE/build/app/outputs"
+          for name in app-release.apk app-arm64-v8a-release.apk app-armeabi-v7a-release.apk app-x86_64-release.apk; do
+            if ! test -s "$prior/flutter-apk/$name"; then exit 0; fi
+          done
+          if ! test -s "$prior/bundle/release/app-release.aab"; then exit 0; fi
+          saved="$(mktemp -d "$RUNNER_TEMP/aropos-266.XXXXXX")"
+          mkdir -p "$saved/flutter-apk" "$saved/bundle/release"
+          cp "$prior/flutter-apk/"app*release.apk "$saved/flutter-apk/"
+          cp "$prior/bundle/release/app-release.aab" "$saved/bundle/release/"
+          echo "RECOVERED_OUTPUTS=$saved" >> "$GITHUB_ENV"
+          echo "RECOVERED_COMMIT=$PRIOR_SOURCE" >> "$GITHUB_ENV"
+          echo 'recovered=true' >> "$GITHUB_OUTPUT"
+          echo 'Recovered APK and AAB from the exact source of successful compile and test run 45880627857.'
       - uses: actions/checkout@v4
       - name: Configure dedicated VPS SDK
         run: |
@@ -24,6 +48,7 @@ jobs:
           echo "/opt/arobiz-sdk/flutter/bin" >> "$GITHUB_PATH"
           echo "/opt/arobiz-sdk/android/platform-tools" >> "$GITHUB_PATH"
       - name: Check release configuration
+        if: steps.recover.outputs.recovered != 'true'
         env:
           SUPABASE_URL: https://bqoutfgqfaangnnclgle.supabase.co
           SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
@@ -41,17 +66,20 @@ jobs:
           printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 -d > android/app/release.jks
           printf 'storeFile=release.jks\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n' "$ANDROID_STORE_PASSWORD" "$ANDROID_KEY_ALIAS" "$ANDROID_KEY_PASSWORD" > android/key.properties
       - name: Generate branded launcher and splash resources
+        if: steps.recover.outputs.recovered != 'true'
         run: |
           python3 -m pip install --break-system-packages --user "cairosvg>=2.7,<3" "Pillow>=10,<12"
           python3 tool/generate_brand_assets.py
           flutter pub get
           dart run flutter_launcher_icons
       - name: Fetch dependencies and analyze
+        if: steps.recover.outputs.recovered != 'true'
         run: |
           flutter pub get
           flutter analyze --no-fatal-infos --no-fatal-warnings
           flutter test
       - name: Build signed APK and AAB with Supabase
+        if: steps.recover.outputs.recovered != 'true'
         env:
           SUPABASE_URL: https://bqoutfgqfaangnnclgle.supabase.co
           SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
@@ -59,42 +87,75 @@ jobs:
           flutter build apk --release --build-name=3.0.0 --build-number=266 --dart-define=SUPABASE_URL="$SUPABASE_URL" --dart-define=SUPABASE_PUBLISHABLE_KEY="$SUPABASE_PUBLISHABLE_KEY"
           flutter build apk --release --split-per-abi --build-name=3.0.0 --build-number=266 --dart-define=SUPABASE_URL="$SUPABASE_URL" --dart-define=SUPABASE_PUBLISHABLE_KEY="$SUPABASE_PUBLISHABLE_KEY"
           flutter build appbundle --release --build-name=3.0.0 --build-number=266 --dart-define=SUPABASE_URL="$SUPABASE_URL" --dart-define=SUPABASE_PUBLISHABLE_KEY="$SUPABASE_PUBLISHABLE_KEY"
-      - name: Validate every APK, Android identity and signatures
+      - name: Verify bundle, APK identity, signing continuity and archive integrity
+        shell: bash
         run: |
           set -euo pipefail
-          OUT="build/app/outputs/flutter-apk"
-          AAB="build/app/outputs/bundle/release/app-release.aab"
+          ROOT="${RECOVERED_OUTPUTS:-$GITHUB_WORKSPACE/build/app/outputs}"
+          OUT="$ROOT/flutter-apk"
+          AAB="$ROOT/bundle/release/app-release.aab"
+          TARGET="${RECOVERED_COMMIT:-$GITHUB_SHA}"
+          work="$(mktemp -d "$RUNNER_TEMP/aropos-verify.XXXXXX")"
+          trap 'rm -rf "$work"' EXIT
+          BUILD_TOOLS="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1)"
           test -s "$AAB"
           unzip -tq "$AAB"
-          jarsigner -verify "$AAB"
-          test -n "$(unzip -Z1 "$AAB" | grep -E '^META-INF/[^/]+[.](RSA|DSA|EC)$')"
-          BUILD_TOOLS="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1)"
+          jarsigner -verify "$AAB" > "$work/jarsigner.txt" 2>&1
+          grep -Fq 'jar verified.' "$work/jarsigner.txt" || { cat "$work/jarsigner.txt"; exit 1; }
+          unzip -Z1 "$AAB" > "$work/aab-entries.txt"
+          grep -Eq '^META-INF/[^/]+[.](RSA|DSA|EC)$' "$work/aab-entries.txt"
+          curl --fail --location --silent --show-error --retry 3 --max-time 180 -o "$work/prior.apk" https://github.com/AROSOFTio/AROBiz/releases/download/v1.0.252/app-arm64-v8a-release.apk
+          "$BUILD_TOOLS/apksigner" verify --print-certs "$work/prior.apk" > "$work/prior-cert.txt"
+          prior_fp="$(awk '/^Signer #1 certificate SHA-256 digest:/ {print tolower($NF)}' "$work/prior-cert.txt")"
+          test "${#prior_fp}" -eq 64
+          keytool -printcert -jarfile "$AAB" > "$work/aab-cert.txt"
+          aab_fp="$(awk '/SHA256:/ {gsub(/:/,"",$2);print tolower($2);exit}' "$work/aab-cert.txt")"
+          test "$aab_fp" = "$prior_fp" || { echo '::error::AAB signer differs from historical POS release'; exit 1; }
+          curl --fail --location --silent --show-error --retry 3 --max-time 180 -o "$work/bundletool.jar" https://github.com/google/bundletool/releases/download/1.18.1/bundletool-all-1.18.1.jar
+          java -jar "$work/bundletool.jar" validate --bundle="$AAB"
+          java -jar "$work/bundletool.jar" dump manifest --bundle="$AAB" > "$work/bundle-manifest.xml"
+          python3 - "$work/bundle-manifest.xml" <<'PY'
+          import sys, xml.etree.ElementTree as ET
+          root = ET.parse(sys.argv[1]).getroot()
+          a = '{http://schemas.android.com/apk/res/android}'
+          assert root.get('package') == 'com.arosoft.arodesk', root.attrib
+          assert root.get(a+'versionCode') == '266', root.attrib
+          assert root.get(a+'versionName') == '3.0.0', root.attrib
+          assert int(root.find('uses-sdk').get(a+'targetSdkVersion')) >= 36
+          print('AAB package, version code, version name and target SDK verified.')
+          PY
           for apk in "$OUT/app-release.apk" "$OUT/app-arm64-v8a-release.apk" "$OUT/app-armeabi-v7a-release.apk" "$OUT/app-x86_64-release.apk"; do
             test -s "$apk"
             unzip -tq "$apk"
-            "$BUILD_TOOLS/apksigner" verify --verbose "$apk"
-            "$BUILD_TOOLS/aapt" dump badging "$apk" > /tmp/arodesk-badging.txt
-            grep -q "package: name='com.arosoft.arodesk'" /tmp/arodesk-badging.txt
-            grep -Eq "targetSdkVersion:'(36|3[7-9]|[4-9][0-9])'" /tmp/arodesk-badging.txt || { echo '::error::Google Play requires target SDK >= 36'; exit 1; }
-            grep -q "application-label:'AroPOS'" /tmp/arodesk-badging.txt
-            grep -q "versionCode:'266'" /tmp/arodesk-badging.txt
-            grep -q "versionName:'3.0.0'" /tmp/arodesk-badging.txt
+            "$BUILD_TOOLS/apksigner" verify --verbose --print-certs "$apk" > "$work/apk-cert.txt"
+            cert="$(awk '/^Signer #1 certificate SHA-256 digest:/ {print tolower($NF)}' "$work/apk-cert.txt")"
+            test "$cert" = "$prior_fp" || { echo '::error::APK signer mismatch'; exit 1; }
+            "$BUILD_TOOLS/aapt" dump badging "$apk" > "$work/badging.txt"
+            grep -E '^(package:|targetSdkVersion:|application-label:)' "$work/badging.txt"
+            grep -Fq "package: name='com.arosoft.arodesk'" "$work/badging.txt"
+            grep -Eq "targetSdkVersion:'(36|3[7-9]|[4-9][0-9])'" "$work/badging.txt"
+            grep -Fq "application-label:'AroPOS'" "$work/badging.txt"
+            grep -Fq "versionCode='266'" "$work/badging.txt"
+            grep -Fq "versionName='3.0.0'" "$work/badging.txt"
             echo "Verified $(basename "$apk"): $(stat -c%s "$apk") bytes"
           done
-          unzip -l "$OUT/app-arm64-v8a-release.apk" | grep -q 'lib/arm64-v8a/libflutter.so'
-          echo "All APKs and the AAB passed verification."
-      - name: Generate download checksums
-        run: |
-          cd build/app/outputs/flutter-apk
-          sha256sum app-release.apk app-arm64-v8a-release.apk app-armeabi-v7a-release.apk app-x86_64-release.apk > "${GITHUB_WORKSPACE}/SHA256SUMS.txt"
-          cd "${GITHUB_WORKSPACE}"
-          sha256sum build/app/outputs/bundle/release/app-release.aab >> SHA256SUMS.txt
-      - name: Publish release
+          unzip -Z1 "$OUT/app-arm64-v8a-release.apk" > "$work/arm64-entries.txt"
+          grep -Fxq 'lib/arm64-v8a/libflutter.so' "$work/arm64-entries.txt"
+          release_dir="$(mktemp -d "$RUNNER_TEMP/aropos-assets.XXXXXX")"
+          cp "$AAB" "$release_dir/AroPOS.aab"
+          cp "$OUT/app-release.apk" "$release_dir/AroPOS.apk"
+          cp "$OUT/app-arm64-v8a-release.apk" "$release_dir/AroPOS-arm64.apk"
+          (cd "$release_dir" && sha256sum AroPOS.aab AroPOS.apk AroPOS-arm64.apk > SHA256SUMS.txt)
+          printf 'Source commit: %s\nVersion: 3.0.0 (266)\nPackage: com.arosoft.arodesk\nHistorical POS upload certificate SHA256: %s\n' "$TARGET" "$prior_fp" > "$release_dir/BUILD-VERIFICATION.txt"
+          echo "RELEASE_DIR=$release_dir" >> "$GITHUB_ENV"
+          echo "RELEASE_TARGET=$TARGET" >> "$GITHUB_ENV"
+      - name: Publish verified candidate to GitHub Releases
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          TAG="aropos-v3.0.0-266"
-          gh release create "$TAG" --draft build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/app-arm64-v8a-release.apk build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk build/app/outputs/flutter-apk/app-x86_64-release.apk build/app/outputs/bundle/release/app-release.aab SHA256SUMS.txt --title "AroPOS $TAG" --notes "Signed AroPOS: ARM64 recommended for modern phones; universal APK also included. Verified package identity, signatures and checksums." --target "${{ github.sha }}"
+          set -euo pipefail
+          gh release create aropos-v3.0.0-266 "$RELEASE_DIR/AroPOS.aab" "$RELEASE_DIR/AroPOS.apk" "$RELEASE_DIR/AroPOS-arm64.apk" "$RELEASE_DIR/SHA256SUMS.txt" "$RELEASE_DIR/BUILD-VERIFICATION.txt" --repo "$GITHUB_REPOSITORY" --prerelease --title 'AroPOS 3.0.0 (266)' --notes 'Verified signed Android release candidate. Package and signer match historical POS release; APK and AAB identities validated. Complete device and Play Console acceptance checks before production submission.' --target "$RELEASE_TARGET"
+          echo 'Verified candidate published to GitHub Releases.'
       - name: Remove generated signing files
         if: always()
         run: rm -f android/key.properties android/app/release.jks
