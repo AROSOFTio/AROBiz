@@ -296,7 +296,13 @@ class AppShellState extends State<AppShell> {
   }
 
   List<Widget> get _screens => [
-    HomeScreen(onNavigate:_goToPage),
+    HomeScreen(onNavigate:_goToPage,
+      onNewSale:_canWrite?()=>Navigator.push(context,MaterialPageRoute(
+        builder:(_)=>const SalesScreen(newSaleOnOpen:true))).then((_)=>_goToPage(3)):null,
+      onAccounting:_canWrite?()=>Navigator.push(context,MaterialPageRoute(
+        builder:(_)=>const AccountingScreen())):null,
+      onDebtors:_canWrite?()=>Navigator.push(context,MaterialPageRoute(
+        builder:(_)=>const DebtorsScreen())):null),
     InvoiceListScreen(readOnly:!_canWrite),
     ProductsScreen(readOnly:!_canWrite,onBack:()=>_goToPage(0)),
     const SalesScreen(),
@@ -323,6 +329,45 @@ class AppShellState extends State<AppShell> {
     Navigator.pop(context); // Close drawer
   }
 
+  Widget _desktopSidebar(String businessName){
+    return Container(
+      width:224,
+      decoration:const BoxDecoration(color:Colors.white,
+        border:Border(right:BorderSide(color:Color(0xFFE8EDF4)))),
+      child:Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[
+        Padding(padding:const EdgeInsets.fromLTRB(18,22,18,18),child:Row(children:[
+          Image.asset('assets/logo.png',width:34,height:34),
+          const SizedBox(width:10),
+          const Text('AroPOS',style:TextStyle(fontSize:23,fontWeight:FontWeight.w800,color:Color(0xFF2563EB))),
+        ])),
+        Padding(padding:const EdgeInsets.symmetric(horizontal:18),
+          child:Text(businessName,maxLines:1,overflow:TextOverflow.ellipsis,
+            style:Theme.of(context).textTheme.bodySmall)),
+        const SizedBox(height:15),
+        Expanded(child:ListView(padding:const EdgeInsets.symmetric(horizontal:8),children:[
+          _NavItem(icon:Icons.dashboard_outlined,label:'Dashboard',isSelected:_currentIndex==0,onTap:()=>_goToPage(0)),
+          if(_canWrite)_NavItem(icon:Icons.point_of_sale_outlined,label:'Point of sale',isSelected:_currentIndex==3,onTap:()=>_goToPage(3)),
+          _NavItem(icon:Icons.inventory_2_outlined,label:'Inventory',isSelected:_currentIndex==2,onTap:()=>_goToPage(2)),
+          _NavItem(icon:Icons.description_outlined,label:'Documents',isSelected:_currentIndex==1,onTap:()=>_goToPage(1)),
+          if(_canWrite)_NavItem(icon:Icons.people_outline,label:'Debtors & payments',isSelected:false,onTap:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>const DebtorsScreen()))),
+          if(_canWrite)_NavItem(icon:Icons.account_balance_outlined,label:'Accounting',isSelected:false,onTap:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>const AccountingScreen()))),
+          if(_canManage)_NavItem(icon:Icons.groups_outlined,label:'Team & permissions',isSelected:false,onTap:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>const TeamScreen())).then((_)=>_loadRole())),
+          if(_canManage)_NavItem(icon:Icons.settings_outlined,label:'Settings',isSelected:_currentIndex==4,onTap:()=>_goToPage(4)),
+          _NavItem(icon:Icons.verified_user_outlined,label:'Account & privacy',isSelected:false,onTap:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>const AccountPrivacyScreen()))),
+          FutureBuilder<bool>(future:SaaSAdminService.instance.isAdmin(),builder:(context,snapshot){
+            if(snapshot.data!=true)return const SizedBox.shrink();
+            return _NavItem(icon:Icons.admin_panel_settings_outlined,label:'SaaS Admin',isSelected:false,onTap:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>const SaaSAdminScreen())));
+          }),
+        ])),
+        const Divider(height:1),
+        Padding(padding:const EdgeInsets.all(8),child:_NavItem(icon:Icons.logout_rounded,label:'Logout',isSelected:false,onTap:()async{
+          await DataService().logout();
+          if(mounted)Navigator.of(context).pushAndRemoveUntil(MaterialPageRoute(builder:(_)=>const LoginScreen()),(_)=>false);
+        })),
+      ]),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final profile = DataService().currentProfile;
@@ -330,6 +375,7 @@ class AppShellState extends State<AppShell> {
     final businessCategory = profile?.category ?? '';
     final email = profile?.email ?? profile?.phone ?? '';
     final logoPath = profile?.logoPath;
+    final wide=MediaQuery.sizeOf(context).width>=1000;
 
     return Scaffold(
       key:_scaffoldKey,
@@ -375,7 +421,7 @@ class AppShellState extends State<AppShell> {
           const SizedBox(width:6),
         ],
       ),
-      drawer: Drawer(
+      drawer: wide?null:Drawer(
         width: 290,
         child: Column(
           children: [
@@ -740,13 +786,16 @@ class AppShellState extends State<AppShell> {
         ),
       ),
 
-      body: AnimatedSwitcher(
-        duration:const Duration(milliseconds:180),
-        switchInCurve:Curves.easeOut,
-        switchOutCurve:Curves.easeIn,
-        child:KeyedSubtree(key:ValueKey(_currentIndex),
-          child:_screens[_currentIndex])),
-      bottomNavigationBar:MediaQuery.viewInsetsOf(context).bottom>0
+      body: Row(children:[
+        if(wide)_desktopSidebar(businessName),
+        Expanded(child:AnimatedSwitcher(
+          duration:const Duration(milliseconds:180),
+          switchInCurve:Curves.easeOut,
+          switchOutCurve:Curves.easeIn,
+          child:KeyedSubtree(key:ValueKey(_currentIndex),
+            child:_screens[_currentIndex]))),
+      ]),
+      bottomNavigationBar:wide||MediaQuery.viewInsetsOf(context).bottom>0
         ?null:SafeArea(
         top:false,
         child:NavigationBar(

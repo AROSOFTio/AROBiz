@@ -7,7 +7,8 @@ import 'team_screen.dart';
 
 class HomeScreen extends StatefulWidget{
   final ValueChanged<int>? onNavigate;
-  const HomeScreen({super.key,this.onNavigate});
+  final VoidCallback? onNewSale,onAccounting,onDebtors;
+  const HomeScreen({super.key,this.onNavigate,this.onNewSale,this.onAccounting,this.onDebtors});
   @override State<HomeScreen> createState()=>_HomeScreenState();
 }
 class _HomeScreenState extends State<HomeScreen>{
@@ -165,6 +166,15 @@ class _HomeScreenState extends State<HomeScreen>{
               _lowCount.toString()+' / '+_productCount.toString(),Icons.inventory_2_rounded,const Color(0xFFEA574B))),
           ]);
         }),
+        const SizedBox(height:16),
+        Text('Quick actions',style:Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height:8),
+        Wrap(spacing:8,runSpacing:8,children:[
+          if(widget.onNewSale!=null)FilledButton.icon(onPressed:widget.onNewSale,icon:const Icon(Icons.add_shopping_cart_outlined),label:const Text('New sale')),
+          if(widget.onNavigate!=null)OutlinedButton.icon(onPressed:()=>widget.onNavigate!(2),icon:const Icon(Icons.inventory_2_outlined),label:const Text('Products')),
+          if(widget.onDebtors!=null)OutlinedButton.icon(onPressed:widget.onDebtors,icon:const Icon(Icons.people_outline),label:const Text('Debtors')),
+          if(widget.onAccounting!=null)OutlinedButton.icon(onPressed:widget.onAccounting,icon:const Icon(Icons.account_balance_outlined),label:const Text('Accounting')),
+        ]),
         const SizedBox(height:16),_salesChart(money),
         Card(child:Padding(padding:const EdgeInsets.all(16),
           child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
