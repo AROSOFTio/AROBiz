@@ -1,4 +1,5 @@
-import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'services/platform_logo.dart';
 import 'dart:async';
 import 'package:app_links/app_links.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -121,11 +122,14 @@ class _InvoicingAppState extends State<InvoicingApp> {
         _openRecovery();
       }else if(data.event==AuthChangeEvent.signedIn){
         if(_incomingRecovery)_openRecovery();
+        if(kIsWeb&&!_incomingRecovery)_incomingConfirmation=true;
         if(_incomingConfirmation)_openConfirmation();
       }
     });
-    _linkSubscription=AppLinks().uriLinkStream.listen(_processIncomingLink);
-    _checkInitialResetLink();
+    if(!kIsWeb){
+      _linkSubscription=AppLinks().uriLinkStream.listen(_processIncomingLink);
+      _checkInitialResetLink();
+    }
   }
   @override
   void dispose(){
@@ -340,8 +344,8 @@ class AppShellState extends State<AppShell> {
             CircleAvatar(
               radius: 17,
               backgroundColor: Colors.white24,
-              backgroundImage: logoPath != null ? FileImage(File(logoPath)) : null,
-              child: logoPath == null
+              backgroundImage: platformLogo(logoPath),
+              child: platformLogo(logoPath) == null
                   ? Text(businessName.isNotEmpty ? businessName[0].toUpperCase() : 'A',
                       style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold))
                   : null,
@@ -398,10 +402,10 @@ class AppShellState extends State<AppShell> {
                               color: Colors.white,
                               borderRadius: BorderRadius.circular(16),
                             ),
-                            child: logoPath != null
+                            child: platformLogo(logoPath) != null
                                 ? ClipRRect(
                                     borderRadius: BorderRadius.circular(10),
-                                    child: Image.file(File(logoPath),
+                                    child: Image(image:platformLogo(logoPath)!,
                                       fit: BoxFit.contain,
                                       errorBuilder: (_, __, ___) => Center(
                                         child: Text(

@@ -1,3 +1,4 @@
+import 'auth_redirect.dart';
 import 'dart:convert';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -91,7 +92,7 @@ class DataService {
         email: isEmail ? identifier.trim().toLowerCase() : null,
         phone: isEmail ? null : identifier.trim(),
         password: password,
-        emailRedirectTo: 'io.supabase.arodesk://auth-callback/',
+        emailRedirectTo: authRedirect(),
         data: {'businessName': businessName, 'businessCategory': category, 'location': location, 'countryCode': countryCode, 'currencyCode': CountryCurrency.currency(countryCode),
           'first_name':firstName.trim(),'middle_name':middleName.trim(),
           'last_name':lastName.trim(),
@@ -130,7 +131,7 @@ class DataService {
     await Supabase.instance.client.auth.resend(
       type: OtpType.signup,
       email: address,
-      emailRedirectTo: 'io.supabase.arodesk://auth-callback/',
+      emailRedirectTo: authRedirect(),
     );
   }
 

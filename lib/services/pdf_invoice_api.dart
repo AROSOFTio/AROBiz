@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'platform_logo.dart';
 import 'dart:typed_data';
 import 'package:flutter/services.dart';
 import 'package:pdf/pdf.dart';
@@ -82,11 +82,8 @@ class PdfInvoiceApi {
   static Future<pw.ImageProvider?> _loadLogo(BusinessProfile? profile) async {
     try {
       if (profile?.logoPath != null) {
-        final file = File(profile!.logoPath!);
-        if (await file.exists()) {
-          final bytes = await file.readAsBytes();
-          return pw.MemoryImage(bytes);
-        }
+        final bytes=await platformLogoBytes(profile!.logoPath!);
+        if(bytes!=null)return pw.MemoryImage(bytes);
       }
       // Fallback: try bundled assets/logo.png
       final data = await rootBundle.load('assets/logo.png');

@@ -1,3 +1,4 @@
+import '../services/auth_redirect.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -19,7 +20,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>{
     setState((){_busy=true;_result=null;});
     try{
       await Supabase.instance.client.auth.resetPasswordForEmail(
-        email,redirectTo:'io.supabase.arodesk://reset-password/',
+        email,redirectTo:authRedirect(recovery:true),
       );
       if(mounted)setState(()=>_result=
         'If this email has an account, a reset link has been sent. Check Inbox and Spam.');

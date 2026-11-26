@@ -1,3 +1,4 @@
+import '../services/auth_redirect.dart';
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
@@ -57,8 +58,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
     try {
       final opened = await Supabase.instance.client.auth.signInWithOAuth(
         OAuthProvider.google,
-        redirectTo: 'io.supabase.arodesk://auth-callback/',
-        authScreenLaunchMode: LaunchMode.externalApplication,
+        redirectTo: authRedirect(),
+        authScreenLaunchMode: authLaunchMode,
       );
       if (!opened && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

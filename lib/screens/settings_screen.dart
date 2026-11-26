@@ -1,4 +1,6 @@
-import 'dart:io';
+import 'dart:convert';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import '../services/platform_logo.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -60,7 +62,17 @@ class _SettingsScreenState extends State<SettingsScreen>{
   }
   Future<void> _chooseLogo()async{
     final result=await ImagePicker().pickImage(source:ImageSource.gallery,imageQuality:85);
-    if(result!=null&&mounted)setState(()=>_logo=result.path);
+    if(result==null)return;
+    final String path;
+    if(kIsWeb){
+      final bytes=await result.readAsBytes();
+      if(bytes.length>1000000){
+        if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Select a logo under 1 MB.')));
+        return;
+      }
+      path='data:image/png;base64,${base64Encode(bytes)}';
+    }else{path=result.path;}
+    if(mounted)setState(()=>_logo=path);
   }
   Future<void> _save()async{
     if(_saving)return;
@@ -104,8 +116,8 @@ class _SettingsScreenState extends State<SettingsScreen>{
     Center(child:Column(children:[
       InkWell(onTap:_chooseLogo,borderRadius:BorderRadius.circular(56),
         child:CircleAvatar(radius:48,
-          backgroundImage:_logo==null?null:FileImage(File(_logo!)),
-          child:_logo==null?const Icon(Icons.add_a_photo_outlined,size:34):null)),
+          backgroundImage:platformLogo(_logo),
+          child:platformLogo(_logo)==null?const Icon(Icons.add_a_photo_outlined,size:34):null)),
       const SizedBox(height:8),
       const Text('Business logo · Tap to change'),
     ])),

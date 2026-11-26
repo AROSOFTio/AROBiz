@@ -1,0 +1,34 @@
+name: AroPOS web compatibility
+on:
+  push:
+    branches: [aropos-web]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  web:
+    runs-on: [self-hosted, Linux, X64, arobiz-android]
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure Flutter
+        run: |
+          test -x /opt/arobiz-sdk/flutter/bin/flutter
+          echo "/opt/arobiz-sdk/flutter/bin" >> "$GITHUB_PATH"
+      - name: Analyze, test and compile web
+        env:
+          SUPABASE_URL: https://bqoutfgqfaangnnclgle.supabase.co
+          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
+        run: |
+          test -n "$SUPABASE_PUBLISHABLE_KEY"
+          flutter pub get
+          flutter analyze --no-fatal-infos --no-fatal-warnings
+          flutter test
+          flutter build web --release --dart-define=SUPABASE_URL="$SUPABASE_URL" --dart-define=SUPABASE_PUBLISHABLE_KEY="$SUPABASE_PUBLISHABLE_KEY"
+          test -s build/web/index.html
+          test -s build/web/main.dart.js
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AroPOS-web
+          path: build/web
+          if-no-files-found: error

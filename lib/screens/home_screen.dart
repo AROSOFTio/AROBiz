@@ -71,15 +71,15 @@ class _HomeScreenState extends State<HomeScreen>{
   }
   Widget _metric(String label,String value,IconData icon,Color color){
     return Container(
-      padding:const EdgeInsets.all(14),
+      padding:const EdgeInsets.all(13),
       decoration:BoxDecoration(color:Colors.white,
         borderRadius:BorderRadius.circular(18),
         border:Border.all(color:const Color(0xFFE8EDF4))),
       child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-        Container(width:43,height:43,
-          decoration:BoxDecoration(color:color,borderRadius:BorderRadius.circular(12)),
-          child:Icon(icon,color:Colors.white,size:23)),
-        const SizedBox(height:13),
+        Container(width:35,height:35,
+          decoration:BoxDecoration(color:color.withAlpha(24),borderRadius:BorderRadius.circular(9)),
+          child:Icon(icon,color:color,size:20)),
+        const SizedBox(height:8),
         Text(label,maxLines:2,overflow:TextOverflow.ellipsis,
           style:const TextStyle(fontSize:12,color:Color(0xFF61708B))),
         const SizedBox(height:5),
@@ -153,7 +153,7 @@ class _HomeScreenState extends State<HomeScreen>{
 
         if(_error!=null)Padding(padding:const EdgeInsets.all(10),child:Text(_error!)),
         LayoutBuilder(builder:(ctx,c){
-          final columns=c.maxWidth>=600?3:2;
+          final columns=c.maxWidth>=1150?6:c.maxWidth>=720?3:2;
           final w=(c.maxWidth-10*(columns-1))/columns;
           return Wrap(spacing:10,runSpacing:10,children:[
             SizedBox(width:w,child:_metric('Recent revenue',money.format(_sales),Icons.shopping_cart_rounded,const Color(0xFF2563EB))),

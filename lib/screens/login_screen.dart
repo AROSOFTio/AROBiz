@@ -1,3 +1,4 @@
+import '../services/auth_redirect.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -79,8 +80,8 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       final launched = await Supabase.instance.client.auth.signInWithOAuth(
         OAuthProvider.google,
-        redirectTo: 'io.supabase.arodesk://auth-callback/',
-        authScreenLaunchMode: LaunchMode.externalApplication,
+        redirectTo: authRedirect(),
+        authScreenLaunchMode: authLaunchMode,
       );
       if (!launched && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
