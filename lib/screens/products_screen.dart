@@ -23,6 +23,8 @@ class _ProductsScreenState extends State<ProductsScreen> {
   bool _canManageCatalog=false;
   String _baseCurrency='USD';
   String _query='';
+  bool _lowOnly=false;
+  String _categoryFilter='All';
   @override
   void initState(){super.initState();_load();}
   String _message(Object e){
@@ -219,8 +221,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
   }
   @override
   Widget build(BuildContext context){
-    final items=_products.where((p)=>[p['name'],p['sku'],p['category']]
-      .any((v)=>v.toString().toLowerCase().contains(_query.toLowerCase()))).toList();
+    final items=_products.where((p)=>( _categoryFilter=='All'||p['category']==_categoryFilter)&&(!_lowOnly||(p['track_stock']==true&&(_balances[p['id'].toString()]??0)<=((p['reorder_level'] as num?)??0)))&&[p['name'],p['sku'],p['category'],p['barcode']].any((v)=>v.toString().toLowerCase().contains(_query.toLowerCase()))).toList();
     final low=_products.where((p)=>p['track_stock']==true&&
       (_balances[p['id'].toString()]??0)<=(p['reorder_level'] as num).toDouble()).length;
     return Scaffold(
@@ -255,79 +256,29 @@ class _ProductsScreenState extends State<ProductsScreen> {
             const SizedBox(height:12),
             if(items.isEmpty)const Padding(padding:EdgeInsets.all(24),
               child:Text('No items found. Add your first product or service.',textAlign:TextAlign.center)),
-            LayoutBuilder(builder:(context,constraints){
-              final cols=constraints.maxWidth>=800?4:constraints.maxWidth>=540?3:2;
-              final cardWidth=(constraints.maxWidth-10*(cols-1))/cols;
-              return Wrap(spacing:10,runSpacing:10,children:items.map((p){
-                final track=p['track_stock']==true;
-                final qty=_balances[p['id'].toString()]??0;
-                final image=InventoryService.instance.publicProductImageUrl(p['image_path']);
-                return SizedBox(width:cardWidth,child:Card(
-                  margin:EdgeInsets.zero,clipBehavior:Clip.antiAlias,
-                  child:Padding(padding:const EdgeInsets.all(9),child:Column(
-                    crossAxisAlignment:CrossAxisAlignment.start,children:[
-                      SizedBox(height:105,width:double.infinity,
-                        child:ClipRRect(borderRadius:BorderRadius.circular(9),
-                          child:image==null
-                            ?ColoredBox(color:Theme.of(context).colorScheme.surfaceContainerHigh,
-                                child:const Icon(Icons.inventory_2_outlined,size:35))
-                            :Image.network(image,fit:BoxFit.cover,cacheWidth:250,
-                              errorBuilder:(_,__,___)=>const Icon(Icons.inventory_2_outlined)))),
-                      const SizedBox(height:8),
-                      Text(p['name'].toString(),maxLines:2,
-                        overflow:TextOverflow.ellipsis,
-                        style:const TextStyle(fontSize:13,fontWeight:FontWeight.w700)),
-                      const SizedBox(height:3),
-                      Text(_baseCurrency+' '+p['sale_price'].toString(),
-                        maxLines:1,overflow:TextOverflow.ellipsis,
-                        style:Theme.of(context).textTheme.labelMedium),
-                      const SizedBox(height:5),
-                      Text((p['sku']??'').toString().isEmpty
-                        ?(p['category']??'').toString()
-                        :'SKU: '+p['sku'].toString(),
-                        maxLines:1,overflow:TextOverflow.ellipsis,
-                        style:const TextStyle(fontSize:11,color:Color(0xFF7E8A9D))),
-                      const SizedBox(height:4),
-                      Text(track?'Stock: $qty ${p['unit']}':'Service',
-                        maxLines:1,overflow:TextOverflow.ellipsis,
-                        style:TextStyle(fontSize:11,
-                          color:track&&qty<=(p['reorder_level'] as num).toDouble()
-                            ?Colors.deepOrange:null)),
-                      const SizedBox(height:6),
-                      Container(
-                        padding:const EdgeInsets.symmetric(horizontal:9,vertical:5),
-                        decoration:BoxDecoration(
-                          color:track&&qty<=(p['reorder_level'] as num).toDouble()
-                            ?const Color(0xFFFFEDD3):const Color(0xFFDFF9E9),
-                          borderRadius:BorderRadius.circular(20)),
-                        child:Text(track&&qty<=(p['reorder_level'] as num).toDouble()
-                          ?'Low stock':track?'In stock':'Service',
-                          style:TextStyle(fontSize:11,fontWeight:FontWeight.w700,
-                            color:track&&qty<=(p['reorder_level'] as num).toDouble()
-                              ?const Color(0xFFB96100):const Color(0xFF087B3D)))),
-                      const SizedBox(height:8),
-                      Wrap(spacing:3,runSpacing:2,children:[
-                        if(!widget.readOnly&&_canManageCatalog)IconButton(
-                          visualDensity:VisualDensity.compact,
-                          tooltip:'Edit item',onPressed:()=>_edit(p),
-                          icon:const Icon(Icons.edit_outlined,size:20)),
-                        if(track)IconButton(
-                          visualDensity:VisualDensity.compact,
-                          tooltip:'Stock history',onPressed:()=>_history(p),
-                          icon:const Icon(Icons.history,size:20)),
-                        if(track&&!widget.readOnly)IconButton.filledTonal(
-                          visualDensity:VisualDensity.compact,
-                          tooltip:'Add stock',onPressed:()=>_move(p),
-                          icon:const Icon(Icons.add,size:20)),
-                        if(track&&!widget.readOnly)IconButton(
-                          visualDensity:VisualDensity.compact,
-                          tooltip:'Issue stock',onPressed:()=>_move(p,receive:false),
-                          icon:const Icon(Icons.remove_circle_outline,size:20)),
-                      ]),
-                    ]),
-                  )));
-              }).toList());
-            }),
+            Row(children:[
+              Expanded(child:DropdownButtonFormField<String>(value:_categoryFilter,decoration:const InputDecoration(labelText:'Category'),items:['All',..._products.map((x)=>(x['category']??'').toString()).where((v)=>v.isNotEmpty&&v!='All').toSet()].map((x)=>DropdownMenuItem(value:x,child:Text(x,overflow:TextOverflow.ellipsis))).toList(),onChanged:(v)=>setState(()=>_categoryFilter=v??'All'),isExpanded:true)),
+              const SizedBox(width:8),
+              FilterChip(label:const Text('Low stock'),selected:_lowOnly,onSelected:(v)=>setState(()=>_lowOnly=v)),
+            ]),
+            const SizedBox(height:8),
+            for(final p in items)Card(child:ListTile(
+              contentPadding:const EdgeInsets.symmetric(horizontal:12,vertical:7),
+              leading:SizedBox(width:52,height:52,child:ClipRRect(borderRadius:BorderRadius.circular(6),child:InventoryService.instance.publicProductImageUrl(p['image_path'])==null?const ColoredBox(color:Color(0xFFF1F5F9),child:Icon(Icons.inventory_2_outlined)):Image.network(InventoryService.instance.publicProductImageUrl(p['image_path'])!,fit:BoxFit.contain,errorBuilder:(_,__,___)=>const Icon(Icons.inventory_2_outlined)))),
+              title:Text(p['name'].toString(),style:const TextStyle(fontWeight:FontWeight.w700)),
+              subtitle:Text('SKU: '+(p['sku']??'').toString()+'\n'+(p['track_stock']==true?'Stock: ${_balances[p['id'].toString()]??0} ${p['unit']??''}':'Service')),
+              isThreeLine:true,
+              trailing:Row(mainAxisSize:MainAxisSize.min,children:[
+                Text('$_baseCurrency ${NumberFormat.decimalPattern().format(p['sale_price']??0)}',style:const TextStyle(fontWeight:FontWeight.w700)),
+                PopupMenuButton<String>(onSelected:(v){if(v=='edit')_edit(p);if(v=='history')_history(p);if(v=='receive')_move(p);if(v=='issue')_move(p,receive:false);},itemBuilder:(_)=>[
+                  if(!widget.readOnly&&_canManageCatalog)const PopupMenuItem(value:'edit',child:Text('Edit product')),
+                  if(p['track_stock']==true)const PopupMenuItem(value:'history',child:Text('Stock movements')),
+                  if(p['track_stock']==true&&!widget.readOnly)const PopupMenuItem(value:'receive',child:Text('Receive stock')),
+                  if(p['track_stock']==true&&!widget.readOnly)const PopupMenuItem(value:'issue',child:Text('Issue stock')),
+                ]),
+              ]),
+            )),
+
           ],
         ]),
       ),

@@ -145,7 +145,7 @@ class _InvoicingAppState extends State<InvoicingApp> {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3:true,
-        scaffoldBackgroundColor:const Color(0xFFF7F9FC),
+        scaffoldBackgroundColor:Colors.white,
         colorScheme:ColorScheme.fromSeed(
           seedColor:const Color(0xFF2563EB),
           primary:const Color(0xFF2563EB),
@@ -165,18 +165,18 @@ class _InvoicingAppState extends State<InvoicingApp> {
           elevation:0,scrolledUnderElevation:0,centerTitle:false),
         cardTheme:CardThemeData(
           color:Colors.white,elevation:0,margin:const EdgeInsets.symmetric(vertical:5),
-          shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(18),
+          shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(10),
             side:const BorderSide(color:Color(0xFFE8EDF4)))),
         inputDecorationTheme:InputDecorationTheme(
           filled:true,fillColor:Colors.white,isDense:true,
           contentPadding:const EdgeInsets.symmetric(horizontal:14,vertical:14),
-          border:OutlineInputBorder(borderRadius:BorderRadius.circular(13),
+          border:OutlineInputBorder(borderRadius:BorderRadius.circular(8),
             borderSide:const BorderSide(color:Color(0xFFDCE4F0))),
-          enabledBorder:OutlineInputBorder(borderRadius:BorderRadius.circular(13),
+          enabledBorder:OutlineInputBorder(borderRadius:BorderRadius.circular(8),
             borderSide:const BorderSide(color:Color(0xFFDCE4F0)))),
         filledButtonTheme:FilledButtonThemeData(style:FilledButton.styleFrom(
           minimumSize:const Size(0,48),
-          shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(12)))),
+          shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(8)))),
         navigationBarTheme:NavigationBarThemeData(
           height:69,backgroundColor:Colors.white,elevation:0,
           indicatorColor:const Color(0xFFE6F1FF),
@@ -296,7 +296,7 @@ class AppShellState extends State<AppShell> {
   }
 
   List<Widget> get _screens => [
-    HomeScreen(onNavigate:_goToPage,
+    HomeScreen(onNavigate:_goToPage,onBusinessChanged:(){setState((){_role=null;_activeBusinessName=null;});_loadRole();},
       onNewSale:_canWrite?()=>Navigator.push(context,MaterialPageRoute(
         builder:(_)=>const SalesScreen(newSaleOnOpen:true))).then((_)=>_goToPage(3)):null,
       onAccounting:_canWrite?()=>Navigator.push(context,MaterialPageRoute(
@@ -312,7 +312,7 @@ class AppShellState extends State<AppShell> {
   ];
 
   final List<String> _titles = [
-    'Dashboard',
+    'Home',
     'Documents',
     'Products',
     'Sales',
@@ -345,7 +345,7 @@ class AppShellState extends State<AppShell> {
             style:Theme.of(context).textTheme.bodySmall)),
         const SizedBox(height:15),
         Expanded(child:ListView(padding:const EdgeInsets.symmetric(horizontal:8),children:[
-          _NavItem(icon:Icons.dashboard_outlined,label:'Dashboard',isSelected:_currentIndex==0,onTap:()=>_goToPage(0)),
+          _NavItem(icon:Icons.dashboard_outlined,label:'Home',isSelected:_currentIndex==0,onTap:()=>_goToPage(0)),
           if(_canWrite)_NavItem(icon:Icons.point_of_sale_outlined,label:'Point of sale',isSelected:_currentIndex==3,onTap:()=>_goToPage(3)),
           _NavItem(icon:Icons.inventory_2_outlined,label:'Inventory',isSelected:_currentIndex==2,onTap:()=>_goToPage(2)),
           _NavItem(icon:Icons.description_outlined,label:'Documents',isSelected:_currentIndex==1,onTap:()=>_goToPage(1)),
@@ -389,7 +389,7 @@ class AppShellState extends State<AppShell> {
           children: [
             CircleAvatar(
               radius: 17,
-              backgroundColor: Colors.white24,
+              backgroundColor: const Color(0xFF2563EB),
               backgroundImage: platformLogo(logoPath),
               child: platformLogo(logoPath) == null
                   ? Text(businessName.isNotEmpty ? businessName[0].toUpperCase() : 'A',
@@ -397,7 +397,7 @@ class AppShellState extends State<AppShell> {
                   : null,
             ),
             const SizedBox(width: 10),
-            Expanded(child:Text(_titles[_currentIndex],overflow:TextOverflow.ellipsis)),
+            Expanded(child:Text(_currentIndex==0?'AroPOS':_titles[_currentIndex],overflow:TextOverflow.ellipsis,style:TextStyle(fontWeight:FontWeight.w700,color:_currentIndex==0?const Color(0xFF2563EB):const Color(0xFF202020)))),
           ],
         ),
         actions:[
@@ -795,36 +795,24 @@ class AppShellState extends State<AppShell> {
           child:KeyedSubtree(key:ValueKey(_currentIndex),
             child:_screens[_currentIndex]))),
       ]),
-      bottomNavigationBar:wide||MediaQuery.viewInsetsOf(context).bottom>0
-        ?null:SafeArea(
-        top:false,
-        child:NavigationBar(
-          height:68,
-          labelBehavior:NavigationDestinationLabelBehavior.alwaysShow,
-          selectedIndex:(){
-            final pages=<int>[0,2,if(_canWrite)3,1,if(_canManage)4];
-            final i=pages.indexOf(_currentIndex);
-            return i<0?0:i;
-          }(),
-          onDestinationSelected:(index){
-            final pages=<int>[0,2,if(_canWrite)3,1,if(_canManage)4];
-            if(index<0||index>=pages.length)return;
-            _goToPage(pages[index]);
-          },
-          destinations:[
-            const NavigationDestination(icon:Icon(Icons.dashboard_outlined),
-              selectedIcon:Icon(Icons.dashboard_rounded),label:'Dashboard'),
-            const NavigationDestination(icon:Icon(Icons.inventory_2_outlined),
-              selectedIcon:Icon(Icons.inventory_2),label:'Inventory'),
-            if(_canWrite)const NavigationDestination(icon:Icon(Icons.point_of_sale_outlined),
-              selectedIcon:Icon(Icons.point_of_sale),label:'POS'),
-            const NavigationDestination(icon:Icon(Icons.description_outlined),
-              selectedIcon:Icon(Icons.description),label:'Documents'),
-            if(_canManage)const NavigationDestination(icon:Icon(Icons.settings_outlined),
-              selectedIcon:Icon(Icons.settings),label:'Settings'),
-          ],
-        ),
-      ),
+      bottomNavigationBar:wide||MediaQuery.viewInsetsOf(context).bottom>0?null:SafeArea(top:false,child:NavigationBar(
+        height:64,
+        selectedIndex:_currentIndex==0?0:_currentIndex==3&&_canWrite?1:_currentIndex==2?(_canWrite?2:1):(_canWrite?4:2),
+        onDestinationSelected:(i){
+          if(i==0){_goToPage(0);return;}
+          if(_canWrite&&i==1){_goToPage(3);return;}
+          if(i==(_canWrite?2:1)){_goToPage(2);return;}
+          if(_canWrite&&i==3){Navigator.push(context,MaterialPageRoute(builder:(_)=>const AccountingScreen()));return;}
+          _scaffoldKey.currentState?.openDrawer();
+        },
+        destinations:[
+          const NavigationDestination(icon:Icon(Icons.home_outlined),selectedIcon:Icon(Icons.home),label:'Home'),
+          if(_canWrite)const NavigationDestination(icon:Icon(Icons.point_of_sale_outlined),label:'POS'),
+          const NavigationDestination(icon:Icon(Icons.inventory_2_outlined),label:'Stock'),
+          if(_canWrite)const NavigationDestination(icon:Icon(Icons.account_balance_outlined),label:'Accounting'),
+          const NavigationDestination(icon:Icon(Icons.more_horiz),label:'More'),
+        ],
+      )),
     );
   }
 }

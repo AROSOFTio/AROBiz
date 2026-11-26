@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - aropos-production
+      - aropos-web
 permissions:
   contents: write
 jobs:
@@ -11,38 +11,6 @@ jobs:
     runs-on: [self-hosted, Linux, X64, arobiz-android]
     timeout-minutes: 40
     steps:
-      - name: Recover compiled files from the previously tested exact source
-        id: recover
-        shell: bash
-        env:
-          PRIOR_SOURCE: bdb9f26797f3aafba1793d592dab1c6f7a288aca
-        run: |
-          set -euo pipefail
-          echo 'recovered=false' >> "$GITHUB_OUTPUT"
-          # Last run recovered and verified these exact candidate files before its optional ABI split check failed.
-          prior_recovered="$RUNNER_TEMP/aropos-266.ZFrvOr"
-          if test -s "$prior_recovered/flutter-apk/app-release.apk" && test -s "$prior_recovered/bundle/release/app-release.aab"; then
-            echo "RECOVERED_OUTPUTS=$prior_recovered" >> "$GITHUB_ENV"
-            echo "RECOVERED_COMMIT=$PRIOR_SOURCE" >> "$GITHUB_ENV"
-            echo 'recovered=true' >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          if ! test -d "$GITHUB_WORKSPACE/.git"; then exit 0; fi
-          if ! test "$(git -C "$GITHUB_WORKSPACE" rev-parse HEAD)" = "$PRIOR_SOURCE"; then exit 0; fi
-          if ! git -C "$GITHUB_WORKSPACE" diff --quiet HEAD -- lib pubspec.yaml android/app/build.gradle.kts android/app/src/main/AndroidManifest.xml; then exit 0; fi
-          prior="$GITHUB_WORKSPACE/build/app/outputs"
-          for name in app-release.apk; do
-            if ! test -s "$prior/flutter-apk/$name"; then exit 0; fi
-          done
-          if ! test -s "$prior/bundle/release/app-release.aab"; then exit 0; fi
-          saved="$(mktemp -d "$RUNNER_TEMP/aropos-266.XXXXXX")"
-          mkdir -p "$saved/flutter-apk" "$saved/bundle/release"
-          cp "$prior/flutter-apk/app-release.apk" "$saved/flutter-apk/"
-          cp "$prior/bundle/release/app-release.aab" "$saved/bundle/release/"
-          echo "RECOVERED_OUTPUTS=$saved" >> "$GITHUB_ENV"
-          echo "RECOVERED_COMMIT=$PRIOR_SOURCE" >> "$GITHUB_ENV"
-          echo 'recovered=true' >> "$GITHUB_OUTPUT"
-          echo 'Recovered APK and AAB from the exact source of successful compile and test run 45880627857.'
       - uses: actions/checkout@v4
       - name: Configure dedicated VPS SDK
         run: |
@@ -56,7 +24,6 @@ jobs:
           echo "/opt/arobiz-sdk/flutter/bin" >> "$GITHUB_PATH"
           echo "/opt/arobiz-sdk/android/platform-tools" >> "$GITHUB_PATH"
       - name: Check release configuration
-        if: steps.recover.outputs.recovered != 'true'
         env:
           SUPABASE_URL: https://bqoutfgqfaangnnclgle.supabase.co
           SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
@@ -74,34 +41,31 @@ jobs:
           printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 -d > android/app/release.jks
           printf 'storeFile=release.jks\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n' "$ANDROID_STORE_PASSWORD" "$ANDROID_KEY_ALIAS" "$ANDROID_KEY_PASSWORD" > android/key.properties
       - name: Generate branded launcher and splash resources
-        if: steps.recover.outputs.recovered != 'true'
         run: |
           python3 -m pip install --break-system-packages --user "cairosvg>=2.7,<3" "Pillow>=10,<12"
           python3 tool/generate_brand_assets.py
           flutter pub get
           dart run flutter_launcher_icons
       - name: Fetch dependencies and analyze
-        if: steps.recover.outputs.recovered != 'true'
         run: |
           flutter pub get
           flutter analyze --no-fatal-infos --no-fatal-warnings
           flutter test
       - name: Build signed APK and AAB with Supabase
-        if: steps.recover.outputs.recovered != 'true'
         env:
           SUPABASE_URL: https://bqoutfgqfaangnnclgle.supabase.co
           SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
         run: |
-          flutter build apk --release --build-name=3.0.0 --build-number=266 --dart-define=SUPABASE_URL="$SUPABASE_URL" --dart-define=SUPABASE_PUBLISHABLE_KEY="$SUPABASE_PUBLISHABLE_KEY"
-          flutter build appbundle --release --build-name=3.0.0 --build-number=266 --dart-define=SUPABASE_URL="$SUPABASE_URL" --dart-define=SUPABASE_PUBLISHABLE_KEY="$SUPABASE_PUBLISHABLE_KEY"
+          flutter build apk --release --build-name=3.1.0 --build-number=267 --dart-define=SUPABASE_URL="$SUPABASE_URL" --dart-define=SUPABASE_PUBLISHABLE_KEY="$SUPABASE_PUBLISHABLE_KEY"
+          flutter build appbundle --release --build-name=3.1.0 --build-number=267 --dart-define=SUPABASE_URL="$SUPABASE_URL" --dart-define=SUPABASE_PUBLISHABLE_KEY="$SUPABASE_PUBLISHABLE_KEY"
       - name: Verify bundle, APK identity, signing continuity and archive integrity
         shell: bash
         run: |
           set -euo pipefail
-          ROOT="${RECOVERED_OUTPUTS:-$GITHUB_WORKSPACE/build/app/outputs}"
+          ROOT="$GITHUB_WORKSPACE/build/app/outputs"
           OUT="$ROOT/flutter-apk"
           AAB="$ROOT/bundle/release/app-release.aab"
-          TARGET="${RECOVERED_COMMIT:-$GITHUB_SHA}"
+          TARGET="$GITHUB_SHA"
           work="$(mktemp -d "$RUNNER_TEMP/aropos-verify.XXXXXX")"
           trap 'rm -rf "$work"' EXIT
           BUILD_TOOLS="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1)"
@@ -126,8 +90,8 @@ jobs:
           root = ET.parse(sys.argv[1]).getroot()
           a = '{http://schemas.android.com/apk/res/android}'
           assert root.get('package') == 'com.arosoft.arodesk', root.attrib
-          assert root.get(a+'versionCode') == '266', root.attrib
-          assert root.get(a+'versionName') == '3.0.0', root.attrib
+          assert root.get(a+'versionCode') == '267', root.attrib
+          assert root.get(a+'versionName') == '3.1.0', root.attrib
           assert int(root.find('uses-sdk').get(a+'targetSdkVersion')) >= 36
           print('AAB package, version code, version name and target SDK verified.')
           PY
@@ -142,8 +106,8 @@ jobs:
             grep -Fq "package: name='com.arosoft.arodesk'" "$work/badging.txt"
             grep -Eq "targetSdkVersion:'(36|3[7-9]|[4-9][0-9])'" "$work/badging.txt"
             grep -Fq "application-label:'AroPOS'" "$work/badging.txt"
-            grep -Fq "versionCode='266'" "$work/badging.txt"
-            grep -Fq "versionName='3.0.0'" "$work/badging.txt"
+            grep -Fq "versionCode='267'" "$work/badging.txt"
+            grep -Fq "versionName='3.1.0'" "$work/badging.txt"
             echo "Verified $(basename "$apk"): $(stat -c%s "$apk") bytes"
           done
           unzip -Z1 "$OUT/app-release.apk" > "$work/universal-entries.txt"
@@ -152,7 +116,7 @@ jobs:
           cp "$AAB" "$release_dir/AroPOS.aab"
           cp "$OUT/app-release.apk" "$release_dir/AroPOS.apk"
           (cd "$release_dir" && sha256sum AroPOS.aab AroPOS.apk > SHA256SUMS.txt)
-          printf 'Source commit: %s\nVersion: 3.0.0 (266)\nPackage: com.arosoft.arodesk\nHistorical POS upload certificate SHA256: %s\n' "$TARGET" "$prior_fp" > "$release_dir/BUILD-VERIFICATION.txt"
+          printf 'Source commit: %s\nVersion: 3.1.0 (267)\nPackage: com.arosoft.arodesk\nHistorical POS upload certificate SHA256: %s\n' "$TARGET" "$prior_fp" > "$release_dir/BUILD-VERIFICATION.txt"
           echo "RELEASE_DIR=$release_dir" >> "$GITHUB_ENV"
           echo "RELEASE_TARGET=$TARGET" >> "$GITHUB_ENV"
       - name: Publish verified candidate to GitHub Releases
@@ -160,7 +124,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          gh release create aropos-v3.0.0-266 "$RELEASE_DIR/AroPOS.aab" "$RELEASE_DIR/AroPOS.apk" "$RELEASE_DIR/SHA256SUMS.txt" "$RELEASE_DIR/BUILD-VERIFICATION.txt" --repo "$GITHUB_REPOSITORY" --prerelease --title 'AroPOS 3.0.0 (266)' --notes 'Verified signed Android release candidate. Package and signer match historical POS release; APK and AAB identities validated. Complete device and Play Console acceptance checks before production submission.' --target "$RELEASE_TARGET"
+          gh release create aropos-v3.1.0-267 "$RELEASE_DIR/AroPOS.aab" "$RELEASE_DIR/AroPOS.apk" "$RELEASE_DIR/SHA256SUMS.txt" "$RELEASE_DIR/BUILD-VERIFICATION.txt" --repo "$GITHUB_REPOSITORY" --prerelease --title 'AroPOS 3.1.0 (267)' --notes 'Verified signed Android release candidate. Package and signer match historical POS release; APK and AAB identities validated. Complete device and Play Console acceptance checks before production submission.' --target "$RELEASE_TARGET"
           echo 'Verified candidate published to GitHub Releases.'
       - name: Remove generated signing files
         if: always()

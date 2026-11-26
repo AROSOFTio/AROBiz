@@ -4,7 +4,7 @@ on:
     branches: [aropos-web]
   workflow_dispatch:
 permissions:
-  contents: read
+  contents: write
 jobs:
   web:
     runs-on: [self-hosted, Linux, X64, arobiz-android]
@@ -27,8 +27,11 @@ jobs:
           flutter build web --release --dart-define=SUPABASE_URL="$SUPABASE_URL" --dart-define=SUPABASE_PUBLISHABLE_KEY="$SUPABASE_PUBLISHABLE_KEY"
           test -s build/web/index.html
           test -s build/web/main.dart.js
-      - uses: actions/upload-artifact@v4
-        with:
-          name: AroPOS-web
-          path: build/web
-          if-no-files-found: error
+      - name: Publish compiled web bundle
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tar -czf AroPOS-web.tar.gz -C build/web .
+          sha256sum AroPOS-web.tar.gz > WEB-SHA256SUMS.txt
+          gh release create "aropos-web-267-${GITHUB_RUN_NUMBER}" AroPOS-web.tar.gz WEB-SHA256SUMS.txt --repo "$GITHUB_REPOSITORY" --prerelease --title "AroPOS web build 267" --notes "Compiled web candidate; browser and deployment checks required." --target "$GITHUB_SHA"

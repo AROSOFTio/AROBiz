@@ -25,7 +25,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _accountForm = GlobalKey<FormState>();
   final _businessForm = GlobalKey<FormState>();
   static const _categories = <String>[
-    'Retail Shop', 'Wholesale', 'Manufacturing', 'Restaurant & Food',
+    'Supermarket', 'Retail Shop', 'Motorcycle Spare Parts', 'Auto Parts', 'Wholesale', 'Manufacturing', 'Restaurant & Food',
     'Hotel & Accommodation', 'Salon & Beauty', 'Pharmacy & Health',
     'Electronics & Gadgets', 'Clothing & Fashion', 'Hardware & Construction',
     'Transport & Logistics', 'Agriculture & Farming', 'Education & Training',

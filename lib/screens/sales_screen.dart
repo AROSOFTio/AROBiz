@@ -663,7 +663,7 @@ class _SalesWizardState extends State<_SalesWizard> {
       appBar:AppBar(title:Text(isSale?'New sale':'Quotation')),
       resizeToAvoidBottomInset:true,
       body:SafeArea(child:Center(child:ConstrainedBox(
-        constraints:const BoxConstraints(maxWidth:650),
+        constraints:const BoxConstraints(maxWidth:1050),
         child:Column(children:[
           Padding(padding:const EdgeInsets.all(16),child:Column(
             crossAxisAlignment:CrossAxisAlignment.stretch,children:[
@@ -681,18 +681,17 @@ class _SalesWizardState extends State<_SalesWizard> {
               TextField(controller:_search,
                 onChanged:(_)=>setState((){}),
                 decoration:const InputDecoration(
-                  hintText:'Search items',
+                  hintText:'Search products, SKU or barcode',
                   prefixIcon:Icon(Icons.search),border:OutlineInputBorder())),
               const SizedBox(height:8),
               if(widget.products.isEmpty)const Padding(padding:EdgeInsets.all(20),
                 child:Text('No products available')),
               LayoutBuilder(builder:(ctx,constraints){
                 final filtered=widget.products.where((p)=>[
-                  p['name'],p['sku'],p['category']
+                  p['name'],p['sku'],p['category'],p['barcode']
                 ].any((v)=>v.toString().toLowerCase()
                   .contains(_search.text.trim().toLowerCase()))).toList();
-                final columns=constraints.maxWidth>=750?4:
-                  constraints.maxWidth>=550?3:2;
+                final columns=constraints.maxWidth>=800?5:constraints.maxWidth>=340?3:2;
                 return GridView.builder(
                   shrinkWrap:true,
                   physics:const NeverScrollableScrollPhysics(),
@@ -700,7 +699,7 @@ class _SalesWizardState extends State<_SalesWizard> {
                   gridDelegate:SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount:columns,
                     mainAxisSpacing:8,crossAxisSpacing:8,
-                    childAspectRatio:constraints.maxWidth<400?0.70:0.82),
+                    childAspectRatio:constraints.maxWidth<400?0.56:0.75),
                   itemBuilder:(ctx,index){
                     final p=filtered[index],id=p['id'].toString();
                     final qty=_cart[id]??0;
@@ -719,7 +718,7 @@ class _SalesWizardState extends State<_SalesWizard> {
                               child:imageUrl==null
                                 ?ColoredBox(color:Theme.of(context).colorScheme.surfaceContainerHigh,
                                   child:const Icon(Icons.inventory_2_outlined,size:32))
-                                :Image.network(imageUrl,fit:BoxFit.cover,
+                                :Image.network(imageUrl,fit:BoxFit.contain,
                                   cacheWidth:280,
                                   errorBuilder:(_,__,___)=>const Icon(Icons.inventory_2_outlined)))),
                             const SizedBox(height:5),
@@ -842,6 +841,7 @@ class _SalesWizardState extends State<_SalesWizard> {
 
             ]),
           )),
+          if(_step==0)Padding(padding:const EdgeInsets.fromLTRB(16,8,16,0),child:Row(children:[Expanded(child:Text('${_cart.length} products in cart',style:const TextStyle(fontWeight:FontWeight.w600))),Text('${widget.currency} ${_total.toStringAsFixed(2)}',style:Theme.of(context).textTheme.titleLarge)])),
           Padding(padding:const EdgeInsets.all(16),child:Row(children:[
             if(_step>0)...[
               OutlinedButton(onPressed:_saving?null:()=>setState((){_step--;_error=null;}),
@@ -851,7 +851,7 @@ class _SalesWizardState extends State<_SalesWizard> {
             Expanded(child:FilledButton(
               onPressed:_saving?null:(_step==2?_save:_next),
               child:Text(_saving?'Processing...':_step==2?
-                (isSale?'Complete sale':'Save quotation'):'Next'),
+                (isSale?'Complete sale':'Save quotation'):(_step==0?'Checkout':'Review')),
             )),
           ])),
         ]),

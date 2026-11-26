@@ -28,7 +28,7 @@ class _AccountingScreenState extends State<AccountingScreen>{
     return Expanded(child:Container(
       padding:const EdgeInsets.all(14),
       decoration:BoxDecoration(color:Colors.white,
-        borderRadius:BorderRadius.circular(17),
+        borderRadius:BorderRadius.circular(10),
         border:Border.all(color:const Color(0xFFE8EDF4))),
       child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
         Container(width:42,height:42,
@@ -99,15 +99,15 @@ class _AccountingScreenState extends State<AccountingScreen>{
           const SizedBox(width:10),
           _summary('Posted credits',
             _posted.fold<double>(0,(sum,e)=>sum+(e['credit'] as num).toDouble()),
-            Icons.payments_outlined,const Color(0xFF0AB867)),
+            Icons.payments_outlined,const Color(0xFF2563EB)),
         ]),
         const SizedBox(height:10),
         Row(children:[
           _summary('Pending entries',_pending.length.toDouble(),
-            Icons.cloud_upload_outlined,const Color(0xFFFF881A)),
+            Icons.cloud_upload_outlined,const Color(0xFF2563EB)),
           const SizedBox(width:10),
           _summary('Journal lines',_posted.length.toDouble(),
-            Icons.receipt_long_outlined,const Color(0xFF6254DC)),
+            Icons.receipt_long_outlined,const Color(0xFF2563EB)),
         ]),
         const SizedBox(height:12),
         _section('Recent posted journal',_posted),
