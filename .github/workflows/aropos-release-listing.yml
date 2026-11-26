@@ -1,0 +1,32 @@
+name: Mark verified AroPOS release as latest
+on:
+  push:
+    branches: [aropos-release-listing]
+    paths: ['.github/workflows/aropos-release-listing.yml']
+permissions:
+  contents: write
+jobs:
+  promote:
+    runs-on: [self-hosted, Linux, X64, arobiz-android]
+    timeout-minutes: 5
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Confirm signed release assets and update listing
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag=aropos-v3.0.0-266
+          gh release view "$tag" --repo "$GITHUB_REPOSITORY" --json assets,isDraft,tagName,targetCommitish > "$RUNNER_TEMP/aropos-release.json"
+          python3 - "$RUNNER_TEMP/aropos-release.json" <<'PY'
+          import json, sys
+          x=json.load(open(sys.argv[1]))
+          assert not x['isDraft']
+          assert x['tagName']=='aropos-v3.0.0-266'
+          assets={a['name']:a['size'] for a in x['assets']}
+          assert assets.get('AroPOS.aab')==66984003
+          assert assets.get('AroPOS.apk')==68995697
+          assert assets.get('BUILD-VERIFICATION.txt',0)>0 and assets.get('SHA256SUMS.txt',0)>0
+          PY
+          gh release edit "$tag" --repo "$GITHUB_REPOSITORY" --prerelease=false --latest
+          gh release view "$tag" --repo "$GITHUB_REPOSITORY" --json isPrerelease,isDraft,url
