@@ -27,7 +27,10 @@ class AccountingService {
         .eq('business_id',business)
         .order('posted_at',ascending:false).limit(500)
         .timeout(const Duration(seconds:9));
-      if(journals.isEmpty)return [];
+      if(journals.isEmpty){
+        await _secure.write(key:_key(business),value:'[]');
+        return [];
+      }
       final ids=journals.map((e)=>e['id'].toString()).toList();
       final details=await Supabase.instance.client.from('arodesk_journal_lines')
         .select('journal_id,account_code,debit,credit')
@@ -47,7 +50,7 @@ class AccountingService {
       return lines;
     }catch(_){
       final cached=await _secure.read(key:_key(business));
-      if(cached==null)return [];
+      if(cached==null)rethrow;
       return (jsonDecode(cached) as List)
           .map((e)=>Map<String,dynamic>.from(e as Map)).toList();
     }

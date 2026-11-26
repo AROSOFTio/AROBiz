@@ -56,9 +56,9 @@ jobs:
           SUPABASE_URL: https://bqoutfgqfaangnnclgle.supabase.co
           SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
         run: |
-          flutter build apk --release --build-name=3.0.0 --build-number=265 --dart-define=SUPABASE_URL="$SUPABASE_URL" --dart-define=SUPABASE_PUBLISHABLE_KEY="$SUPABASE_PUBLISHABLE_KEY"
-          flutter build apk --release --split-per-abi --build-name=3.0.0 --build-number=265 --dart-define=SUPABASE_URL="$SUPABASE_URL" --dart-define=SUPABASE_PUBLISHABLE_KEY="$SUPABASE_PUBLISHABLE_KEY"
-          flutter build appbundle --release --build-name=3.0.0 --build-number=265 --dart-define=SUPABASE_URL="$SUPABASE_URL" --dart-define=SUPABASE_PUBLISHABLE_KEY="$SUPABASE_PUBLISHABLE_KEY"
+          flutter build apk --release --build-name=3.0.0 --build-number=266 --dart-define=SUPABASE_URL="$SUPABASE_URL" --dart-define=SUPABASE_PUBLISHABLE_KEY="$SUPABASE_PUBLISHABLE_KEY"
+          flutter build apk --release --split-per-abi --build-name=3.0.0 --build-number=266 --dart-define=SUPABASE_URL="$SUPABASE_URL" --dart-define=SUPABASE_PUBLISHABLE_KEY="$SUPABASE_PUBLISHABLE_KEY"
+          flutter build appbundle --release --build-name=3.0.0 --build-number=266 --dart-define=SUPABASE_URL="$SUPABASE_URL" --dart-define=SUPABASE_PUBLISHABLE_KEY="$SUPABASE_PUBLISHABLE_KEY"
       - name: Validate every APK, Android identity and signatures
         run: |
           set -euo pipefail
@@ -77,7 +77,7 @@ jobs:
             grep -q "package: name='com.arosoft.arodesk'" /tmp/arodesk-badging.txt
             grep -Eq "targetSdkVersion:'(36|3[7-9]|[4-9][0-9])'" /tmp/arodesk-badging.txt || { echo '::error::Google Play requires target SDK >= 36'; exit 1; }
             grep -q "application-label:'AroPOS'" /tmp/arodesk-badging.txt
-            grep -q "versionCode:'265'" /tmp/arodesk-badging.txt
+            grep -q "versionCode:'266'" /tmp/arodesk-badging.txt
             grep -q "versionName:'3.0.0'" /tmp/arodesk-badging.txt
             echo "Verified $(basename "$apk"): $(stat -c%s "$apk") bytes"
           done
@@ -93,7 +93,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          TAG="aropos-v3.0.0-265"
+          TAG="aropos-v3.0.0-266"
           gh release create "$TAG" --draft build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/app-arm64-v8a-release.apk build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk build/app/outputs/flutter-apk/app-x86_64-release.apk build/app/outputs/bundle/release/app-release.aab SHA256SUMS.txt --title "AroPOS $TAG" --notes "Signed AroPOS: ARM64 recommended for modern phones; universal APK also included. Verified package identity, signatures and checksums." --target "${{ github.sha }}"
       - name: Remove generated signing files
         if: always()

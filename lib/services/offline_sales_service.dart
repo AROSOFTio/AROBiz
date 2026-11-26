@@ -167,6 +167,24 @@ class OfflineSalesService {
   }
   Future<List<Map<String,dynamic>>> pending(String business)=>_read(business,'queue');
   Future<int> pendingCount(String business)async=>(await pending(business)).length;
+  /// Validate local checkout before persisting a financial transaction.
+  static double validateSalePayments(double total,List<Map<String,dynamic>> payments){
+    if(!total.isFinite||total<0)throw ArgumentError('Invalid sale total.');
+    var paidCents=0;
+    for(final payment in payments){
+      final amount=payment['amount'];
+      if(amount is! num||!amount.isFinite||amount<0||
+          ((amount*100).round()-amount*100).abs()>0.001){
+        throw ArgumentError('Enter a valid payment amount with at most two decimal places.');
+      }
+      if(!['Cash','Mobile Money','Bank Transfer','Card'].contains(payment['method'])){
+        throw ArgumentError('Invalid payment method.');
+      }
+      paidCents+=(amount*100).round();
+    }
+    if(paidCents>(total*100).round())throw StateError('Payment exceeds sale total.');
+    return paidCents/100;
+  }
   Future<String> queueSale({
     required String business,required Map<String,double> quantities,
     required String customer,required String phone,required String address,
@@ -202,10 +220,14 @@ class OfflineSalesService {
         throw StateError('Insufficient offline stock for ${p['name']}.');
       }
     }
-    final total=quantities.entries.fold<double>(0,(sum,e)=>
-      sum+((byId[e.key]!['sale_price'] as num).toDouble()*e.value));
-    final paid=payments.fold<double>(0,(sum,p)=>sum+(p['amount'] as num).toDouble());
-    if(paid>total+0.01)throw StateError('Payment exceeds sale total.');
+    final rawTotal=quantities.entries.fold<double>(0,(sum,e){
+      final price=(byId[e.key]!['sale_price'] as num).toDouble();
+      if(!price.isFinite||price<0)throw StateError('Invalid product price.');
+      return sum+price*e.value;
+    });
+    if(!rawTotal.isFinite)throw StateError('Invalid sale total.');
+    final total=double.parse(rawTotal.toStringAsFixed(2));
+    final paid=validateSalePayments(total,payments);
     final id=const Uuid().v4();
     final row=<String,dynamic>{
       'id':id,'business':business,'kind':'sale','customer':customer,'phone':phone,

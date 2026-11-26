@@ -86,11 +86,16 @@ class _AccountingScreenState extends State<AccountingScreen>{
     body:RefreshIndicator(onRefresh:_load,child:_busy
       ?const Center(child:CircularProgressIndicator())
       :ListView(padding:const EdgeInsets.all(12),children:[
-        if(_error!=null)Text(_error!),
+        if(_error!=null)...[
+          Text(_error!),
+          const SizedBox(height:12),
+          FilledButton.icon(onPressed:_load,icon:const Icon(Icons.refresh),label:const Text('Retry')),
+        ]else...[
+        const Padding(padding:EdgeInsets.only(bottom:8),child:Text('Recent journal entries only; not a complete financial statement.')),
         Row(children:[
           _summary('Posted debits',
             _posted.fold<double>(0,(sum,e)=>sum+(e['debit'] as num).toDouble()),
-            Icons.account_balance_wallet_outlined,const Color(0xFF006FFF)),
+            Icons.account_balance_wallet_outlined,const Color(0xFF2563EB)),
           const SizedBox(width:10),
           _summary('Posted credits',
             _posted.fold<double>(0,(sum,e)=>sum+(e['credit'] as num).toDouble()),
@@ -101,15 +106,16 @@ class _AccountingScreenState extends State<AccountingScreen>{
           _summary('Pending entries',_pending.length.toDouble(),
             Icons.cloud_upload_outlined,const Color(0xFFFF881A)),
           const SizedBox(width:10),
-          _summary('Journal records',_posted.length.toDouble(),
+          _summary('Journal lines',_posted.length.toDouble(),
             Icons.receipt_long_outlined,const Color(0xFF6254DC)),
         ]),
         const SizedBox(height:12),
-        _section('Posted journal',_posted),
+        _section('Recent posted journal',_posted),
         _section('Pending offline',_pending),
         const SizedBox(height:6),
         const Text('Posted entries are confirmed by the server. Pending entries are provisional.',
           style:TextStyle(fontSize:12)),
+        ],
       ])),
   );
 }

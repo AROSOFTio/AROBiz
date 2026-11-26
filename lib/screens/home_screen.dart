@@ -122,6 +122,17 @@ class _HomeScreenState extends State<HomeScreen>{
       ])));
   }
   @override Widget build(BuildContext context){
+    if(!_loading&&_error!=null){
+      return RefreshIndicator(onRefresh:_load,child:ListView(
+        physics:const AlwaysScrollableScrollPhysics(),
+        padding:const EdgeInsets.all(20),children:[
+          Icon(Icons.cloud_off_outlined,size:44,color:Theme.of(context).colorScheme.primary),
+          const SizedBox(height:12),
+          Text(_error!,textAlign:TextAlign.center),
+          const SizedBox(height:12),
+          FilledButton.icon(onPressed:_load,icon:const Icon(Icons.refresh),label:const Text('Retry')),
+        ]));
+    }
     final code=_currency.isNotEmpty?_currency:'—';
     final money=NumberFormat.currency(name:_currency.isEmpty?'USD':_currency,symbol:code+' ');
     final denominator=_collected+_outstanding;
@@ -130,7 +141,9 @@ class _HomeScreenState extends State<HomeScreen>{
       const Center(child:CircularProgressIndicator()):
       ListView(padding:const EdgeInsets.fromLTRB(16,16,16,55),children:[
         Text('Business overview',style:Theme.of(context).textTheme.headlineSmall),
-        Text(_businessName),const SizedBox(height:12),
+        Text(_businessName),const SizedBox(height:4),
+        Text('Sales metrics reflect up to 100 recent records in $_currency',style:Theme.of(context).textTheme.bodySmall),
+        const SizedBox(height:12),
         if(_displayCurrency!=null&&_displayCurrency!=_currency)
           Card(child:ListTile(
             dense:true,leading:const Icon(Icons.currency_exchange),
@@ -143,11 +156,11 @@ class _HomeScreenState extends State<HomeScreen>{
           final columns=c.maxWidth>=600?3:2;
           final w=(c.maxWidth-10*(columns-1))/columns;
           return Wrap(spacing:10,runSpacing:10,children:[
-            SizedBox(width:w,child:_metric('Total revenue',money.format(_sales),Icons.shopping_cart_rounded,const Color(0xFF2563EB))),
-            SizedBox(width:w,child:_metric('Total payments',money.format(_collected),Icons.payments_rounded,const Color(0xFF0AB867))),
+            SizedBox(width:w,child:_metric('Recent revenue',money.format(_sales),Icons.shopping_cart_rounded,const Color(0xFF2563EB))),
+            SizedBox(width:w,child:_metric('Recent payments',money.format(_collected),Icons.payments_rounded,const Color(0xFF0AB867))),
             SizedBox(width:w,child:_metric('Outstanding',money.format(_outstanding),Icons.receipt_long_rounded,const Color(0xFFFF881A))),
             SizedBox(width:w,child:_metric('Sales',_saleCount.toString(),Icons.point_of_sale_rounded,const Color(0xFF6254DC))),
-            SizedBox(width:w,child:_metric('Open debtors',_debtorCount.toString(),Icons.people_rounded,const Color(0xFF277EE8))),
+            SizedBox(width:w,child:_metric('Unpaid sales',_debtorCount.toString(),Icons.people_rounded,const Color(0xFF277EE8))),
             SizedBox(width:w,child:_metric('Low stock / products',
               _lowCount.toString()+' / '+_productCount.toString(),Icons.inventory_2_rounded,const Color(0xFFEA574B))),
           ]);
@@ -161,8 +174,9 @@ class _HomeScreenState extends State<HomeScreen>{
               child:LinearProgressIndicator(value:ratio,minHeight:12,
                 backgroundColor:Colors.orange.shade100)),
             const SizedBox(height:8),
-            Text('Collected '+(ratio*100).toStringAsFixed(0)+
-              '% · Outstanding '+((1-ratio)*100).toStringAsFixed(0)+'%'),
+            Text(denominator>0?'Collected '+(ratio*100).toStringAsFixed(0)+
+              '% · Outstanding '+((1-ratio)*100).toStringAsFixed(0)+'%':
+              'No recorded collections or outstanding debts.'),
           ]))),
         const SizedBox(height:12),
         Text('Recent transactions',style:Theme.of(context).textTheme.titleMedium),
